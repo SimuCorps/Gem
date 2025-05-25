@@ -1,0 +1,13 @@
+# Test cases that should produce compilation errors
+# These should all fail to compile
+
+# Error: Cannot use ! suffix with mut keyword
+# mut int! my_var = 42;
+
+# Error: Cannot use ?! suffix with mut keyword  
+# mut int?! my_var = 42;
+
+# Error: Cannot use ! after ? with mut keyword
+# mut int? my_var! = 42;
+
+puts "This file contains commented error cases for testing"; 

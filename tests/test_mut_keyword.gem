@@ -1,0 +1,50 @@
+# Test mut keyword for variable declarations
+puts "=== Testing mut keyword ===";
+
+# Test mut with different types
+mut int counter = 42;
+mut string message = "Hello";
+mut bool flag = true;
+
+puts counter;
+puts message;
+puts flag;
+
+# Test reassignment of mut variables
+counter = 100;
+message = "Updated";
+flag = false;
+
+puts counter;
+puts message;
+puts flag;
+
+# Test mut with nullable types
+mut int? nullable_counter = nil;
+mut string? nullable_message = nil;
+
+puts nullable_counter;
+puts nullable_message;
+
+# Assign values to nullable mut variables
+nullable_counter = 50;
+nullable_message = "Not nil anymore";
+
+puts nullable_counter;
+puts nullable_message;
+
+# Test that both syntaxes work
+int! old_syntax = 25;
+mut int new_syntax = 25;
+
+puts old_syntax;
+puts new_syntax;
+
+# Both should be mutable
+old_syntax = 30;
+new_syntax = 30;
+
+puts old_syntax;
+puts new_syntax;
+
+puts "=== mut keyword test complete ==="; 

@@ -506,6 +506,7 @@ static void returnStatement();
 static void beginStatement();
 static void interpolatedString(bool canAssign);
 static void typedVarDeclaration();
+static void mutVarDeclaration();
 static void consumeStatementTerminator(const char* message);
 //< Global Variables forward-declarations
 
@@ -1840,6 +1841,8 @@ static void forStatement() {
     // No initializer.
   } else if (match(TOKEN_VAR)) {
     varDeclaration();
+  } else if (match(TOKEN_MUT)) {
+    mutVarDeclaration();
   } else if (match(TOKEN_RETURNTYPE_INT) || match(TOKEN_RETURNTYPE_STRING) || match(TOKEN_RETURNTYPE_BOOL) ||
              match(TOKEN_RETURNTYPE_FUNC) || match(TOKEN_RETURNTYPE_OBJ)) {
     // Handle typed variable declarations in for loop: for (int i = 0; ...)
@@ -2483,6 +2486,106 @@ static void typedVarDeclaration() {
   defineVariable(global);
 }
 
+static void mutVarDeclaration() {
+  // 'mut' keyword has already been consumed by the caller
+  // Now we expect a type token
+  if (!match(TOKEN_RETURNTYPE_INT) && !match(TOKEN_RETURNTYPE_STRING) && 
+      !match(TOKEN_RETURNTYPE_BOOL) && !match(TOKEN_RETURNTYPE_FUNC) &&
+      !match(TOKEN_RETURNTYPE_OBJ)) {
+    error("Expect type after 'mut' keyword.");
+    return;
+  }
+  
+  ReturnType declaredType;
+  BaseType baseType;
+  
+  switch (parser.previous.type) {
+    case TOKEN_RETURNTYPE_INT: baseType = TYPE_INT.baseType; break;
+    case TOKEN_RETURNTYPE_STRING: baseType = TYPE_STRING.baseType; break;
+    case TOKEN_RETURNTYPE_BOOL: baseType = TYPE_BOOL.baseType; break;
+    case TOKEN_RETURNTYPE_FUNC: baseType = TYPE_FUNC.baseType; break;
+    case TOKEN_RETURNTYPE_OBJ: baseType = TYPE_OBJ.baseType; break;
+    default: 
+      error("Unknown type in variable declaration.");
+      return;
+  }
+  
+  // Start with mutable, non-nullable type (mut makes it mutable)
+  declaredType = IMMUTABLE_NONNULL_TYPE(baseType);
+  declaredType.isMutable = true;
+  
+  // Check for suffixes - but prevent double mutability
+  if (check(TOKEN_QUESTION_BANG)) {
+    error("Cannot use '?!' suffix with 'mut' keyword - variable is already mutable.");
+    return;
+  } else if (check(TOKEN_QUESTION)) {
+    advance(); // consume '?'
+    declaredType.isNullable = true;
+    
+    // Check for '!' after '?' - this would be double mutability
+    if (check(TOKEN_BANG)) {
+      error("Cannot use '!' suffix with 'mut' keyword - variable is already mutable.");
+      return;
+    }
+  } else if (check(TOKEN_BANG)) {
+    error("Cannot use '!' suffix with 'mut' keyword - variable is already mutable.");
+    return;
+  }
+  
+  consume(TOKEN_IDENTIFIER, "Expect variable name.");
+  Token variableName = parser.previous; // Store the variable name token
+  typedDeclareVariable(declaredType);
+  uint16_t global = 0;
+  if (current->scopeDepth == 0) {
+    global = identifierConstant(&variableName);
+    // Track the type for global variables
+    ObjString* name = copyString(variableName.start, variableName.length);
+    addGlobalVar(name, declaredType);
+  }
+
+  if (match(TOKEN_EQUAL)) {
+    expression();
+    // Capture the expression type immediately before anything can reset it
+    ReturnType expressionType = lastExpressionType;
+    
+    // Type checking: verify the expression type matches the declared type
+    if (!isAssignmentCompatible(declaredType, expressionType)) {
+      error("Cannot assign value of incompatible type to variable.");
+    }
+    
+    // For obj variables, if we're assigning a class-specific type, update the variable's type
+    if (declaredType.baseType == RETURN_TYPE_OBJ && declaredType.className == NULL &&
+        expressionType.baseType == RETURN_TYPE_OBJ && expressionType.className != NULL) {
+      // Update the variable to have the specific class type, but preserve mutability and nullability
+      ReturnType updatedType = expressionType;
+      updatedType.isMutable = declaredType.isMutable;    // Preserve original mutability
+      updatedType.isNullable = declaredType.isNullable; // Preserve original nullability
+      declaredType = updatedType;
+      
+      // Update the local variable type if it's a local variable
+      if (current->scopeDepth > 0 && current->localCount > 0) {
+        current->locals[current->localCount - 1].type = declaredType;
+      }
+      
+      // Update global variable type if it's global
+      if (current->scopeDepth == 0) {
+        ObjString* name = copyString(variableName.start, variableName.length);
+        setGlobalVarType(name, declaredType);
+      }
+    }
+  } else {
+    // For nullable variables, default to nil
+    if (declaredType.isNullable) {
+      emitByte(OP_NIL);
+    } else {
+      error("Non-nullable variables must be initialized.");
+    }
+  }
+  consumeStatementTerminator("Expect ';' or newline after variable declaration.");
+
+  defineVariable(global);
+}
+
 //> Local Variables gem-block
 static void gemBlock() {
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
@@ -2595,6 +2698,7 @@ static void synchronize() {
       case TOKEN_DEF:
       case TOKEN_FUN:
       case TOKEN_VAR:
+      case TOKEN_MUT:
       case TOKEN_RETURNTYPE_INT:
       case TOKEN_RETURNTYPE_STRING:
       case TOKEN_RETURNTYPE_BOOL:
@@ -2638,6 +2742,8 @@ static void declaration() {
     defDeclaration();
   } else if (match(TOKEN_VAR)) {
     varDeclaration();
+  } else if (match(TOKEN_MUT)) {
+    mutVarDeclaration();
   } else if (match(TOKEN_RETURNTYPE_INT) || match(TOKEN_RETURNTYPE_STRING) || 
              match(TOKEN_RETURNTYPE_BOOL) || match(TOKEN_RETURNTYPE_FUNC) ||
              match(TOKEN_RETURNTYPE_OBJ)) {

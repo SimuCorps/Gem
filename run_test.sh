@@ -94,6 +94,9 @@ run_category() {
         "modules")
             tests=("test_modules.gem")
             ;;
+        "mutability")
+            tests=("test_mut_comprehensive.gem" "test_mut_errors.gem" "test_mut_keyword.gem")
+            ;;
         "advanced")
             tests=("test_memory_safety.gem" "test_type_safety.gem" "test_jit_compilation.gem")
             ;;

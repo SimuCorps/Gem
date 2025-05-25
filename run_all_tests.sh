@@ -141,6 +141,12 @@ main() {
     run_test_category "Module System" \
         "test_modules.gem"
     
+    # Mutability
+    run_test_category "Mutability" \
+        "test_mut_comprehensive.gem" \
+        "test_mut_errors.gem" \
+        "test_mut_keyword.gem"
+    
     # Advanced Features
     run_test_category "Advanced Features" \
         "test_memory_safety.gem" \

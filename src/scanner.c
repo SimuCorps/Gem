@@ -243,6 +243,7 @@ static TokenType identifierType() {
       if (scanner.current - scanner.start > 1) {
         switch (scanner.start[1]) {
           case 'o': return checkKeyword(2, 4, "dule", TOKEN_MODULE);
+          case 'u': return checkKeyword(2, 1, "t", TOKEN_MUT);
         }
       }
       break;
