@@ -18,6 +18,12 @@
 //> JIT Integration main-include-jit
 #include "jit.h"
 //< JIT Integration main-include-jit
+//> Line editing support
+#include "lineedit.h"
+//< Line editing support
+//> Version information
+#include "version.h"
+//< Version information
 
 //> JIT Integration command line parsing
 static void printUsage() {
@@ -27,27 +33,75 @@ static void printUsage() {
   fprintf(stderr, "  --jit-stats         Print JIT statistics at exit\n");
   fprintf(stderr, "  --jit-threshold N   Set function compilation threshold (default: 100)\n");
   fprintf(stderr, "  --jit-loop-threshold N Set loop compilation threshold (default: 50)\n");
+  fprintf(stderr, "  --repl              Enter REPL after executing script\n");
+  fprintf(stderr, "  --version           Show version information\n");
   fprintf(stderr, "  --help              Show this help message\n");
+}
+
+static void printVersion() {
+  printf("Gem Programming Language %s\n", VERSION_DISPLAY);
+  printf("Version: %s\n", VERSION_STRING);
+  printf("Build: %d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+  if (strlen(VERSION_SUFFIX) > 0) {
+    printf("-%s", VERSION_SUFFIX);
+  }
+  printf("\n");
 }
 
 // Global flags for JIT control
 static bool showJitStats = false;
+static bool enterReplAfterScript = false;
 //< JIT Integration command line parsing
 
 //> Scanning on Demand repl
 
 static void repl() {
-  char line[1024];
+  // Initialize line editing
+  if (!initLineEdit()) {
+    fprintf(stderr, "Warning: Could not initialize line editing, using basic input\n");
+  }
+  
+  // Try to load history from home directory
+  char* home = getenv("HOME");
+  char historyPath[1024];
+  if (home) {
+    snprintf(historyPath, sizeof(historyPath), "%s/.gem_history", home);
+    loadHistory(historyPath);
+  }
+  
+  printf("Gem REPL %s - Use Ctrl+C or Ctrl+D to exit\n", VERSION_DISPLAY);
+  printf("Arrow keys for history, Ctrl+A/E for line start/end, Ctrl+K/U for kill line\n\n");
+  
   for (;;) {
-    printf("> ");
-
-    if (!fgets(line, sizeof(line), stdin)) {
-      printf("\n");
+    char* line = readLine("> ");
+    
+    if (!line) {
+      // EOF or Ctrl+C
+      printf("\nGoodbye!\n");
       break;
     }
-
+    
+    // Skip empty lines
+    if (strlen(line) == 0) {
+      free(line);
+      continue;
+    }
+    
+    // Add to history
+    addHistory(line);
+    
+    // Interpret the line
     interpret(line);
+    
+    free(line);
   }
+  
+  // Save history before exiting
+  if (home) {
+    saveHistory(historyPath);
+  }
+  
+  cleanupLineEdit();
 }
 //< Scanning on Demand repl
 //> Scanning on Demand read-file
@@ -107,6 +161,8 @@ int main(int argc, const char* argv[]) {
       // Disable JIT - we'll do this after initVM()
     } else if (strcmp(argv[i], "--jit-stats") == 0) {
       showJitStats = true;
+    } else if (strcmp(argv[i], "--repl") == 0) {
+      enterReplAfterScript = true;
     } else if (strcmp(argv[i], "--jit-threshold") == 0) {
       if (i + 1 >= argc) {
         fprintf(stderr, "Error: --jit-threshold requires a number\n");
@@ -121,6 +177,9 @@ int main(int argc, const char* argv[]) {
       }
       // In a full implementation, we'd set the loop threshold here
       i++; // Skip the number argument
+    } else if (strcmp(argv[i], "--version") == 0) {
+      printVersion();
+      exit(0);
     } else if (strcmp(argv[i], "--help") == 0) {
       printUsage();
       exit(0);
@@ -160,6 +219,10 @@ int main(int argc, const char* argv[]) {
     repl();
   } else {
     runFile(scriptPath);
+    if (enterReplAfterScript) {
+      printf("Script executed. Entering interactive mode...\n");
+      repl();
+    }
   }
   
 //> JIT Integration print stats

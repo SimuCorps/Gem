@@ -3,8 +3,6 @@
 # Gem Language Test Runner
 # Runs all test files and provides comprehensive reporting
 
-set -e  # Exit on any error
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,13 +46,14 @@ run_test() {
         return 1
     fi
     
-    # Run the test (removed timeout for macOS compatibility)
-    if "$COMPILER" "$test_file" >> "$LOG_FILE" 2>&1; then
+    "$COMPILER" "$test_file" >> "$LOG_FILE" 2>&1
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]]; then
         print_status "$GREEN" "  ✅ PASSED: $test_name"
         ((PASSED_TESTS++))
         return 0
     else
-        local exit_code=$?
         print_status "$RED" "  ❌ FAILED: $test_name (exit code: $exit_code)"
         echo "    Error details logged to $LOG_FILE"
         ((FAILED_TESTS++))
@@ -141,11 +140,20 @@ main() {
     run_test_category "Module System" \
         "test_modules.gem"
     
+    # Mutability
+    run_test_category "Mutability" \
+        "test_mut_comprehensive.gem" \
+        "test_mut_errors.gem" \
+        "test_mut_keyword.gem"
+    
     # Advanced Features
     run_test_category "Advanced Features" \
         "test_memory_safety.gem" \
         "test_type_safety.gem" \
-        "test_jit_compilation.gem"
+        "test_jit_compilation.gem" \
+        "test_hashes.gem" \
+        "test_type_coercion.gem" \
+        "test_http.gem"
     
     # Final Summary
     print_status "$CYAN" "\n🏁 Test Suite Complete!"
@@ -161,6 +169,8 @@ main() {
         exit 0
     else
         print_status "$YELLOW" "⚠️  Some tests failed. Check $LOG_FILE for details."
+        echo ""
+        print_status "$CYAN" "Full test log available in: $LOG_FILE"
         exit 1
     fi
 }

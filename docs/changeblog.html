@@ -35,6 +35,7 @@
                     <nav class="docs-nav">
                         <h3>Changeblog</h3>
                         <ul>
+                            <li><a href="#v1-2-0">Version 1.2.0</a></li>
                             <li><a href="#v1-1-0">Version 1.1.0</a></li>
                             <li><a href="#v1-0-0">Version 1.0.0</a></li>
                         </ul>
@@ -46,6 +47,127 @@
                         <h1>Gem Changeblog</h1>
                         <p class="docs-subtitle">The story behind Gem's evolution and design decisions</p>
                     </header>
+
+                    <section id="v1-2-0" class="docs-section">
+                        <h2>Version 1.2.0 - The Connectivity Update</h2>
+                        <p class="version-date"><em>Released: May 25th 2025</em></p>
+
+                        <h3>Building Bridges to the Modern Web</h3>
+                        <p>Version 1.2.0 represents a major leap forward in Gem's capabilities, transforming it from just a simple toy language into a versatile tool for modern application development. This release was driven by a simple realization: programming languages need to speak HTTP fluently and handle data structures naturally.</p>
+                        
+                        <p>The centerpiece of this release is our comprehensive HTTP module, but that's just the beginning. We've also introduced hash data structures, enhanced the developer experience with REPL improvements, added flexible mutability syntax, and implemented intelligent type coercion - all while maintaining Gem's core commitment to safety and performance.</p>
+
+                        <h3>What Changed</h3>
+                        
+                        <h4>HTTP Module - First-Class Web Support</h4>
+                        <p>The new HTTP module brings production-ready web request capabilities to Gem. No more external dependencies or complex setup - just clean, type-safe HTTP operations:</p>
+
+                        <div class="code-block">
+                            <pre><code>require "http";
+
+# Simple GET request with full response handling
+hash response = Http.get("https://api.example.com/users");
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+string body = response["body"] as string;
+
+# POST with custom headers and data
+hash headers = {};
+headers["Authorization"] = "Bearer token123";
+headers["Content-Type"] = "application/json";
+
+hash userData = {};
+userData["name"] = "Alice";
+userData["email"] = "alice@example.com";
+
+hash result = Http.post("https://api.example.com/users", userData, headers);</code></pre>
+                        </div>
+
+                        <h4>Hash Data Structures</h4>
+                        <p>Hashes (key-value maps) are now a first-class data type in Gem, enabling natural data manipulation and API response handling:</p>
+
+                        <div class="code-block">
+                            <pre><code># Create and manipulate hashes
+hash user = {};
+user["name"] = "Bob";
+user["age"] = "30";
+user["active"] = "true";
+
+# Type-safe value extraction
+string name = user["name"] as string;
+int age = user["age"] as int;
+bool isActive = user["active"] as bool;</code></pre>
+                        </div>
+
+                        <h4>Enhanced Mutability with `mut` Keyword</h4>
+                        <p>Developers can now choose between `mut` and `!` for mutable variables, providing flexibility while maintaining clarity:</p>
+
+                        <div class="code-block">
+                            <pre><code># Both syntaxes work - choose your preference
+mut string name1 = "Alice";
+string! name2 = "Bob";
+
+# Both can be modified
+name1 = "Alice Updated";
+name2 = "Bob Updated";</code></pre>
+                        </div>
+
+                        <h4>Type Coercion System</h4>
+                        <p>Intelligent type coercion makes working with different data types more natural while preserving safety:</p>
+
+                        <div class="code-block">
+                            <pre><code># Automatic string conversion
+string numberStr = 42 as string;        # "42"
+string boolStr = true as string;        # "true"
+
+# Safe numeric conversion
+int value = "123" as int;               # 123
+int decimal = "3.14159" as int;         # 3
+
+# Ruby-style truthiness
+bool isEmpty = "" as bool;              # true (non-nil is truthy)
+bool hasValue = "hello" as bool;        # true
+bool isNil = nil as bool;               # false</code></pre>
+                        </div>
+
+                        <h4>REPL Improvements</h4>
+                        <p>The interactive experience got major upgrades:</p>
+                        <ul>
+                            <li><strong>Line Navigation</strong> - Arrow keys for command history and editing</li>
+                            <li><strong>Post-Script REPL</strong> - New `--repl` flag drops into interactive mode after script execution</li>
+                            <li><strong>Version Information</strong> - `--version` flag shows detailed version info</li>
+                        </ul>
+
+                        <h3>Technical Implementation</h3>
+                        
+                        <h4>HTTP Module Architecture</h4>
+                        <p>The HTTP module is built using the curl command-line tool via shell execution for maximum compatibility and simplicity. Each request constructs and executes a curl command with proper argument escaping and security measures. The response includes:</p>
+                        <ul>
+                            <li><code>success</code> - Boolean indicating request success</li>
+                            <li><code>status</code> - HTTP status code (0 for network errors)</li>
+                            <li><code>body</code> - Response body as string</li>
+                            <li><code>response_time</code> - Request duration in seconds</li>
+                        </ul>
+
+                        <h4>Hash Implementation</h4>
+                        <p>Hashes are implemented as dynamic hash tables with string keys and variant values. The type system ensures safe value extraction through explicit casting, preventing runtime type errors while maintaining flexibility.</p>
+
+                        <h4>Type Coercion Safety</h4>
+                        <p>Our type coercion system is designed to be predictable and safe. All coercions are explicit (using `as` keyword) and follow well-defined rules. Invalid coercions result in compile-time errors rather than runtime surprises.</p>
+
+                        <h3>Design Philosophy</h3>
+                        <p>Version 1.2.0 embodies Gem's evolution from a simple toy language to a versatile tool for modern development. We've maintained our core principles while embracing the realities of contemporary programming:</p>
+                        
+                        <ul>
+                            <li><strong>Safety First</strong> - All new features maintain Gem's safety guarantees</li>
+                            <li><strong>Developer Experience</strong> - REPL improvements and flexible syntax reduce friction</li>
+                            <li><strong>Real-World Utility</strong> - HTTP and hash support enable practical applications</li>
+                            <li><strong>Explicit Over Implicit</strong> - Type coercion requires explicit casting</li>
+                        </ul>
+
+                        <h3>Looking Forward</h3>
+                        <p>The connectivity foundation laid in 1.2.0 opens doors for future enhancements like async/await, WebSocket support, and advanced data processing capabilities. This release proves that safety and modern convenience can coexist beautifully.</p>
+                    </section>
 
                     <section id="v1-1-0" class="docs-section">
                         <h2>Version 1.1.0 - Optional Semicolons</h2>
@@ -148,7 +270,7 @@ string greeting = "Hello"
             <div class="footer-content">
                 <div class="footer-brand">
                     <span class="gem-icon">💎</span>
-                    <span>Gem Programming Language v1.1.0</span>
+                    <span>Gem Programming Language v1.2.0</span>
                 </div>
                 <div class="footer-links">
                     <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>

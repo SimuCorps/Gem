@@ -1,5 +1,9 @@
 # Gem Programming Language
 
+[![CI](https://github.com/SimuCorps/Gem/actions/workflows/ci.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/ci.yml)
+[![Release](https://github.com/SimuCorps/Gem/actions/workflows/release.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/release.yml)
+[![Multi-Platform](https://github.com/SimuCorps/Gem/actions/workflows/multi-platform-release.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/multi-platform-release.yml)
+
 Gem is a modern, statically-typed programming language that prioritizes safety, clarity, and developer experience. Built as a bytecode virtual machine in C, Gem combines the performance of compiled languages with the safety of modern type systems.
 
 ## What Makes Gem Special
@@ -28,6 +32,8 @@ Gem is a modern, statically-typed programming language that prioritizes safety, 
 - **Functions** - First-class functions with typed parameters and return values
 - **Classes & Inheritance** - Object-oriented programming with single inheritance
 - **Modules** - Modular code organization with `require` statements
+- **Hashes** - Key-value data structures with string and numeric keys
+- **Type Coercion** - Explicit type casting
 - **Control Flow** - Loops, conditionals, and pattern matching
 - **Standard Library** - Built-in modules for strings, math, and more
 - **Interactive REPL** - Live coding environment with persistent state
@@ -61,38 +67,6 @@ sudo make install
 
 # Run a file
 ./gemc program.gem
-```
-
-### Example Code
-
-```gem
-# Type-safe variables with mutability control
-string name = "Alice";        # Immutable
-int! counter = 0;             # Mutable
-string? nickname = nil;       # Nullable
-
-# Functions with type safety
-def greet(string name, int age) string
-    return "Hello " + name + ", age " + age;
-end
-
-# Classes with inheritance
-class Person
-    def init(string name) void
-        this.name = name;
-    end
-    
-    def introduce() string
-        return "I'm " + this.name;
-    end
-end
-
-# Memory-safe scoping
-begin
-    obj person = Person("Bob");
-    puts person.introduce();
-    # person automatically cleaned up here
-end
 ```
 
 ## Documentation

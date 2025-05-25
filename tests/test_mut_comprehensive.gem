@@ -1,0 +1,63 @@
+# Comprehensive test showing both mut and ! syntaxes
+puts "=== Comprehensive mut vs ! test ===";
+
+# Test 1: Basic mutability - both syntaxes should work identically
+mut int counter1 = 10;
+int! counter2 = 10;
+
+puts "Initial values:";
+puts counter1;
+puts counter2;
+
+# Both should be mutable
+counter1 = 20;
+counter2 = 20;
+
+puts "After mutation:";
+puts counter1;
+puts counter2;
+
+# Test 2: Nullable types
+mut string? nullable1 = nil;
+string?! nullable2 = nil;
+
+puts "Nullable initial:";
+puts nullable1;
+puts nullable2;
+
+nullable1 = "Hello";
+nullable2 = "World";
+
+puts "Nullable after assignment:";
+puts nullable1;
+puts nullable2;
+
+# Test 3: For loops with both syntaxes
+puts "For loop with mut:";
+for (mut int i = 0; i < 3; i = i + 1)
+  puts i;
+end
+
+puts "For loop with !:";
+for (int! j = 0; j < 3; j = j + 1)
+  puts j;
+end
+
+# Test 4: Mixed usage in same scope
+begin
+  mut bool flag1 = true;
+  bool! flag2 = false;
+  
+  puts "Mixed flags:";
+  puts flag1;
+  puts flag2;
+  
+  flag1 = false;
+  flag2 = true;
+  
+  puts "After flip:";
+  puts flag1;
+  puts flag2;
+end
+
+puts "=== Comprehensive test complete ==="; 

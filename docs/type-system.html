@@ -91,6 +91,10 @@ string empty = "";
 bool isActive = true;
 bool isComplete = false;
 
+# Hash type (key-value data structure)
+hash! userInfo = {"name": "Bob", "age": 30};
+hash readonlyData = {"version": "1.0", "stable": true};
+
 # Special types
 void        # Used for functions that don't return a value
 func        # Function type for first-class functions
@@ -130,36 +134,45 @@ bool isActive = true;
                         </div>
 
                         <h3>Mutable Variables</h3>
+                        <p>To make variables mutable, use the <code>mut</code> keyword (recommended) or the <code>!</code> suffix (syntactic sugar):</p>
+
                         <div class="code-block">
-                            <pre><code># Use ! suffix to make variables mutable
-string! name = "Alice";
-int! counter = 0;
-bool! flag = false;
+                            <pre><code># Recommended syntax with 'mut' keyword
+mut string name = "Alice";
+mut int counter = 0;
+mut bool flag = false;
+
+# Alternative syntax with '!' suffix (syntactic sugar)
+string! altName = "Bob";
+int! altCounter = 0;
+bool! altFlag = false;
 
 # Mutable variables can be reassigned
-name = "Bob";           # ✅ Valid: Variable is mutable
-counter = counter + 1;  # ✅ Valid: Variable is mutable
-flag = !flag;           # ✅ Valid: Variable is mutable
-
-# Type must still match
-# counter = "text";     # ❌ Error: Type mismatch</code></pre>
+name = "Bob";                    # ✅ Valid: Variable is mutable
+counter = counter + 1;           # ✅ Valid: Variable is mutable
+flag = !flag;                    # ✅ Valid: Variable is mutable</code></pre>
                         </div>
 
                         <h3>Function Parameters</h3>
                         <div class="code-block">
                             <pre><code># Function parameters are immutable by default
-def processName(string name) string
-    # name = "Modified";  # ❌ Error: Cannot modify parameter
-    return "Processed: " + name;
+def processText(string text) string
+    # text = "modified";  # ❌ Error: Cannot modify immutable parameter
+    return "Processed: " + text;
 end
 
-# Mutable parameters must be explicitly marked
-def incrementCounter(int! counter) void
+# Mutable parameters (recommended syntax)
+def incrementCounter(mut int counter) void
+    counter = counter + 1;  # ✅ Valid: Parameter is mutable
+end
+
+# Mutable parameters (alternative syntax)
+def incrementCounterAlt(int! counter) void
     counter = counter + 1;  # ✅ Valid: Parameter is mutable
 end
 
 # Mixed parameter types
-def processData(string data, int! counter, bool flag) string
+def processData(string data, mut int counter, bool flag) string
     # data = "new";      # ❌ Error: data is immutable
     counter = counter + 1; # ✅ Valid: counter is mutable
     # flag = !flag;      # ❌ Error: flag is immutable
@@ -253,33 +266,40 @@ end</code></pre>
                         <h2>Combined Modifiers</h2>
                         <p>Gem allows combining mutability and nullability modifiers for maximum flexibility.</p>
 
-                        <h3>Mutable and Nullable (?!)</h3>
-                        <div class="code-block">
-                            <pre><code># Variables that are both mutable and nullable
-string?! mutableOptional = nil;
-int?! counter = 0;
-obj?! currentUser = nil;
+                        <h3>Mutable and Nullable (?)</h3>
+                        <p>Variables can be both mutable and nullable using either syntax:</p>
 
-# Can assign values, nil, and reassign
+                        <div class="code-block">
+                            <pre><code># Variables that are both mutable and nullable (recommended)
+mut string? mutableOptional = nil;
+mut int? counter = 0;
+mut obj? currentUser = nil;
+
+# Alternative syntax with '?!' suffix
+string?! altMutableOptional = nil;
+int?! altCounter = 0;
+obj?! altCurrentUser = nil;
+
+# Both syntaxes work identically
 mutableOptional = "Hello";      # ✅ Valid
 mutableOptional = nil;          # ✅ Valid
-mutableOptional = "World";      # ✅ Valid
-
-counter = 42;                   # ✅ Valid
-counter = nil;                  # ✅ Valid
-counter = counter + 1;          # ✅ Valid (if not nil)</code></pre>
+mutableOptional = "World";      # ✅ Valid</code></pre>
                         </div>
 
                         <h3>All Modifier Combinations</h3>
                         <div class="code-block">
-                            <pre><code># All possible type modifier combinations
-string name = "Alice";          # Immutable, non-nullable
-string! mutableName = "Bob";    # Mutable, non-nullable
-string? optionalName = nil;     # Immutable, nullable
-string?! flexibleName = nil;    # Mutable, nullable
+                            <pre><code># All possible type modifier combinations (recommended syntax)
+string name = "Alice";              # Immutable, non-nullable
+mut string mutableName = "Bob";     # Mutable, non-nullable
+string? optionalName = nil;         # Immutable, nullable
+mut string? flexibleName = nil;     # Mutable, nullable
+
+# Alternative syntax with suffixes
+string! altMutableName = "Charlie"; # Mutable, non-nullable (alternative)
+string?! altFlexibleName = nil;     # Mutable, nullable (alternative)
 
 # Usage patterns
-def processUser(string?! currentUser) void
+def processUser(mut string? currentUser) void
     if (currentUser == nil)
         currentUser = getDefaultUser();  # Can assign because mutable
     end
@@ -292,12 +312,12 @@ end</code></pre>
 
                         <h3>Function Parameters with Modifiers</h3>
                         <div class="code-block">
-                            <pre><code># Functions with various parameter types
+                            <pre><code># Functions with various parameter types (recommended syntax)
 def complexFunction(
-    string data,           # Immutable, non-nullable
-    string! buffer,        # Mutable, non-nullable
-    string? optional,      # Immutable, nullable
-    string?! flexible      # Mutable, nullable
+    string data,               # Immutable, non-nullable
+    mut string buffer,         # Mutable, non-nullable
+    string? optional,          # Immutable, nullable
+    mut string? flexible       # Mutable, nullable
 ) string
     # Process each parameter according to its type
     if (optional != nil)
@@ -309,6 +329,46 @@ def complexFunction(
     end
     
     return buffer + data;
+end
+
+# Alternative syntax with suffixes
+def complexFunctionAlt(
+    string data,               # Immutable, non-nullable
+    string! buffer,            # Mutable, non-nullable (alternative)
+    string? optional,          # Immutable, nullable
+    string?! flexible          # Mutable, nullable (alternative)
+) string
+    # Same functionality with alternative syntax
+    if (optional != nil)
+        buffer = buffer + optional;
+    end
+    
+    if (flexible == nil)
+        flexible = "default";
+    end
+    
+    return buffer + data;
+end</code></pre>
+                        </div>
+
+                        <h3>Complete Example</h3>
+                        <div class="code-block">
+                            <pre><code># Different variable types with recommended syntax
+string name = "Alice";              # Immutable, non-nullable
+mut string mutableName = "Bob";     # Mutable, non-nullable
+string? optionalName = nil;         # Immutable, nullable
+mut string? flexibleName = nil;     # Mutable, nullable
+
+# Alternative syntax with suffixes
+string! altMutableName = "Charlie"; # Mutable, non-nullable (alternative)
+string?! altFlexibleName = nil;     # Mutable, nullable (alternative)
+
+# Function using mutable nullable parameter
+def processUser(mut string? currentUser) void
+    currentUser = getDefaultUser();  # Can assign because mutable
+    if (currentUser != nil)
+        puts "Processing: " + currentUser;
+    end
 end</code></pre>
                         </div>
                     </section>
@@ -470,6 +530,37 @@ def getCurrentUserName() string?
         return nil;
     end
 end</code></pre>
+                        </div>
+
+                        <h3>Type Coercion</h3>
+                        <p>Gem provides explicit type coercion using the <code>as</code> keyword.</p>
+                        
+                        <div class="code-block">
+                            <pre><code># Explicit type conversions with 'as' keyword
+int number = 42;
+string numberStr = number as string;        # "42"
+
+string numericStr = "123";
+int parsed = numericStr as int;             # 123
+
+bool isActive = true;
+string activeStr = isActive as string;     # "true"
+
+# Only false and nil are falsey
+int zero = 0;
+bool zeroIsTruthy = zero as bool;          # true
+
+string empty = "";
+bool emptyIsTruthy = empty as bool;        # true
+
+bool stillFalse = false as bool;           # false
+bool nilIsFalse = nil as bool;             # false
+
+# Hash value coercion
+hash! userData = {"name": "Alice", "age": 25, "score": 0};
+string name = userData["name"] as string;
+int age = userData["age"] as int;
+bool scoreActive = userData["score"] as bool;  # true (0 is truthy!)</code></pre>
                         </div>
 
                         <div class="info-box">

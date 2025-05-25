@@ -13,7 +13,7 @@
             <div class="nav-brand">
                 <span class="gem-icon">💎</span>
                 <span class="brand-text">Gem</span>
-                <span class="version">v1.1.0</span>
+                <span class="version">v1.2.0</span>
             </div>
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link active">Home</a></li>
@@ -33,7 +33,7 @@
                     <h1 class="hero-title">
                         <span class="gem-icon-large">💎</span>
                         Gem Programming Language
-                        <span class="version-badge">v1.1.0</span>
+                        <span class="version-badge">v1.2.0</span>
                     </h1>
                     <p class="hero-subtitle">
                         A modern, statically-typed language that prioritizes safety, clarity, and developer experience. 
@@ -67,7 +67,15 @@
                         </div>
                         <pre class="code-content"><code># Type-safe variables with mutability control
 string name = "Alice"        # Immutable
-int! counter = 0             # Mutable
+# name = "Bob"  # ❌ Error: Cannot modify immutable
+
+# Use 'mut' keyword for mutable variables (recommended)
+mut int counter = 0          # Mutable with mut
+counter = counter + 1        # ✅ Valid: counter is mutable
+
+# Alternative syntax with '!' suffix
+int! altCounter = 0          # Mutable with ! (alternative)
+altCounter = altCounter + 1   # ✅ Valid: altCounter is mutable
 string? nickname = nil       # Nullable
 
 # Functions with type safety
@@ -235,12 +243,15 @@ end</code></pre>
                         <h3>Type Safety</h3>
                         <pre><code># Variables are immutable by default
 string name = "Alice"
-int! counter = 0        # Mutable with !
-string? optional = nil  # Nullable with ?
+# name = "Bob"  # ❌ Error: Cannot modify immutable
 
-# Compile-time type checking
-# name = 42  # ❌ Error: Cannot assign int to string
-counter = counter + 1   # ✅ Valid: counter is mutable</code></pre>
+# Use 'mut' keyword for mutable variables (recommended)
+mut int counter = 0        # Mutable with mut
+counter = counter + 1      # ✅ Valid: counter is mutable
+
+# Alternative syntax with '!' suffix
+int! altCounter = 0        # Mutable with ! (alternative)
+altCounter = altCounter + 1 # ✅ Valid: altCounter is mutable</code></pre>
                     </div>
                     <div class="example-card">
                         <h3>Memory Safety</h3>
@@ -285,7 +296,7 @@ end</code></pre>
             <div class="footer-content">
                 <div class="footer-brand">
                     <span class="gem-icon">💎</span>
-                    <span>Gem Programming Language v1.1.0</span>
+                    <span>Gem Programming Language v1.2.0</span>
                 </div>
                 <div class="footer-links">
                     <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>

@@ -112,6 +112,16 @@ ObjInstance* newInstance(ObjClass* klass) {
   return instance;
 }
 //< Classes and Instances new-instance
+//> Hash Objects new-hash
+ObjHash* newHash() {
+  ObjHash* hash = ALLOCATE_OBJ(ObjHash, OBJ_HASH);
+  initTable(&hash->table);
+//> Memory Safety Init Hash
+  initObjectMemorySafety((Obj*)hash, vm.currentScopeDepth);
+//< Memory Safety Init Hash
+  return hash;
+}
+//< Hash Objects new-hash
 //> Module System new-module
 ObjModule* newModule(ObjString* name) {
   ObjModule* module = ALLOCATE_OBJ(ObjModule, OBJ_MODULE);
@@ -280,6 +290,23 @@ void printObject(Value value) {
       printFunction(AS_FUNCTION(value));
       break;
 //< Calls and Functions print-function
+//> Hash Objects print-hash
+    case OBJ_HASH: {
+      ObjHash* hash = AS_HASH(value);
+      printf("{");
+      bool first = true;
+      for (int i = 0; i < hash->table.capacity; i++) {
+        if (hash->table.entries[i].key != NULL) {
+          if (!first) printf(", ");
+          printf("\"%s\": ", AS_CSTRING(OBJ_VAL(hash->table.entries[i].key)));
+          printValue(hash->table.entries[i].value);
+          first = false;
+        }
+      }
+      printf("}");
+      break;
+    }
+//< Hash Objects print-hash
 //> Classes and Instances print-instance
     case OBJ_INSTANCE:
       printf("%s instance",

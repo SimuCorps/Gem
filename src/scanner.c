@@ -124,7 +124,14 @@ static TokenType checkKeyword(int start, int length,
 static TokenType identifierType() {
 //> keywords
   switch (scanner.start[0]) {
-    case 'a': return checkKeyword(1, 2, "nd", TOKEN_AND);
+    case 'a':
+      if (scanner.current - scanner.start > 1) {
+        switch (scanner.start[1]) {
+          case 'n': return checkKeyword(2, 1, "d", TOKEN_AND);
+          case 's': return checkKeyword(2, 0, "", TOKEN_AS);
+        }
+      }
+      break;
     case 'b':
       if (scanner.current - scanner.start > 1) {
         switch (scanner.start[1]) {
@@ -176,6 +183,7 @@ static TokenType identifierType() {
       }
       break;
 //< keyword-f
+    case 'h': return checkKeyword(1, 3, "ash", TOKEN_RETURNTYPE_HASH);
     case 'i':
       if (scanner.current - scanner.start > 1) {
         switch (scanner.start[1]) {
@@ -243,6 +251,7 @@ static TokenType identifierType() {
       if (scanner.current - scanner.start > 1) {
         switch (scanner.start[1]) {
           case 'o': return checkKeyword(2, 4, "dule", TOKEN_MODULE);
+          case 'u': return checkKeyword(2, 1, "t", TOKEN_MUT);
         }
       }
       break;
@@ -407,6 +416,8 @@ Token scanToken() {
         return makeToken(TOKEN_INTERPOLATION_END);
       }
       return makeToken(TOKEN_RIGHT_BRACE);
+    case '[': return makeToken(TOKEN_LEFT_BRACKET);
+    case ']': return makeToken(TOKEN_RIGHT_BRACKET);
     case ';': return makeToken(TOKEN_SEMICOLON);
     case '\n': 
       scanner.line++;

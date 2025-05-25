@@ -1,0 +1,232 @@
+name: Release - Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential curl
+        
+    - name: Extract version information
+      id: version
+      run: |
+        # Source the version configuration
+        source version.conf
+        
+        # Calculate version strings
+        if [ -z "$VERSION_SUFFIX" ]; then
+          VERSION_STRING="${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
+        else
+          VERSION_STRING="${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}"
+        fi
+        VERSION_DISPLAY="v${VERSION_STRING}"
+        
+        echo "version_string=${VERSION_STRING}" >> $GITHUB_OUTPUT
+        echo "version_display=${VERSION_DISPLAY}" >> $GITHUB_OUTPUT
+        echo "version_major=${VERSION_MAJOR}" >> $GITHUB_OUTPUT
+        echo "version_minor=${VERSION_MINOR}" >> $GITHUB_OUTPUT
+        echo "version_patch=${VERSION_PATCH}" >> $GITHUB_OUTPUT
+        
+        echo "Extracted version: ${VERSION_DISPLAY}"
+        
+    - name: Check if release already exists
+      id: check_release
+      run: |
+        # Check if a release with this tag already exists
+        if gh release view ${{ steps.version.outputs.version_display }} >/dev/null 2>&1; then
+          echo "release_exists=true" >> $GITHUB_OUTPUT
+          echo "Release ${{ steps.version.outputs.version_display }} already exists"
+        else
+          echo "release_exists=false" >> $GITHUB_OUTPUT
+          echo "Release ${{ steps.version.outputs.version_display }} does not exist"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Build gemc
+      if: steps.check_release.outputs.release_exists == 'false'
+      run: |
+        make clean
+        make gemc
+        
+    - name: Verify build
+      if: steps.check_release.outputs.release_exists == 'false'
+      run: |
+        ./bin/gemc --version
+        ls -la bin/
+        
+    - name: Run tests before release
+      if: steps.check_release.outputs.release_exists == 'false'
+      run: |
+        chmod +x run_all_tests.sh
+        ./run_all_tests.sh
+        
+    - name: Prepare release artifacts
+      if: steps.check_release.outputs.release_exists == 'false'
+      run: |
+        # Create release directory
+        mkdir -p release
+        
+        # Copy binary
+        cp bin/gemc release/gemc-linux-x64
+        
+        # Make it executable
+        chmod +x release/gemc-linux-x64
+        
+        # Create a simple installation script
+        cat > release/install.sh << 'EOF'
+        #!/bin/bash
+        # Gem Programming Language Installer
+        
+        echo "Installing Gem Programming Language..."
+        
+        # Check if running as root
+        if [ "$EUID" -eq 0 ]; then
+          INSTALL_DIR="/usr/local/bin"
+        else
+          INSTALL_DIR="$HOME/.local/bin"
+          mkdir -p "$INSTALL_DIR"
+        fi
+        
+        # Copy binary
+        cp gemc-linux-x64 "$INSTALL_DIR/gemc"
+        chmod +x "$INSTALL_DIR/gemc"
+        
+        echo "Gem installed to $INSTALL_DIR/gemc"
+        echo "Make sure $INSTALL_DIR is in your PATH"
+        echo ""
+        echo "Test installation with: gemc --version"
+        EOF
+        
+        chmod +x release/install.sh
+        
+        # Create README for release
+        cat > release/README.md << EOF
+        # Gem Programming Language ${{ steps.version.outputs.version_display }}
+        
+        This release contains the Gem programming language interpreter.
+        
+        ## Installation
+        
+        ### Quick Install (Linux/macOS)
+        \`\`\`bash
+        chmod +x install.sh
+        ./install.sh
+        \`\`\`
+        
+        ### Manual Install
+        1. Copy \`gemc-linux-x64\` to a directory in your PATH
+        2. Rename it to \`gemc\`
+        3. Make it executable: \`chmod +x gemc\`
+        
+        ## Usage
+        
+        \`\`\`bash
+        # Check version
+        gemc --version
+        
+        # Run a Gem program
+        gemc program.gem
+        
+        # Start interactive REPL
+        gemc
+        \`\`\`
+        
+        ## Documentation
+        
+        Visit [https://simucorps.github.io/Gem/](https://simucorps.github.io/Gem/) for complete documentation.
+        
+        ## What's New in ${{ steps.version.outputs.version_display }}
+        
+        See the [Changeblog](https://simucorps.github.io/Gem/changeblog.html) for detailed information about this release.
+        EOF
+        
+        # List release contents
+        ls -la release/
+        
+    - name: Generate release notes
+      if: steps.check_release.outputs.release_exists == 'false'
+      id: release_notes
+      run: |
+        cat > release_notes.md << EOF
+        # Gem Programming Language ${{ steps.version.outputs.version_display }}
+        
+        🎉 **New release of the Gem programming language!**
+        
+        ## 📦 What's Included
+        
+        - **gemc-linux-x64**: The Gem interpreter binary for Linux x64
+        - **install.sh**: Automated installation script
+        - **README.md**: Installation and usage instructions
+        
+        ## 🚀 Quick Start
+        
+        1. Download \`gemc-linux-x64\` and \`install.sh\`
+        2. Run \`chmod +x install.sh && ./install.sh\`
+        3. Test with \`gemc --version\`
+        
+        ## 📚 Documentation
+        
+        - [Getting Started Guide](https://simucorps.github.io/Gem/getting-started.html)
+        - [Language Guide](https://simucorps.github.io/Gem/language-guide.html)
+        - [Standard Library](https://simucorps.github.io/Gem/standard-library.html)
+        - [Examples](https://simucorps.github.io/Gem/examples.html)
+        - [Changeblog](https://simucorps.github.io/Gem/changeblog.html)
+        
+        ## 🔧 System Requirements
+        
+        - Linux x64 (Ubuntu 18.04+ recommended)
+        - curl (for HTTP module functionality)
+        
+        ## 🐛 Issues & Feedback
+        
+        Found a bug or have a suggestion? Please [open an issue](https://github.com/SimuCorps/Gem/issues) on GitHub.
+        
+        ---
+        
+        **Full Changelog**: https://github.com/SimuCorps/Gem/compare/v${{ steps.version.outputs.version_major }}.${{ steps.version.outputs.version_minor }}.$((${{ steps.version.outputs.version_patch }} - 1))...v${{ steps.version.outputs.version_string }}
+        EOF
+        
+    - name: Create GitHub Release
+      if: steps.check_release.outputs.release_exists == 'false'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version_display }}
+        name: "Gem ${{ steps.version.outputs.version_display }}"
+        body_path: release_notes.md
+        files: |
+          release/gemc-linux-x64
+          release/install.sh
+          release/README.md
+        draft: false
+        prerelease: ${{ contains(steps.version.outputs.version_string, '-') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update documentation
+      if: steps.check_release.outputs.release_exists == 'false'
+      run: |
+        make update-docs
+        
+    - name: Release summary
+      if: steps.check_release.outputs.release_exists == 'false'
+      run: |
+        echo "🎉 Successfully created release ${{ steps.version.outputs.version_display }}"
+        echo "📦 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version_display }}"
+        echo "📚 Documentation: https://simucorps.github.io/Gem/"
+        
+    - name: Skip release (already exists)
+      if: steps.check_release.outputs.release_exists == 'true'
+      run: |
+        echo "⏭️ Skipping release creation - ${{ steps.version.outputs.version_display }} already exists"
+        echo "📦 Existing release: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version_display }}" 

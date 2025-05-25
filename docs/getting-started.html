@@ -181,15 +181,18 @@ bool isActive = true
                         </div>
 
                         <h3>Mutability Control</h3>
-                        <p>Variables are immutable by default. Use <code>!</code> to make them mutable:</p>
+                        <p>Variables are immutable by default. Use <code>mut</code> to make them mutable (or <code>!</code> as syntactic sugar):</p>
                         <div class="code-block">
-                            <pre><code># Immutable (default)
+                            <pre><code># Immutable by default
 string message = "Hello"
-# message = "Goodbye"  # ❌ Error: Cannot modify immutable variable
 
-# Mutable
-string! mutableMessage = "Hello"
-mutableMessage = "Goodbye"  # ✅ Valid</code></pre>
+# Mutable with 'mut' keyword (recommended)
+mut string mutableMessage = "Hello"
+mutableMessage = "Changed!"
+
+# Mutable with '!' suffix (alternative)
+string! altMutableMessage = "Hello"
+altMutableMessage = "Changed!"</code></pre>
                         </div>
 
                         <h3>Nullability Safety</h3>

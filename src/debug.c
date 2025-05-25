@@ -136,6 +136,14 @@ int disassembleInstruction(Chunk* chunk, int offset) {
     case OP_SET_PROPERTY:
       return constantInstruction("OP_SET_PROPERTY", chunk, offset);
 //< Classes and Instances disassemble-property-ops
+//> Hash Objects disassemble-hash-ops
+    case OP_GET_INDEX:
+      return simpleInstruction("OP_GET_INDEX", offset);
+    case OP_SET_INDEX:
+      return simpleInstruction("OP_SET_INDEX", offset);
+    case OP_HASH_LITERAL:
+      return byteInstruction("OP_HASH_LITERAL", chunk, offset);
+//< Hash Objects disassemble-hash-ops
 //> Superclasses disassemble-get-super
     case OP_GET_SUPER:
       return constantInstruction("OP_GET_SUPER", chunk, offset);

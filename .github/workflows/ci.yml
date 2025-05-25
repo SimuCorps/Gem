@@ -1,0 +1,58 @@
+name: CI - Build and Test
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+  push:
+    branches: [ main, dev ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential curl
+        
+    - name: Show version information
+      run: |
+        make version
+        
+    - name: Build gemc
+      run: |
+        make clean
+        make gemc
+        
+    - name: Verify build
+      run: |
+        ./bin/gemc --version
+        ls -la bin/
+        
+    - name: Make test script executable
+      run: |
+        chmod +x run_all_tests.sh
+        
+    - name: Run all tests
+      run: |
+        ./run_all_tests.sh
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: test_results.log
+        
+    - name: Check test results
+      run: |
+        if [ $? -eq 0 ]; then
+          echo "✅ All tests passed!"
+        else
+          echo "❌ Some tests failed. Check test_results.log for details."
+          exit 1
+        fi 
