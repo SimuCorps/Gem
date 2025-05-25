@@ -89,10 +89,7 @@ static void skipWhitespace() {
         advance();
         break;
 //> newline
-      case '\n':
-        scanner.line++;
-        advance();
-        break;
+      // Don't skip newlines anymore - they are significant for statement termination
 //< newline
 //> comment
       case '#':
@@ -411,6 +408,9 @@ Token scanToken() {
       }
       return makeToken(TOKEN_RIGHT_BRACE);
     case ';': return makeToken(TOKEN_SEMICOLON);
+    case '\n': 
+      scanner.line++;
+      return makeToken(TOKEN_NEWLINE);
     case ',': return makeToken(TOKEN_COMMA);
     case '.': return makeToken(TOKEN_DOT);
     case '-': return makeToken(TOKEN_MINUS);

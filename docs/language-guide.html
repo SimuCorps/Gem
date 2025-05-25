@@ -22,6 +22,7 @@
                 <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
                 <li><a href="language-guide.html" class="nav-link active">Language Guide</a></li>
                 <li><a href="examples.html" class="nav-link">Examples</a></li>
+                <li><a href="changeblog.html" class="nav-link">Changeblog</a></li>
                 <li><a href="https://github.com/SimuCorps/Gem" class="nav-link" target="_blank">GitHub</a></li>
             </ul>
         </div>
@@ -35,6 +36,7 @@
                         <h3>Language Guide</h3>
                         <ul>
                             <li><a href="#overview">Overview</a></li>
+                            <li><a href="#syntax">Syntax</a></li>
                             <li><a href="#types">Type System</a></li>
                             <li><a href="#variables">Variables</a></li>
                             <li><a href="#functions">Functions</a></li>
@@ -71,18 +73,67 @@
 # This is a simple Gem program
 
 # Variable declarations
-string message = "Hello, World!";
-int count = 42;
+string message = "Hello, World!"
+int count = 42
 
 # Function definition
 def greet(string name) string
-    return "Hello, " + name + "!";
+    return "Hello, " + name + "!"
 end
 
 # Main execution
-puts message;
-puts greet("Gem");</code></pre>
+puts message
+puts greet("Gem")</code></pre>
                         </div>
+                    </section>
+
+                    <section id="syntax" class="docs-section">
+                        <h2>Syntax and Statement Terminators</h2>
+                        <p>Gem features flexible statement termination that prioritizes readability and developer convenience.</p>
+
+                        <h3>Optional Semicolons</h3>
+                        <p>In Gem, semicolons are <strong>optional</strong>. Statements can be terminated with either semicolons or newlines, giving you the flexibility to choose the style that works best for your code.</p>
+
+                        <div class="code-block">
+                            <pre><code># Newline-terminated statements (recommended)
+string name = "Alice"
+int age = 30
+puts "Hello, " + name
+
+# Semicolon-terminated statements (traditional)
+string name = "Alice";
+int age = 30;
+puts "Hello, " + name;
+
+# Mixed style (both work)
+string name = "Alice"
+int age = 30;
+puts "Hello, " + name</code></pre>
+                        </div>
+
+                        <h3>When Semicolons Are Required</h3>
+                        <p>Semicolons are still required when you want to place multiple statements on the same line:</p>
+
+                        <div class="code-block">
+                            <pre><code># Multiple statements on one line require semicolons
+int x = 10; int y = 20; puts x + y
+
+# This would be an error:
+# int x = 10 int y = 20 puts x + y  # ❌ Error
+
+# Prefer separate lines for better readability:
+int x = 10
+int y = 20
+puts x + y</code></pre>
+                        </div>
+
+                        <h3>Best Practices</h3>
+                        <ul>
+                            <li><strong>Use newlines</strong> - They're cleaner and more readable</li>
+                            <li><strong>Be consistent</strong> - Pick one style and stick with it in your project</li>
+                            <li><strong>Semicolons for inline</strong> - Use semicolons only when placing multiple statements on one line</li>
+                            <li><strong>Follow your team</strong> - Match the style of your existing codebase</li>
+                        </ul>
                     </section>
 
                     <section id="types" class="docs-section">

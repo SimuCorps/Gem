@@ -506,6 +506,7 @@ static void returnStatement();
 static void beginStatement();
 static void interpolatedString(bool canAssign);
 static void typedVarDeclaration();
+static void consumeStatementTerminator(const char* message);
 //< Global Variables forward-declarations
 
 static ParseRule* getRule(TokenType type);
@@ -1384,6 +1385,7 @@ ParseRule rules[] = {
   [TOKEN_MINUS]         = {unary,    binary, PREC_TERM},
   [TOKEN_PLUS]          = {NULL,     binary, PREC_TERM},
   [TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_NEWLINE]       = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SLASH]         = {NULL,     binary, PREC_FACTOR},
   [TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
   [TOKEN_PERCENT]       = {NULL,     binary, PREC_FACTOR},
@@ -1718,6 +1720,16 @@ static void classDeclaration() {
 //< Methods and Initializers load-class
 //> Methods and Initializers class-body
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
+    // Skip any newlines in the class body
+    while (match(TOKEN_NEWLINE)) {
+      // Just consume and continue
+    }
+    
+    // Check again after consuming newlines
+    if (check(TOKEN_END) || check(TOKEN_EOF)) {
+      break;
+    }
+    
     if (match(TOKEN_DEF)) {
       method();
     } else {
@@ -1758,6 +1770,16 @@ static void moduleDeclaration() {
 
   // Parse module body - store functions in the module
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
+    // Skip any newlines in the module body
+    while (match(TOKEN_NEWLINE)) {
+      // Just consume and continue
+    }
+    
+    // Check again after consuming newlines
+    if (check(TOKEN_END) || check(TOKEN_EOF)) {
+      break;
+    }
+    
     if (match(TOKEN_DEF)) {
       consume(TOKEN_IDENTIFIER, "Expect function name.");
       Token functionName = parser.previous;
@@ -1795,8 +1817,7 @@ static void varDeclaration() {
   } else {
     emitByte(OP_NIL);
   }
-  consume(TOKEN_SEMICOLON,
-          "Expect ';' after variable declaration.");
+  consumeStatementTerminator("Expect ';' or newline after variable declaration.");
 
   defineVariable(global);
 }
@@ -1805,7 +1826,7 @@ static void varDeclaration() {
 //> Global Variables expression-statement
 static void expressionStatement() {
   expression();
-  consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
+  consumeStatementTerminator("Expect ';' or newline after expression.");
   emitByte(OP_POP);
 }
 //< Global Variables expression-statement
@@ -1870,7 +1891,7 @@ static void forStatement() {
 //> Global Variables print-statement
 static void printStatement() {
   expression();
-  consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+  consumeStatementTerminator("Expect ';' or newline after value.");
   emitByte(OP_PRINT);
 }
 //< Global Variables print-statement
@@ -2032,7 +2053,7 @@ static void requireStatement() {
   // Emit the string constant for runtime execution
   emitConstant(OBJ_VAL(copyString(modulePathToken.start + 1, modulePathToken.length - 2)));
   
-  consume(TOKEN_SEMICOLON, "Expect ';' after require statement.");
+  consumeStatementTerminator("Expect ';' or newline after require statement.");
   emitByte(OP_REQUIRE);
 }
 //< Module System require-statement
@@ -2072,7 +2093,7 @@ static void returnStatement() {
       error("Return type mismatch: function expects different type.");
     }
     
-    consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+    consumeStatementTerminator("Expect ';' or newline after return value.");
     emitByte(OP_RETURN);
   }
 }
@@ -2457,8 +2478,7 @@ static void typedVarDeclaration() {
       error("Non-nullable variables must be initialized.");
     }
   }
-  consume(TOKEN_SEMICOLON,
-          "Expect ';' after variable declaration.");
+  consumeStatementTerminator("Expect ';' or newline after variable declaration.");
 
   defineVariable(global);
 }
@@ -2482,7 +2502,7 @@ static void ifStatement() {
   int thenJump = emitJump(OP_JUMP_IF_FALSE);
   emitByte(OP_POP);
   
-  // Parse the if body - check for else/elsif before consuming end
+  // Parse the if body - simple loop like forStatement
   while (!check(TOKEN_ELSE) && !check(TOKEN_ELSIF) && !check(TOKEN_END) && !check(TOKEN_EOF)) {
     declaration();
   }
@@ -2568,7 +2588,7 @@ static void synchronize() {
   parser.panicMode = false;
 
   while (parser.current.type != TOKEN_EOF) {
-    if (parser.previous.type == TOKEN_SEMICOLON) return;
+    if (parser.previous.type == TOKEN_SEMICOLON || parser.previous.type == TOKEN_NEWLINE) return;
     switch (parser.current.type) {
       case TOKEN_CLASS:
       case TOKEN_MODULE:
@@ -2597,6 +2617,17 @@ static void synchronize() {
 }
 
 static void declaration() {
+  // Skip any leading newlines
+  while (match(TOKEN_NEWLINE)) {
+    // Just consume and continue
+  }
+  
+  // Check if we're at the end of a block - if so, don't try to parse a declaration
+  if (check(TOKEN_END) || check(TOKEN_ELSE) || check(TOKEN_ELSIF) || 
+      check(TOKEN_EOF) || check(TOKEN_RIGHT_BRACE)) {
+    return;
+  }
+  
   if (match(TOKEN_CLASS)) {
     classDeclaration();
   } else if (match(TOKEN_MODULE)) {
@@ -2640,7 +2671,14 @@ ObjFunction* compile(const char* source) {
   advance();
 
   while (!match(TOKEN_EOF)) {
-    declaration();
+    // Skip any newlines at the top level
+    while (match(TOKEN_NEWLINE)) {
+      // Just consume and continue
+    }
+    
+    if (!check(TOKEN_EOF)) {
+      declaration();
+    }
   }
 
   ObjFunction* function = endCompiler();
@@ -2658,3 +2696,18 @@ static const char* getCompilerEmbeddedSTLModule(const char* moduleName) {
 }
 #endif
 //< Embedded STL Modules for Compiler
+
+// Helper function to consume either a semicolon or newline (optional semicolons)
+static void consumeStatementTerminator(const char* message) {
+  if (match(TOKEN_SEMICOLON) || match(TOKEN_NEWLINE)) {
+    return;
+  }
+  
+  // If we're at EOF or certain keywords, that's also acceptable
+  if (check(TOKEN_EOF) || check(TOKEN_END) || check(TOKEN_ELSE) || 
+      check(TOKEN_ELSIF) || check(TOKEN_RIGHT_BRACE)) {
+    return;
+  }
+  
+  errorAtCurrent(message);
+}

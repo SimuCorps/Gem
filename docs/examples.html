@@ -22,6 +22,7 @@
                 <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
                 <li><a href="language-guide.html" class="nav-link">Language Guide</a></li>
                 <li><a href="examples.html" class="nav-link active">Examples</a></li>
+                <li><a href="changeblog.html" class="nav-link">Changeblog</a></li>
                 <li><a href="https://github.com/SimuCorps/Gem" class="nav-link" target="_blank">GitHub</a></li>
             </ul>
         </div>
@@ -55,46 +56,66 @@
                         <h2>Basic Syntax</h2>
                         <p>Get familiar with Gem's fundamental syntax and features.</p>
 
-                        <h3>Variables and Types</h3>
+                        <h3>Statement Terminators</h3>
                         <div class="code-block">
-                            <pre><code># Basic variable declarations
+                            <pre><code># Gem supports optional semicolons - use what feels natural!
+
+# Newline-terminated (modern style)
+int age = 25
+string name = "Alice"
+bool isActive = true
+
+# Semicolon-terminated (traditional style)
 int age = 25;
 string name = "Alice";
 bool isActive = true;
 
+# Mixed style (both work)
+int age = 25
+string name = "Alice";
+bool isActive = true</code></pre>
+                        </div>
+
+                        <h3>Variables and Types</h3>
+                        <div class="code-block">
+                            <pre><code># Basic variable declarations
+int age = 25
+string name = "Alice"
+bool isActive = true
+
 # Mutable variables (with ! suffix)
-int! counter = 0;
-string! message = "Hello";
+int! counter = 0
+string! message = "Hello"
 
 # Nullable variables (with ? suffix)
-string? optionalName = nil;
-int? optionalAge = nil;
+string? optionalName = nil
+int? optionalAge = nil
 
 # Combined: mutable and nullable
-string?! mutableOptional = nil;</code></pre>
+string?! mutableOptional = nil</code></pre>
                         </div>
 
                         <h3>Control Flow</h3>
                         <div class="code-block">
                             <pre><code># Conditionals
 if (age >= 18)
-    puts "Adult";
+    puts "Adult"
 else
-    puts "Minor";
+    puts "Minor"
 end
 
 # Ternary operator
-string status = age >= 18 ? "Adult" : "Minor";
+string status = age >= 18 ? "Adult" : "Minor"
 
 # Loops
 for (int! i = 0; i < 10; i = i + 1)
-    puts i;
+    puts i
 end
 
-int! count = 0;
+int! count = 0
 while (count < 5)
-    puts "Count: " + count;
-    count = count + 1;
+    puts "Count: " + count
+    count = count + 1
 end</code></pre>
                         </div>
                     </section>

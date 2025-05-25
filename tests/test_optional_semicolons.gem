@@ -1,0 +1,59 @@
+# Test Optional Semicolons
+puts "=== Testing Optional Semicolons ==="
+
+# Test 1: No semicolons (newlines as terminators)
+puts "Test 1: No semicolons"
+int x = 10
+int y = 20
+puts x + y
+
+# Test 2: With semicolons (traditional style)
+puts "Test 2: With semicolons";
+int a = 5;
+int b = 15;
+puts a * b;
+
+# Test 3: Mixed style
+puts "Test 3: Mixed style"
+int p = 3;
+int q = 7
+puts p + q;
+
+# Test 4: Multiple inline expressions (semicolons required)
+puts "Test 4: Inline expressions"; int i = 1; int j = 2; puts i + j;
+
+# Test 5: Variable declarations without semicolons
+puts "Test 5: Variable declarations"
+string name = "Gem"
+bool isAwesome = true
+puts name
+puts isAwesome
+
+# Test 6: Function calls without semicolons
+puts "Test 6: Function calls"
+puts "Hello"
+puts "World"
+
+# Test 7: Arithmetic expressions without semicolons
+puts "Test 7: Arithmetic"
+int result = 5 + 3 * 2
+puts result
+
+# Test 8: Complex expressions without semicolons
+puts "Test 8: Complex expressions"
+int val1 = 10
+int val2 = 20
+int val3 = 30
+int total = val1 + val2 + val3
+puts total
+
+# Test 9: Return statements in functions (when we add function support)
+def testFunction() int
+  int value = 42
+  return value
+end
+
+puts "Test 9: Function with optional semicolons"
+puts testFunction()
+
+puts "=== Optional Semicolons Test Complete ===" 

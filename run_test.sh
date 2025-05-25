@@ -74,7 +74,7 @@ run_category() {
     
     case "$category" in
         "core")
-            tests=("test_basic_types.gem" "test_variables.gem" "test_nullable_types.gem")
+            tests=("test_basic_types.gem" "test_variables.gem" "test_nullable_types.gem" "test_optional_semicolons.gem")
             ;;
         "operators")
             tests=("test_arithmetic.gem" "test_modulo_operator.gem" "test_comparisons.gem" "test_logical_operators.gem" "test_ternary_operator.gem")

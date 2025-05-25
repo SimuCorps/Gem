@@ -105,7 +105,8 @@ main() {
     run_test_category "Core Language Features" \
         "test_basic_types.gem" \
         "test_variables.gem" \
-        "test_nullable_types.gem"
+        "test_nullable_types.gem" \
+        "test_optional_semicolons.gem"
     
     # Operators and Expressions
     run_test_category "Operators and Expressions" \
