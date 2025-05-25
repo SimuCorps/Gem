@@ -151,7 +151,8 @@ main() {
     run_test_category "Advanced Features" \
         "test_memory_safety.gem" \
         "test_type_safety.gem" \
-        "test_jit_compilation.gem"
+        "test_jit_compilation.gem" \
+        "test_hashes.gem"
     
     # Final Summary
     print_status "$CYAN" "\n🏁 Test Suite Complete!"

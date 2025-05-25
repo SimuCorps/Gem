@@ -1,0 +1,8 @@
+# basic hash creation and access
+string hashkey = "zaphod"
+hash my_hash = { "key": "value", 42: "another value", "zaphod": 69 }
+puts my_hash["key"] # should return value
+puts my_hash[42] # should return another value
+puts my_hash[hashkey] # should return 69
+
+puts "=== Hash Test Complete ===";
