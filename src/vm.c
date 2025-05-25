@@ -12,7 +12,7 @@
 //< Calls and Functions vm-include-time
 #include <math.h>
 #include <stdlib.h>
-
+#include <limits.h>
 //< vm-include-stdio
 
 // Define this before including vm.h to prevent macro redefinition
@@ -43,6 +43,7 @@
 
 //> Forward declarations
 static Value peek(int distance);
+static int formatNumber(char* buffer, size_t bufferSize, double number);
 //< Forward declarations
 
 // Computed goto optimization detection
@@ -2530,7 +2531,7 @@ op_interpolate: {
     } else if (IS_NUMBER(part)) {
       // Convert number to string to get length
       char buffer[32];
-      int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(part));
+      int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(part));
       totalLength += len;
     } else if (IS_BOOL(part)) {
       totalLength += AS_BOOL(part) ? 4 : 5; // "true" or "false"
@@ -2554,7 +2555,7 @@ op_interpolate: {
       memcpy(result + pos, AS_CSTRING(part), str->length);
       pos += str->length;
     } else if (IS_NUMBER(part)) {
-      int len = snprintf(result + pos, totalLength - pos + 1, "%.15g", AS_NUMBER(part));
+      int len = formatNumber(result + pos, totalLength - pos + 1, AS_NUMBER(part));
       pos += len;
     } else if (IS_BOOL(part)) {
       const char* boolStr = AS_BOOL(part) ? "true" : "false";
@@ -2600,7 +2601,7 @@ op_hash_literal: {
     } else if (IS_NUMBER(key)) {
       // Convert number to string
       char buffer[32];
-      int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(key));
+      int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(key));
       keyString = copyString(buffer, len);
     } else {
       runtimeError("Hash keys must be strings or numbers.");
@@ -2633,7 +2634,7 @@ op_get_index: {
   } else if (IS_NUMBER(index)) {
     // Convert number to string
     char buffer[32];
-    int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+    int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(index));
     keyString = copyString(buffer, len);
   } else {
     runtimeError("Hash keys must be strings or numbers.");
@@ -2669,7 +2670,7 @@ op_set_index: {
   } else if (IS_NUMBER(index)) {
     // Convert number to string
     char buffer[32];
-    int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+    int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(index));
     keyString = copyString(buffer, len);
   } else {
     runtimeError("Hash keys must be strings or numbers.");
@@ -2714,7 +2715,7 @@ op_type_cast: {
       } else if (IS_NUMBER(value)) {
         // Convert number to string
         char buffer[32];
-        int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(value));
+        int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(value));
         ObjString* str = copyString(buffer, len);
         push(OBJ_VAL(str));
       } else if (IS_BOOL(value)) {
@@ -3456,7 +3457,7 @@ op_type_cast: {
         } else if (IS_NUMBER(index)) {
           // Convert number to string
           char buffer[32];
-          int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+          int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(index));
           keyString = copyString(buffer, len);
         } else {
           runtimeError("Hash keys must be strings or numbers.");
@@ -3490,7 +3491,7 @@ op_type_cast: {
         } else if (IS_NUMBER(index)) {
           // Convert number to string
           char buffer[32];
-          int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+          int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(index));
           keyString = copyString(buffer, len);
         } else {
           runtimeError("Hash keys must be strings or numbers.");
@@ -3517,7 +3518,7 @@ op_type_cast: {
           } else if (IS_NUMBER(key)) {
             // Convert number to string
             char buffer[32];
-            int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(key));
+            int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(key));
             keyString = copyString(buffer, len);
           } else {
             runtimeError("Hash keys must be strings or numbers.");
@@ -3562,7 +3563,7 @@ op_type_cast: {
             } else if (IS_NUMBER(value)) {
               // Convert number to string
               char buffer[32];
-              int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(value));
+              int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(value));
               ObjString* str = copyString(buffer, len);
               push(OBJ_VAL(str));
             } else if (IS_BOOL(value)) {
@@ -3777,3 +3778,42 @@ static void updateMemoCache(ObjClosure* closure, Value argument, Value result) {
 }
 #endif
 //< Memoization Helper Functions
+
+// Custom number formatting that avoids scientific notation
+static int formatNumber(char* buffer, size_t bufferSize, double number) {
+  // Handle special cases
+  if (number != number) {  // NaN
+    return snprintf(buffer, bufferSize, "nan");
+  }
+  if (number == 1.0/0.0) {  // +Infinity
+    return snprintf(buffer, bufferSize, "inf");
+  }
+  if (number == -1.0/0.0) {  // -Infinity
+    return snprintf(buffer, bufferSize, "-inf");
+  }
+  
+  // Check if it's an integer
+  if (number == (long long)number && number >= LLONG_MIN && number <= LLONG_MAX) {
+    return snprintf(buffer, bufferSize, "%.0f", number);
+  }
+  
+  // For floating point numbers, use %.15f but trim trailing zeros
+  int len = snprintf(buffer, bufferSize, "%.15f", number);
+  if (len >= bufferSize) return len;  // Buffer too small
+  
+  // Remove trailing zeros after decimal point
+  char* end = buffer + len - 1;
+  while (end > buffer && *end == '0') {
+    *end = '\0';
+    end--;
+    len--;
+  }
+  
+  // Remove trailing decimal point if no fractional part remains
+  if (end > buffer && *end == '.') {
+    *end = '\0';
+    len--;
+  }
+  
+  return len;
+}

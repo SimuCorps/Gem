@@ -3,12 +3,54 @@
 //> Strings value-include-string
 #include <string.h>
 //< Strings value-include-string
+#include <limits.h>
 
 //> Strings value-include-object
 #include "object.h"
 //< Strings value-include-object
 #include "memory.h"
 #include "value.h"
+
+// Custom number formatting that avoids scientific notation
+static void printNumber(double number) {
+  // Handle special cases
+  if (number != number) {  // NaN
+    printf("nan");
+    return;
+  }
+  if (number == 1.0/0.0) {  // +Infinity
+    printf("inf");
+    return;
+  }
+  if (number == -1.0/0.0) {  // -Infinity
+    printf("-inf");
+    return;
+  }
+  
+  // Check if it's an integer
+  if (number == (long long)number && number >= LLONG_MIN && number <= LLONG_MAX) {
+    printf("%.0f", number);
+    return;
+  }
+  
+  // For floating point numbers, use %.15f but trim trailing zeros
+  char buffer[64];
+  snprintf(buffer, sizeof(buffer), "%.15f", number);
+  
+  // Remove trailing zeros after decimal point
+  char* end = buffer + strlen(buffer) - 1;
+  while (end > buffer && *end == '0') {
+    *end = '\0';
+    end--;
+  }
+  
+  // Remove trailing decimal point if no fractional part remains
+  if (end > buffer && *end == '.') {
+    *end = '\0';
+  }
+  
+  printf("%s", buffer);
+}
 
 void initValueArray(ValueArray* array) {
   array->values = NULL;
@@ -43,7 +85,7 @@ void printValue(Value value) {
   } else if (IS_NIL(value)) {
     printf("nil");
   } else if (IS_NUMBER(value)) {
-    printf("%g", AS_NUMBER(value));
+    printNumber(AS_NUMBER(value));
   } else if (IS_OBJ(value)) {
     printObject(value);
   }
@@ -61,7 +103,7 @@ void printValue(Value value) {
       printf(AS_BOOL(value) ? "true" : "false");
       break;
     case VAL_NIL: printf("nil"); break;
-    case VAL_NUMBER: printf("%g", AS_NUMBER(value)); break;
+    case VAL_NUMBER: printNumber(AS_NUMBER(value)); break;
 //> Strings call-print-object
     case VAL_OBJ: printObject(value); break;
 //< Strings call-print-object

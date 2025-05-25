@@ -186,7 +186,7 @@ static void emitSubRegImm32(CodeBuffer* buffer, X64Register reg, int32_t imm) {
 
 // JIT API Implementation
 void initJIT() {
-    jitContext.enabled = true;
+    jitContext.enabled = false;  // JIT is now off by default
     jitContext.hotSpots = NULL;
     jitContext.compiledFunctions = NULL;
     jitContext.blacklistedFunctions = NULL;
