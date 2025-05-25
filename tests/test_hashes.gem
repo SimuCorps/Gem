@@ -5,4 +5,6 @@ puts my_hash["key"] # should return value
 puts my_hash[42] # should return another value
 puts my_hash[hashkey] # should return 69
 
+int somevalue = my_hash["zaphod"] # this resolves to a number, so it should be okay
+
 puts "=== Hash Test Complete ===";
