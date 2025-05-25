@@ -964,9 +964,38 @@ static void dot(bool canAssign) {
       }
     }
     
-    emitBytes(OP_INVOKE, name);
+    emitByte(OP_INVOKE);
+    emitByte((name >> 8) & 0xff);  // High byte
+    emitByte(name & 0xff);         // Low byte
     emitByte(argCount);
-//< Methods and Initializers parse-call
+    
+    // Infer method return type using the method table
+    ObjString* methodNameString = copyString(propertyName.start, propertyName.length);
+    if (currentClass != NULL) {
+      // Try to get method return type from the current class
+      ReturnType methodReturnType = getMethodReturnType(currentClass->className, methodNameString);
+      if (methodReturnType.baseType != RETURN_TYPE_VOID) {
+        lastExpressionType = methodReturnType;
+      } else {
+        // Conservative fallback - assume string for most methods, void for setters
+        if (propertyName.length > 3 && memcmp(propertyName.start, "set", 3) == 0) {
+          lastExpressionType = TYPE_VOID;
+        } else if (propertyName.length > 2 && memcmp(propertyName.start, "is", 2) == 0) {
+          lastExpressionType = TYPE_BOOL;
+        } else {
+          lastExpressionType = TYPE_STRING; // Conservative default for getters
+        }
+      }
+    } else {
+      // No class context - conservative inference
+      if (propertyName.length > 3 && memcmp(propertyName.start, "set", 3) == 0) {
+        lastExpressionType = TYPE_VOID;
+      } else if (propertyName.length > 2 && memcmp(propertyName.start, "is", 2) == 0) {
+        lastExpressionType = TYPE_BOOL;
+      } else {
+        lastExpressionType = TYPE_STRING;
+      }
+    }
   } else {
     emitByte(OP_GET_PROPERTY);
     emitByte((name >> 8) & 0xff);  // High byte
@@ -1326,15 +1355,17 @@ static void super_(bool canAssign) {
     emitByte(name & 0xff);         // Low byte
     emitByte(argCount);
     
-    // Try to infer method return type based on method name
-    // This is a simplified approach - in a full implementation we'd need
-    // proper method signature tracking
-    if (methodNameToken.length == 7 && memcmp(methodNameToken.start, "getName", 7) == 0) {
-      lastExpressionType = TYPE_STRING;
-    } else if (methodNameToken.length == 7 && memcmp(methodNameToken.start, "process", 7) == 0) {
+    // Infer method return type for super calls
+    // For super calls, we can't easily look up the superclass methods during compilation
+    // Use conservative pattern-based inference
+    if (methodNameToken.length > 3 && memcmp(methodNameToken.start, "set", 3) == 0) {
+      lastExpressionType = TYPE_VOID;
+    } else if (methodNameToken.length > 2 && memcmp(methodNameToken.start, "is", 2) == 0) {
+      lastExpressionType = TYPE_BOOL;
+    } else if (methodNameToken.length == 4 && memcmp(methodNameToken.start, "init", 4) == 0) {
       lastExpressionType = TYPE_VOID;
     } else {
-      lastExpressionType = TYPE_VOID; // Conservative fallback for method calls
+      lastExpressionType = TYPE_STRING; // Conservative default for most methods
     }
   } else {
     namedVariable(syntheticToken("super"), false);
@@ -1663,16 +1694,8 @@ static void method() {
   consume(TOKEN_IDENTIFIER, "Expect method name.");
   Token methodName = parser.previous;
   uint16_t constant = identifierConstant(&parser.previous);
-//> method-body
 
-//< method-body
-/* Methods and Initializers method-body < Methods and Initializers method-type
-  FunctionType type = TYPE_FUNCTION;
-*/
-//> method-type
   FunctionType type = TYPE_METHOD;
-//< method-type
-//> initializer-name
   if (parser.previous.length == 4 &&
       memcmp(parser.previous.start, "init", 4) == 0) {
     type = TYPE_INITIALIZER;
@@ -1696,9 +1719,7 @@ static void method() {
 //> Classes and Instances class-declaration
 static void classDeclaration() {
   consume(TOKEN_IDENTIFIER, "Expect class name.");
-//> Methods and Initializers class-name
   Token className = parser.previous;
-//< Methods and Initializers class-name
   uint16_t nameConstant = identifierConstant(&parser.previous);
   declareVariable();
 
@@ -1713,45 +1734,31 @@ static void classDeclaration() {
   emitByte(nameConstant & 0xff);         // Low byte
   defineVariable(nameConstant);
 
-//> Methods and Initializers create-class-compiler
   ClassCompiler classCompiler;
-//> Superclasses init-has-superclass
   classCompiler.hasSuperclass = false;
-//< Superclasses init-has-superclass
   classCompiler.className = copyString(className.start, className.length);
   classCompiler.enclosing = currentClass;
   currentClass = &classCompiler;
 
-//< Methods and Initializers create-class-compiler
-//> Superclasses compile-superclass
   if (match(TOKEN_LESS)) {
     consume(TOKEN_IDENTIFIER, "Expect superclass name.");
     variable(false);
-//> inherit-self
 
     if (identifiersEqual(&className, &parser.previous)) {
       error("A class can't inherit from itself.");
     }
 
-//< inherit-self
-//> superclass-variable
     beginScope();
     addLocal(syntheticToken("super"), TYPE_VOID);
     defineVariable(0);
     
-//< superclass-variable
     namedVariable(className, false);
     emitByte(OP_INHERIT);
-//> set-has-superclass
     classCompiler.hasSuperclass = true;
-//< set-has-superclass
   }
   
-//< Superclasses compile-superclass
-//> Methods and Initializers load-class
   namedVariable(className, false);
-//< Methods and Initializers load-class
-//> Methods and Initializers class-body
+  
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
     // Skip any newlines in the class body
     while (match(TOKEN_NEWLINE)) {
@@ -1769,21 +1776,15 @@ static void classDeclaration() {
       errorAtCurrent("Expect method definition in class body.");
     }
   }
-//< Methods and Initializers class-body
+  
   consume(TOKEN_END, "Expect 'end' after class body.");
-//> Methods and Initializers pop-class
   emitByte(OP_POP);
-//< Methods and Initializers pop-class
-//> Superclasses end-superclass-scope
 
   if (classCompiler.hasSuperclass) {
     endScope();
   }
-//< Superclasses end-superclass-scope
-//> Methods and Initializers pop-enclosing
 
   currentClass = currentClass->enclosing;
-//< Methods and Initializers pop-enclosing
 }
 //< Classes and Instances class-declaration
 //> Module System module-declaration
