@@ -508,6 +508,7 @@ static void interpolatedString(bool canAssign);
 static void typedVarDeclaration();
 static void mutVarDeclaration();
 static void consumeStatementTerminator(const char* message);
+static void typeCast(bool canAssign);
 //< Global Variables forward-declarations
 
 static ParseRule* getRule(TokenType type);
@@ -1130,6 +1131,52 @@ static void interpolatedString(bool canAssign) {
 }
 //< String interpolation function
 
+//> Hash literal function
+static void hashLiteral(bool canAssign) {
+  int pairCount = 0;
+  
+  if (!check(TOKEN_RIGHT_BRACE)) {
+    do {
+      // Parse key
+      expression();
+      consume(TOKEN_COLON, "Expect ':' after hash key.");
+      
+      // Parse value
+      expression();
+      
+      pairCount++;
+      if (pairCount > 255) {
+        error("Can't have more than 255 key-value pairs in hash literal.");
+      }
+    } while (match(TOKEN_COMMA));
+  }
+  
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after hash literal.");
+  
+  emitBytes(OP_HASH_LITERAL, pairCount);
+  lastExpressionType = TYPE_HASH;
+}
+//< Hash literal function
+
+//> Hash indexing function
+static void indexing(bool canAssign) {
+  // Parse the index expression
+  expression();
+  consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index.");
+  
+  if (canAssign && match(TOKEN_EQUAL)) {
+    // Hash assignment: hash[key] = value
+    expression();
+    emitByte(OP_SET_INDEX);
+    lastExpressionType = TYPE_VOID; // Assignment returns void
+  } else {
+    // Hash access: hash[key]
+    emitByte(OP_GET_INDEX);
+    lastExpressionType = TYPE_VOID; // Conservative - we don't know the value type
+  }
+}
+//< Hash indexing function
+
 /* Global Variables read-named-variable < Global Variables named-variable-signature
 static void namedVariable(Token name) {
 */
@@ -1374,8 +1421,10 @@ ParseRule rules[] = {
   [TOKEN_LEFT_PAREN]    = {grouping, call,   PREC_CALL},
 //< Calls and Functions infix-left-paren
   [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE}, // [big]
+  [TOKEN_LEFT_BRACE]    = {hashLiteral, NULL, PREC_NONE},
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LEFT_BRACKET]  = {NULL,     indexing, PREC_CALL},
+  [TOKEN_RIGHT_BRACKET] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
 /* Compiling Expressions rules < Classes and Instances table-dot
   [TOKEN_DOT]           = {NULL,     NULL,   PREC_NONE},
@@ -1442,6 +1491,7 @@ ParseRule rules[] = {
 //> Jumping Back and Forth table-and
   [TOKEN_AND]           = {NULL,     and_,   PREC_AND},
 //< Jumping Back and Forth table-and
+  [TOKEN_AS]            = {NULL,     typeCast, PREC_CALL},
   [TOKEN_BEGIN]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_DEF]           = {NULL,     NULL,   PREC_NONE},
@@ -1575,12 +1625,12 @@ static ReturnType function(FunctionType type) {
       ReturnType paramType = IMMUTABLE_NONNULL_TYPE(TYPE_VOID.baseType);
       if (check(TOKEN_RETURNTYPE_INT) || check(TOKEN_RETURNTYPE_STRING) || 
           check(TOKEN_RETURNTYPE_BOOL) || check(TOKEN_RETURNTYPE_FUNC) ||
-          check(TOKEN_RETURNTYPE_OBJ)) {
+          check(TOKEN_RETURNTYPE_OBJ) || check(TOKEN_RETURNTYPE_HASH)) {
         TokenType typeToken = parser.current.type;
         advance(); // Consume the type token first
         paramType = tokenToBaseType(typeToken);
       } else {
-        errorAtCurrent("Expect parameter type (int, string, bool, func, or obj).");
+        errorAtCurrent("Expect parameter type (int, string, bool, func, obj, or hash).");
       }
       
       consume(TOKEN_IDENTIFIER, "Expect parameter name.");
@@ -2112,6 +2162,7 @@ static GemType tokenToBaseType(TokenType token) {
     case TOKEN_RETURNTYPE_VOID: baseType = TYPE_VOID.baseType; break;
     case TOKEN_RETURNTYPE_FUNC: baseType = TYPE_FUNC.baseType; break;
     case TOKEN_RETURNTYPE_OBJ: baseType = TYPE_OBJ.baseType; break;
+    case TOKEN_RETURNTYPE_HASH: baseType = TYPE_HASH.baseType; break;
     default: baseType = TYPE_VOID.baseType; break; // Should never happen
   }
   
@@ -2405,6 +2456,7 @@ static void typedVarDeclaration() {
     case TOKEN_RETURNTYPE_BOOL: baseType = TYPE_BOOL.baseType; break;
     case TOKEN_RETURNTYPE_FUNC: baseType = TYPE_FUNC.baseType; break;
     case TOKEN_RETURNTYPE_OBJ: baseType = TYPE_OBJ.baseType; break;
+    case TOKEN_RETURNTYPE_HASH: baseType = TYPE_HASH.baseType; break;
     default: 
       error("Unknown type in variable declaration.");
       return;
@@ -2491,7 +2543,7 @@ static void mutVarDeclaration() {
   // Now we expect a type token
   if (!match(TOKEN_RETURNTYPE_INT) && !match(TOKEN_RETURNTYPE_STRING) && 
       !match(TOKEN_RETURNTYPE_BOOL) && !match(TOKEN_RETURNTYPE_FUNC) &&
-      !match(TOKEN_RETURNTYPE_OBJ)) {
+      !match(TOKEN_RETURNTYPE_OBJ) && !match(TOKEN_RETURNTYPE_HASH)) {
     error("Expect type after 'mut' keyword.");
     return;
   }
@@ -2505,6 +2557,7 @@ static void mutVarDeclaration() {
     case TOKEN_RETURNTYPE_BOOL: baseType = TYPE_BOOL.baseType; break;
     case TOKEN_RETURNTYPE_FUNC: baseType = TYPE_FUNC.baseType; break;
     case TOKEN_RETURNTYPE_OBJ: baseType = TYPE_OBJ.baseType; break;
+    case TOKEN_RETURNTYPE_HASH: baseType = TYPE_HASH.baseType; break;
     default: 
       error("Unknown type in variable declaration.");
       return;
@@ -2704,6 +2757,7 @@ static void synchronize() {
       case TOKEN_RETURNTYPE_BOOL:
       case TOKEN_RETURNTYPE_FUNC:
       case TOKEN_RETURNTYPE_OBJ:
+      case TOKEN_RETURNTYPE_HASH:
       case TOKEN_FOR:
       case TOKEN_IF:
       case TOKEN_WHILE:
@@ -2746,7 +2800,7 @@ static void declaration() {
     mutVarDeclaration();
   } else if (match(TOKEN_RETURNTYPE_INT) || match(TOKEN_RETURNTYPE_STRING) || 
              match(TOKEN_RETURNTYPE_BOOL) || match(TOKEN_RETURNTYPE_FUNC) ||
-             match(TOKEN_RETURNTYPE_OBJ)) {
+             match(TOKEN_RETURNTYPE_OBJ) || match(TOKEN_RETURNTYPE_HASH)) {
     typedVarDeclaration();
   } else {
     statement();
@@ -2817,3 +2871,39 @@ static void consumeStatementTerminator(const char* message) {
   
   errorAtCurrent(message);
 }
+
+//> Type Casting type-cast
+static void typeCast(bool canAssign) {
+  // Parse the target type
+  if (!match(TOKEN_RETURNTYPE_INT) && !match(TOKEN_RETURNTYPE_STRING) && 
+      !match(TOKEN_RETURNTYPE_BOOL) && !match(TOKEN_RETURNTYPE_HASH)) {
+    error("Expect type after 'as' keyword (int, string, bool, or hash).");
+    return;
+  }
+  
+  TokenType targetType = parser.previous.type;
+  
+  // Emit the type cast operation with the target type
+  emitByte(OP_TYPE_CAST);
+  emitByte((uint8_t)targetType);
+  
+  // Update the expression type to reflect the cast result
+  switch (targetType) {
+    case TOKEN_RETURNTYPE_INT:
+      lastExpressionType = TYPE_INT;
+      break;
+    case TOKEN_RETURNTYPE_STRING:
+      lastExpressionType = TYPE_STRING;
+      break;
+    case TOKEN_RETURNTYPE_BOOL:
+      lastExpressionType = TYPE_BOOL;
+      break;
+    case TOKEN_RETURNTYPE_HASH:
+      lastExpressionType = TYPE_HASH;
+      break;
+    default:
+      lastExpressionType = TYPE_VOID;
+      break;
+  }
+}
+//< Type Casting type-cast

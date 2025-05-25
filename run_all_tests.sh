@@ -152,7 +152,8 @@ main() {
         "test_memory_safety.gem" \
         "test_type_safety.gem" \
         "test_jit_compilation.gem" \
-        "test_hashes.gem"
+        "test_hashes.gem" \
+        "test_type_coercion.gem"
     
     # Final Summary
     print_status "$CYAN" "\n🏁 Test Suite Complete!"

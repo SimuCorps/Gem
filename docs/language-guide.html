@@ -38,6 +38,8 @@
                             <li><a href="#overview">Overview</a></li>
                             <li><a href="#syntax">Syntax</a></li>
                             <li><a href="#types">Type System</a></li>
+                            <li><a href="#hashes">Hashes</a></li>
+                            <li><a href="#type-coercion">Type Coercion</a></li>
                             <li><a href="#variables">Variables</a></li>
                             <li><a href="#functions">Functions</a></li>
                             <li><a href="#classes">Classes</a></li>
@@ -185,6 +187,177 @@ mutableOptional = nil;                     # ✅ Valid</code></pre>
                             <li>Non-nullable variables cannot be assigned <code>nil</code></li>
                             <li>Nullable variables must be checked before use</li>
                         </ul>
+                    </section>
+
+                    <section id="hashes" class="docs-section">
+                        <h2>Hashes</h2>
+                        <p>Hashes are key-value data structures that allow you to store and retrieve data using string or numeric keys.</p>
+
+                        <h3>Hash Declaration</h3>
+                        <div class="code-block">
+                            <pre><code># Hash declaration with explicit mutability
+hash! userInfo = {"name": "Alice", "age": 30, "active": true};
+
+# Immutable hash (read-only after creation)
+hash readonlyData = {"version": "1.0", "stable": true};
+
+# Empty hash
+hash! emptyHash = {};</code></pre>
+                        </div>
+
+                        <h3>Accessing Hash Values</h3>
+                        <div class="code-block">
+                            <pre><code># Access values using bracket notation
+hash! person = {"name": "Bob", "age": 25, "city": "New York"};
+
+string name = person["name"] as string;     # "Bob"
+int age = person["age"] as int;             # 25
+string city = person["city"] as string;    # "New York"
+
+# Non-existent keys return nil
+string missing = person["missing"] as string;  # "nil"</code></pre>
+                        </div>
+
+                        <h3>Modifying Hash Values</h3>
+                        <div class="code-block">
+                            <pre><code># Only mutable hashes can be modified
+hash! mutableHash = {"count": 0, "status": "pending"};
+
+# Update existing values
+mutableHash["count"] = 5;
+mutableHash["status"] = "completed";
+
+# Add new key-value pairs
+mutableHash["timestamp"] = "2025-01-01";
+
+# This would be an error with immutable hash:
+# hash immutableHash = {"key": "value"};
+# immutableHash["key"] = "new value";  # ❌ Error: Cannot modify immutable hash</code></pre>
+                        </div>
+
+                        <h3>Hash Keys</h3>
+                        <div class="code-block">
+                            <pre><code># String keys (most common)
+hash! stringKeys = {"name": "Alice", "role": "admin"};
+
+# Numeric keys (automatically converted to strings)
+hash! numericKeys = {1: "first", 2: "second", 42: "answer"};
+
+# Mixed keys
+hash! mixedKeys = {"name": "Bob", 1: "first", "active": true};</code></pre>
+                        </div>
+
+                        <h3>Hash Best Practices</h3>
+                        <ul>
+                            <li>Use descriptive string keys for better readability</li>
+                            <li>Always cast hash values to the expected type using <code>as</code></li>
+                            <li>Check for key existence when accessing potentially missing values</li>
+                            <li>Use mutable hashes (<code>hash!</code>) only when you need to modify them</li>
+                        </ul>
+                    </section>
+
+                    <section id="type-coercion" class="docs-section">
+                        <h2>Type Coercion</h2>
+                        <p>Type coercion allows you to explicitly convert values between different types using the <code>as</code> keyword.</p>
+
+                        <h3>Basic Type Conversions</h3>
+                        <div class="code-block">
+                            <pre><code># Number to string conversion
+int number = 42;
+string numberStr = number as string;        # "42"
+
+# String to number conversion
+string numericStr = "123";
+int parsed = numericStr as int;             # 123
+
+# Decimal strings are converted to their numeric value
+string decimalStr = "3.14159";
+int decimal = decimalStr as int;            # 3.14159
+
+# Boolean to string conversion
+bool isActive = true;
+string activeStr = isActive as string;     # "true"
+
+# Nil to string conversion
+string nilStr = nil as string;             # "nil"</code></pre>
+                        </div>
+
+                        <h3>Truthiness</h3>
+                        <p>In Gem, only <code>false</code> and <code>nil</code> are falsey. All other values, including <code>0</code> and empty strings, are truthy.</p>
+
+                        <div class="code-block">
+                            <pre><code># Numbers are truthy (including zero!)
+int zero = 0;
+int negative = -5;
+int positive = 42;
+
+bool zeroIsTruthy = zero as bool;           # true
+bool negativeIsTruthy = negative as bool;   # true
+bool positiveIsTruthy = positive as bool;   # true
+
+# Strings are truthy (including empty strings!)
+string empty = "";
+string nonEmpty = "hello";
+
+bool emptyIsTruthy = empty as bool;         # true
+bool nonEmptyIsTruthy = nonEmpty as bool;   # true
+
+# Only false and nil are falsey
+bool stillFalse = false as bool;            # false
+bool stillNil = nil as bool;                # false (nil converts to false)</code></pre>
+                        </div>
+
+                        <h3>Hash Value Coercion</h3>
+                        <div class="code-block">
+                            <pre><code># Extract and convert hash values
+hash! userData = {"name": "Charlie", "age": 28, "score": 0, "active": true};
+
+# Extract with type coercion
+string name = userData["name"] as string;
+int age = userData["age"] as int;
+bool active = userData["active"] as bool;
+
+# Zero from hash is still truthy
+bool scoreActive = userData["score"] as bool;  # true (0 is truthy!)
+
+# Missing keys return nil, which converts to "nil" string or false boolean
+string missing = userData["missing"] as string;  # "nil"
+bool missingBool = userData["missing"] as bool;  # false</code></pre>
+                        </div>
+
+                        <h3>Identity Casts</h3>
+                        <div class="code-block">
+                            <pre><code># Casting to the same type (no-op, but sometimes useful for clarity)
+string alreadyString = "test";
+string stillString = alreadyString as string;  # "test"
+
+int alreadyInt = 100;
+int stillInt = alreadyInt as int;              # 100
+
+bool alreadyBool = true;
+bool stillBool = alreadyBool as bool;          # true</code></pre>
+                        </div>
+
+                        <h3>Type Coercion Rules</h3>
+                        <ul>
+                            <li><strong>Numbers to strings</strong>: Converted to their string representation</li>
+                            <li><strong>Strings to numbers</strong>: Parsed as numeric values (must be valid numbers)</li>
+                            <li><strong>Booleans to strings</strong>: <code>true</code> → <code>"true"</code>, <code>false</code> → <code>"false"</code></li>
+                            <li><strong>Nil to strings</strong>: Always converts to <code>"nil"</code></li>
+                            <li><strong>Any to boolean</strong>: Only <code>false</code> and <code>nil</code> are falsey</li>
+                            <li><strong>Identity casts</strong>: Casting to the same type returns the original value</li>
+                        </ul>
+
+                        <div class="info-box">
+                            <h4>💡 Truthiness</h4>
+                            <p>Unlike many languages where <code>0</code>, empty strings, or empty collections are falsey, in Gem, only <code>false</code> and <code>nil</code> are considered falsey. This makes boolean logic more predictable and explicit.</p>
+                            <ul>
+                                <li><code>0 as bool</code> → <code>true</code> ✅</li>
+                                <li><code>"" as bool</code> → <code>true</code> ✅</li>
+                                <li><code>false as bool</code> → <code>false</code> ❌</li>
+                                <li><code>nil as bool</code> → <code>false</code> ❌</li>
+                            </ul>
+                        </div>
                     </section>
 
                     <section id="variables" class="docs-section">

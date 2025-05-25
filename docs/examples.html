@@ -37,6 +37,8 @@
                         <ul>
                             <li><a href="#basic-syntax">Basic Syntax</a></li>
                             <li><a href="#type-safety">Type Safety</a></li>
+                            <li><a href="#hashes">Hashes</a></li>
+                            <li><a href="#type-coercion">Type Coercion</a></li>
                             <li><a href="#functions">Functions</a></li>
                             <li><a href="#classes">Classes</a></li>
                             <li><a href="#memory-safety">Memory Safety</a></li>
@@ -179,6 +181,195 @@ end
 
 puts greetOptional("Alice");  # "Hello, Alice"
 puts greetOptional(nil);      # "Hello, stranger!"</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="hashes" class="docs-section">
+                        <h2>Hashes</h2>
+                        <p>Hashes provide key-value storage with type-safe access patterns.</p>
+
+                        <h3>Basic Hash Operations</h3>
+                        <div class="code-block">
+                            <pre><code># Creating hashes
+hash! userProfile = {"name": "Alice", "age": 30, "city": "New York"};
+hash readonlyConfig = {"version": "1.0", "debug": false};
+
+# Accessing values (always cast to expected type)
+string name = userProfile["name"] as string;
+int age = userProfile["age"] as int;
+string city = userProfile["city"] as string;
+
+# Modifying mutable hashes
+userProfile["age"] = 31;
+userProfile["country"] = "USA";
+
+# Non-existent keys return nil
+string missing = userProfile["phone"] as string;  # "nil"</code></pre>
+                        </div>
+
+                        <h3>Hash with Mixed Data Types</h3>
+                        <div class="code-block">
+                            <pre><code># Hash containing different value types
+hash! gameState = {
+    "player": "Alice",
+    "score": 1500,
+    "level": 3,
+    "powerups": 2,
+    "gameOver": false
+};
+
+# Extract and use values with proper casting
+string player = gameState["player"] as string;
+int score = gameState["score"] as int;
+int level = gameState["level"] as int;
+bool isGameOver = gameState["gameOver"] as bool;
+
+puts "Player: " + player;
+puts "Score: " + (score as string);
+puts "Level: " + (level as string);
+puts "Game Over: " + (isGameOver as string);</code></pre>
+                        </div>
+
+                        <h3>Hash-Based Configuration</h3>
+                        <div class="code-block">
+                            <pre><code># Application configuration using hashes
+hash! appConfig = {
+    "appName": "MyApp",
+    "version": "2.1.0",
+    "maxUsers": 1000,
+    "enableLogging": true,
+    "debugMode": false
+};
+
+def getConfigString(hash! config, string key) string
+    return config[key] as string;
+end
+
+def getConfigInt(hash! config, string key) int
+    return config[key] as int;
+end
+
+def getConfigBool(hash! config, string key) bool
+    return config[key] as bool;
+end
+
+# Usage
+string appName = getConfigString(appConfig, "appName");
+int maxUsers = getConfigInt(appConfig, "maxUsers");
+bool loggingEnabled = getConfigBool(appConfig, "enableLogging");</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="type-coercion" class="docs-section">
+                        <h2>Type Coercion</h2>
+                        <p>Explicit type conversion with truthiness semantics.</p>
+
+                        <h3>Basic Type Conversions</h3>
+                        <div class="code-block">
+                            <pre><code># Number to string conversion
+int score = 1500;
+string scoreText = score as string;  # "1500"
+
+# String to number conversion
+string userInput = "42";
+int number = userInput as int;       # 42
+
+# Boolean to string conversion
+bool isWinner = true;
+string winStatus = isWinner as string;  # "true"
+
+# Nil to string conversion
+string nilText = nil as string;      # "nil"</code></pre>
+                        </div>
+
+                        <h3>Truthiness</h3>
+                        <div class="code-block">
+                            <pre><code># In Gem, only false and nil are falsey
+# All other values are truthy, including 0 and empty strings!
+
+# Numbers are truthy (including zero)
+int zero = 0;
+int positive = 42;
+int negative = -10;
+
+bool zeroIsTruthy = zero as bool;        # true
+bool positiveIsTruthy = positive as bool; # true
+bool negativeIsTruthy = negative as bool; # true
+
+# Strings are truthy (including empty strings)
+string empty = "";
+string text = "hello";
+
+bool emptyIsTruthy = empty as bool;      # true
+bool textIsTruthy = text as bool;        # true
+
+# Only false and nil are falsey
+bool stillFalse = false as bool;         # false
+bool nilIsFalse = nil as bool;           # false</code></pre>
+                        </div>
+
+                        <h3>Practical Type Coercion</h3>
+                        <div class="code-block">
+                            <pre><code># User data processing with type coercion
+hash! userData = {
+    "username": "alice123",
+    "score": 2500,
+    "level": 5,
+    "premium": true,
+    "lastLogin": "2025-01-01"
+};
+
+def processUserData(hash! data) void
+    # Extract and convert data
+    string username = data["username"] as string;
+    int score = data["score"] as int;
+    int level = data["level"] as int;
+    bool isPremium = data["premium"] as bool;
+    string lastLogin = data["lastLogin"] as string;
+    
+    # Display user information
+    puts "Username: " + username;
+    puts "Score: " + (score as string);
+    puts "Level: " + (level as string);
+    puts "Premium: " + (isPremium as string);
+    puts "Last Login: " + lastLogin;
+    
+    # Truthiness in action
+    bool hasScore = score as bool;  # true (even if score was 0!)
+    puts "Has score: " + (hasScore as string);
+end
+
+processUserData(userData);</code></pre>
+                        </div>
+
+                        <h3>Safe Type Coercion Patterns</h3>
+                        <div class="code-block">
+                            <pre><code># Helper functions for safe hash access
+def getStringValue(hash! data, string key, string defaultValue) string
+    string value = data[key] as string;
+    if (value == "nil")
+        return defaultValue;
+    else
+        return value;
+    end
+end
+
+def getIntValue(hash! data, string key, int defaultValue) int
+    string value = data[key] as string;
+    if (value == "nil")
+        return defaultValue;
+    else
+        return value as int;
+    end
+end
+
+# Usage with safe defaults
+hash! config = {"theme": "dark", "timeout": 30};
+
+string theme = getStringValue(config, "theme", "light");      # "dark"
+string lang = getStringValue(config, "language", "english");  # "english" (default)
+int timeout = getIntValue(config, "timeout", 60);            # 30
+int retries = getIntValue(config, "retries", 3);             # 3 (default)</code></pre>
                         </div>
                     </section>
 

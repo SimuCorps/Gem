@@ -22,6 +22,7 @@
 //> Scanning on Demand vm-include-compiler
 #include "compiler.h"
 //< Scanning on Demand vm-include-compiler
+#include "scanner.h"
 //> vm-include-debug
 #include "debug.h"
 //< vm-include-debug
@@ -710,6 +711,9 @@ InterpretResult run() {
     [OP_SET_UPVALUE] = &&op_set_upvalue,
     [OP_GET_PROPERTY] = &&op_get_property,
     [OP_SET_PROPERTY] = &&op_set_property,
+    [OP_GET_INDEX] = &&op_get_index,
+    [OP_SET_INDEX] = &&op_set_index,
+    [OP_HASH_LITERAL] = &&op_hash_literal,
     [OP_GET_SUPER] = &&op_get_super,
     [OP_EQUAL] = &&op_equal,
     [OP_GREATER] = &&op_greater,
@@ -745,7 +749,8 @@ InterpretResult run() {
     [OP_MODULE_METHOD] = &&op_module_method,
     [OP_MODULE_CALL] = &&op_module_call,
     [OP_INHERIT] = &&op_inherit,
-    [OP_METHOD] = &&op_method
+    [OP_METHOD] = &&op_method,
+    [OP_TYPE_CAST] = &&op_type_cast,
   };
 
 #define DISPATCH() \
@@ -1536,6 +1541,181 @@ op_interpolate: {
   DISPATCH();
 }
 
+op_hash_literal: {
+  TRACE();
+  int pairCount = READ_BYTE();
+  ObjHash* hash = newHash();
+  
+  // Pop key-value pairs from stack and add to hash
+  for (int i = 0; i < pairCount; i++) {
+    Value value = pop();
+    Value key = pop();
+    
+    // Convert key to string if it's not already
+    ObjString* keyString;
+    if (IS_STRING(key)) {
+      keyString = AS_STRING(key);
+    } else if (IS_NUMBER(key)) {
+      // Convert number to string
+      char buffer[32];
+      int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(key));
+      keyString = copyString(buffer, len);
+    } else {
+      runtimeError("Hash keys must be strings or numbers.");
+      return INTERPRET_RUNTIME_ERROR;
+    }
+    
+    tableSet(&hash->table, keyString, value);
+  }
+  
+  push(OBJ_VAL(hash));
+  DISPATCH();
+}
+
+op_get_index: {
+  TRACE();
+  Value index = pop();
+  Value hashValue = pop();
+  
+  if (!IS_HASH(hashValue)) {
+    runtimeError("Only hashes support indexing.");
+    return INTERPRET_RUNTIME_ERROR;
+  }
+  
+  ObjHash* hash = AS_HASH(hashValue);
+  
+  // Convert index to string if it's not already
+  ObjString* keyString;
+  if (IS_STRING(index)) {
+    keyString = AS_STRING(index);
+  } else if (IS_NUMBER(index)) {
+    // Convert number to string
+    char buffer[32];
+    int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+    keyString = copyString(buffer, len);
+  } else {
+    runtimeError("Hash keys must be strings or numbers.");
+    return INTERPRET_RUNTIME_ERROR;
+  }
+  
+  Value value;
+  if (tableGet(&hash->table, keyString, &value)) {
+    push(value);
+  } else {
+    push(NIL_VAL);
+  }
+  DISPATCH();
+}
+
+op_set_index: {
+  TRACE();
+  Value value = pop();
+  Value index = pop();
+  Value hashValue = pop();
+  
+  if (!IS_HASH(hashValue)) {
+    runtimeError("Only hashes support indexing.");
+    return INTERPRET_RUNTIME_ERROR;
+  }
+  
+  ObjHash* hash = AS_HASH(hashValue);
+  
+  // Convert index to string if it's not already
+  ObjString* keyString;
+  if (IS_STRING(index)) {
+    keyString = AS_STRING(index);
+  } else if (IS_NUMBER(index)) {
+    // Convert number to string
+    char buffer[32];
+    int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+    keyString = copyString(buffer, len);
+  } else {
+    runtimeError("Hash keys must be strings or numbers.");
+    return INTERPRET_RUNTIME_ERROR;
+  }
+  
+  tableSet(&hash->table, keyString, value);
+  push(value); // Assignment returns the assigned value
+  DISPATCH();
+}
+
+op_type_cast: {
+  TRACE();
+  TokenType targetType = (TokenType)READ_BYTE();
+  Value value = pop();
+  
+  switch (targetType) {
+    case TOKEN_RETURNTYPE_INT: {
+      if (IS_NUMBER(value)) {
+        // Already a number, just push it back
+        push(value);
+      } else if (IS_STRING(value)) {
+        // Try to parse string as number
+        char* endptr;
+        double num = strtod(AS_CSTRING(value), &endptr);
+        if (*endptr == '\0') {
+          push(NUMBER_VAL(num));
+        } else {
+          runtimeError("Cannot cast string '%s' to int.", AS_CSTRING(value));
+          return INTERPRET_RUNTIME_ERROR;
+        }
+      } else {
+        runtimeError("Cannot cast value to int.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      break;
+    }
+    case TOKEN_RETURNTYPE_STRING: {
+      if (IS_STRING(value)) {
+        // Already a string, just push it back
+        push(value);
+      } else if (IS_NUMBER(value)) {
+        // Convert number to string
+        char buffer[32];
+        int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(value));
+        ObjString* str = copyString(buffer, len);
+        push(OBJ_VAL(str));
+      } else if (IS_BOOL(value)) {
+        const char* boolStr = AS_BOOL(value) ? "true" : "false";
+        ObjString* str = copyString(boolStr, strlen(boolStr));
+        push(OBJ_VAL(str));
+      } else if (IS_NIL(value)) {
+        ObjString* str = copyString("nil", 3);
+        push(OBJ_VAL(str));
+      } else {
+        runtimeError("Cannot cast value to string.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      break;
+    }
+    case TOKEN_RETURNTYPE_BOOL: {
+      if (IS_BOOL(value)) {
+        // Already a bool, just push it back
+        push(value);
+      } else {
+        // In Ruby semantics, only false and nil are falsey
+        // All other values (including 0) are truthy
+        push(BOOL_VAL(!isFalsey(value)));
+      }
+      break;
+    }
+    case TOKEN_RETURNTYPE_HASH: {
+      if (IS_HASH(value)) {
+        // Already a hash, just push it back
+        push(value);
+      } else {
+        runtimeError("Cannot cast value to hash.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      break;
+    }
+    default:
+      runtimeError("Unknown target type for cast.");
+      return INTERPRET_RUNTIME_ERROR;
+  }
+  DISPATCH();
+}
+
 #else
   // Fallback to switch statement if computed goto is not available
   for (;;) {
@@ -2165,6 +2345,180 @@ op_interpolate: {
         tableAddAll(&AS_CLASS(superclass)->methods,
                     &subclass->methods);
         pop(); // Subclass.
+        break;
+      }
+      //< Classes and Instances interpret-set-property
+      //> Hash Objects interpret-get-index
+      case OP_GET_INDEX: {
+        Value index = pop();
+        Value hashValue = pop();
+        
+        if (!IS_HASH(hashValue)) {
+          runtimeError("Only hashes support indexing.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        ObjHash* hash = AS_HASH(hashValue);
+        
+        // Convert index to string if it's not already
+        ObjString* keyString;
+        if (IS_STRING(index)) {
+          keyString = AS_STRING(index);
+        } else if (IS_NUMBER(index)) {
+          // Convert number to string
+          char buffer[32];
+          int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+          keyString = copyString(buffer, len);
+        } else {
+          runtimeError("Hash keys must be strings or numbers.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        Value value;
+        if (tableGet(&hash->table, keyString, &value)) {
+          push(value);
+        } else {
+          push(NIL_VAL);
+        }
+        break;
+      }
+      //< Hash Objects interpret-get-index
+      //> Hash Objects interpret-set-index
+      case OP_SET_INDEX: {
+        Value value = pop();
+        Value index = pop();
+        Value hashValue = pop();
+        
+        if (!IS_HASH(hashValue)) {
+          runtimeError("Only hashes support indexing.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        ObjHash* hash = AS_HASH(hashValue);
+        
+        // Convert index to string if it's not already
+        ObjString* keyString;
+        if (IS_STRING(index)) {
+          keyString = AS_STRING(index);
+        } else if (IS_NUMBER(index)) {
+          // Convert number to string
+          char buffer[32];
+          int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+          keyString = copyString(buffer, len);
+        } else {
+          runtimeError("Hash keys must be strings or numbers.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        tableSet(&hash->table, keyString, value);
+        push(value); // Assignment returns the assigned value
+        break;
+      }
+      //< Hash Objects interpret-set-index
+      //> Hash Objects interpret-hash-literal
+      case OP_HASH_LITERAL: {
+        int pairCount = READ_BYTE();
+        ObjHash* hash = newHash();
+        
+        // Pop key-value pairs from stack and add to hash
+        for (int i = 0; i < pairCount; i++) {
+          Value value = pop();
+          Value key = pop();
+          
+          // Convert key to string if it's not already
+          ObjString* keyString;
+          if (IS_STRING(key)) {
+            keyString = AS_STRING(key);
+          } else if (IS_NUMBER(key)) {
+            // Convert number to string
+            char buffer[32];
+            int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(key));
+            keyString = copyString(buffer, len);
+          } else {
+            runtimeError("Hash keys must be strings or numbers.");
+            return INTERPRET_RUNTIME_ERROR;
+          }
+          
+          tableSet(&hash->table, keyString, value);
+        }
+        
+        push(OBJ_VAL(hash));
+        break;
+      }
+      //< Hash Objects interpret-hash-literal
+      case OP_TYPE_CAST: {
+        TokenType targetType = (TokenType)READ_BYTE();
+        Value value = pop();
+        
+        switch (targetType) {
+          case TOKEN_RETURNTYPE_INT: {
+            if (IS_NUMBER(value)) {
+              // Already a number, just push it back
+              push(value);
+            } else if (IS_STRING(value)) {
+              // Try to parse string as number
+              char* endptr;
+              double num = strtod(AS_CSTRING(value), &endptr);
+              if (*endptr == '\0') {
+                push(NUMBER_VAL(num));
+              } else {
+                runtimeError("Cannot cast string '%s' to int.", AS_CSTRING(value));
+                return INTERPRET_RUNTIME_ERROR;
+              }
+            } else {
+              runtimeError("Cannot cast value to int.");
+              return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+          }
+          case TOKEN_RETURNTYPE_STRING: {
+            if (IS_STRING(value)) {
+              // Already a string, just push it back
+              push(value);
+            } else if (IS_NUMBER(value)) {
+              // Convert number to string
+              char buffer[32];
+              int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(value));
+              ObjString* str = copyString(buffer, len);
+              push(OBJ_VAL(str));
+            } else if (IS_BOOL(value)) {
+              const char* boolStr = AS_BOOL(value) ? "true" : "false";
+              ObjString* str = copyString(boolStr, strlen(boolStr));
+              push(OBJ_VAL(str));
+            } else if (IS_NIL(value)) {
+              ObjString* str = copyString("nil", 3);
+              push(OBJ_VAL(str));
+            } else {
+              runtimeError("Cannot cast value to string.");
+              return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+          }
+          case TOKEN_RETURNTYPE_BOOL: {
+            if (IS_BOOL(value)) {
+              // Already a bool, just push it back
+              push(value);
+            } else {
+              // In Ruby semantics, only false and nil are falsey
+              // All other values (including 0) are truthy
+              push(BOOL_VAL(!isFalsey(value)));
+            }
+            break;
+          }
+          case TOKEN_RETURNTYPE_HASH: {
+            if (IS_HASH(value)) {
+              // Already a hash, just push it back
+              push(value);
+            } else {
+              runtimeError("Cannot cast value to hash.");
+              return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+          }
+          default:
+            runtimeError("Unknown target type for cast.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
         break;
       }
     }

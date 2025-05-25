@@ -91,6 +91,10 @@ string empty = "";
 bool isActive = true;
 bool isComplete = false;
 
+# Hash type (key-value data structure)
+hash! userInfo = {"name": "Bob", "age": 30};
+hash readonlyData = {"version": "1.0", "stable": true};
+
 # Special types
 void        # Used for functions that don't return a value
 func        # Function type for first-class functions
@@ -526,6 +530,37 @@ def getCurrentUserName() string?
         return nil;
     end
 end</code></pre>
+                        </div>
+
+                        <h3>Type Coercion</h3>
+                        <p>Gem provides explicit type coercion using the <code>as</code> keyword.</p>
+                        
+                        <div class="code-block">
+                            <pre><code># Explicit type conversions with 'as' keyword
+int number = 42;
+string numberStr = number as string;        # "42"
+
+string numericStr = "123";
+int parsed = numericStr as int;             # 123
+
+bool isActive = true;
+string activeStr = isActive as string;     # "true"
+
+# Only false and nil are falsey
+int zero = 0;
+bool zeroIsTruthy = zero as bool;          # true
+
+string empty = "";
+bool emptyIsTruthy = empty as bool;        # true
+
+bool stillFalse = false as bool;           # false
+bool nilIsFalse = nil as bool;             # false
+
+# Hash value coercion
+hash! userData = {"name": "Alice", "age": 25, "score": 0};
+string name = userData["name"] as string;
+int age = userData["age"] as int;
+bool scoreActive = userData["score"] as bool;  # true (0 is truthy!)</code></pre>
                         </div>
 
                         <div class="info-box">

@@ -94,6 +94,14 @@ static void freeObject(Obj* object) {
       FREE(ObjUpvalue, object);
       break;
 //< Closures free-upvalue
+//> Hash Objects free-hash
+    case OBJ_HASH: {
+      ObjHash* hash = (ObjHash*)object;
+      freeTable(&hash->table);
+      FREE(ObjHash, object);
+      break;
+    }
+//< Hash Objects free-hash
   }
 }
 //< Strings free-object

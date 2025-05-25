@@ -44,6 +44,14 @@ typedef enum {
   OP_GET_PROPERTY,
   OP_SET_PROPERTY,
 //< Classes and Instances property-ops
+//> Hash Objects hash-ops
+  OP_GET_INDEX,
+  OP_SET_INDEX,
+  OP_HASH_LITERAL,
+//< Hash Objects hash-ops
+//> Type Casting type-cast-op
+  OP_TYPE_CAST,
+//< Type Casting type-cast-op
 //> Superclasses get-super-op
   OP_GET_SUPER,
 //< Superclasses get-super-op
