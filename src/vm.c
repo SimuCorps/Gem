@@ -136,189 +136,793 @@ static void defineNative(const char* name, NativeFn function) {
 //< Calls and Functions define-native
 
 //> HTTP Native Functions
-static Value httpGetNative(int argCount, Value* args) {
-  if (argCount != 1) {
-    runtimeError("httpGet() takes exactly 1 argument (%d given).", argCount);
-    return NIL_VAL;
+
+// HTTP Response structure for returning detailed response information
+typedef struct {
+  char* body;
+  int statusCode;
+  char* headers;
+  double responseTime;
+  bool success;
+} HttpResponse;
+
+// HTTP Request configuration structure
+typedef struct {
+  const char* method;
+  const char* url;
+  const char* body;
+  ObjHash* headers;
+  ObjHash* queryParams;
+  int timeout;
+  bool followRedirects;
+  bool verifySSL;
+  const char* userAgent;
+} HttpRequest;
+
+// Helper function to escape shell arguments
+static char* escapeShellArg(const char* arg) {
+  if (!arg) return strdup("");
+  
+  size_t len = strlen(arg);
+  size_t escaped_len = len * 2 + 3; // Worst case: every char needs escaping + quotes + null
+  char* escaped = malloc(escaped_len);
+  if (!escaped) return NULL;
+  
+  escaped[0] = '"';
+  size_t pos = 1;
+  
+  for (size_t i = 0; i < len; i++) {
+    char c = arg[i];
+    if (c == '"' || c == '\\' || c == '$' || c == '`') {
+      escaped[pos++] = '\\';
+    }
+    escaped[pos++] = c;
   }
   
-  if (!IS_STRING(args[0])) {
-    runtimeError("httpGet() argument must be a string.");
-    return NIL_VAL;
+  escaped[pos++] = '"';
+  escaped[pos] = '\0';
+  
+  return escaped;
+}
+
+// Helper function to build curl headers from hash
+static char* buildCurlHeaders(ObjHash* headers) {
+  if (!headers || headers->table.count == 0) {
+    return strdup("");
   }
   
-  const char* url = AS_CSTRING(args[0]);
+  // Estimate size needed for headers
+  size_t totalSize = 0;
+  for (int i = 0; i < headers->table.capacity; i++) {
+    Entry* entry = &headers->table.entries[i];
+    if (entry->key != NULL) {
+      const char* key = AS_CSTRING(OBJ_VAL(entry->key));
+      const char* value = AS_CSTRING(entry->value);
+      totalSize += strlen(key) + strlen(value) + 20; // " -H \"key: value\""
+    }
+  }
   
-  // For now, we'll use a simple system call to curl
-  // In a production implementation, you'd want to use a proper HTTP library
-  char command[1024];
-  snprintf(command, sizeof(command), "curl -s \"%s\"", url);
+  char* headerString = malloc(totalSize + 1);
+  if (!headerString) return NULL;
   
+  headerString[0] = '\0';
+  for (int i = 0; i < headers->table.capacity; i++) {
+    Entry* entry = &headers->table.entries[i];
+    if (entry->key != NULL) {
+      const char* key = AS_CSTRING(OBJ_VAL(entry->key));
+      const char* value = AS_CSTRING(entry->value);
+      
+      char* escapedKey = escapeShellArg(key);
+      char* escapedValue = escapeShellArg(value);
+      
+      if (escapedKey && escapedValue) {
+        char headerPart[1024];
+        snprintf(headerPart, sizeof(headerPart), " -H %s:%s", escapedKey, escapedValue);
+        strcat(headerString, headerPart);
+      }
+      
+      free(escapedKey);
+      free(escapedValue);
+    }
+  }
+  
+  return headerString;
+}
+
+// Helper function to build query parameters
+static char* buildQueryParams(ObjHash* params) {
+  if (!params || params->table.count == 0) {
+    return strdup("");
+  }
+  
+  size_t totalSize = 1; // For '?'
+  for (int i = 0; i < params->table.capacity; i++) {
+    Entry* entry = &params->table.entries[i];
+    if (entry->key != NULL) {
+      const char* key = AS_CSTRING(OBJ_VAL(entry->key));
+      const char* value = AS_CSTRING(entry->value);
+      totalSize += strlen(key) + strlen(value) + 2; // key=value&
+    }
+  }
+  
+  char* queryString = malloc(totalSize + 1);
+  if (!queryString) return NULL;
+  
+  strcpy(queryString, "?");
+  bool first = true;
+  
+  for (int i = 0; i < params->table.capacity; i++) {
+    Entry* entry = &params->table.entries[i];
+    if (entry->key != NULL) {
+      const char* key = AS_CSTRING(OBJ_VAL(entry->key));
+      const char* value = AS_CSTRING(entry->value);
+      
+      if (!first) {
+        strcat(queryString, "&");
+      }
+      strcat(queryString, key);
+      strcat(queryString, "=");
+      strcat(queryString, value);
+      first = false;
+    }
+  }
+  
+  return queryString;
+}
+
+// Execute HTTP request with comprehensive options
+static HttpResponse* executeHttpRequest(HttpRequest* req) {
+  HttpResponse* response = malloc(sizeof(HttpResponse));
+  if (!response) return NULL;
+  
+  // Initialize response
+  response->body = NULL;
+  response->statusCode = 0;
+  response->headers = NULL;
+  response->responseTime = 0.0;
+  response->success = false;
+  
+  // Build command components
+  char* headerString = buildCurlHeaders(req->headers);
+  char* queryString = buildQueryParams(req->queryParams);
+  char* escapedUrl = escapeShellArg(req->url);
+  char* escapedBody = req->body ? escapeShellArg(req->body) : strdup("");
+  char* escapedUserAgent = req->userAgent ? escapeShellArg(req->userAgent) : strdup("\"Gem-HTTP-Client/1.0\"");
+  
+  if (!headerString || !queryString || !escapedUrl || !escapedBody || !escapedUserAgent) {
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(response);
+    return NULL;
+  }
+  
+  // Build full URL with query parameters
+  char* fullUrl = malloc(strlen(escapedUrl) + strlen(queryString) + 1);
+  if (!fullUrl) {
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(response);
+    return NULL;
+  }
+  strcpy(fullUrl, escapedUrl);
+  strcat(fullUrl, queryString);
+  
+  // Build curl command with comprehensive options
+  size_t cmdSize = 4096 + strlen(headerString) + strlen(fullUrl) + strlen(escapedBody) + strlen(escapedUserAgent);
+  char* command = malloc(cmdSize);
+  if (!command) {
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(fullUrl);
+    free(response);
+    return NULL;
+  }
+  
+  // Build basic curl command
+  snprintf(command, cmdSize,
+    "curl -s -w \"\\n%%{http_code}\\n%%{time_total}\" "
+    "--max-time %d "
+    "%s " // follow redirects
+    "%s " // SSL verification
+    "-A %s " // User agent
+    "-X %s " // HTTP method
+    "%s", // headers
+    req->timeout,
+    req->followRedirects ? "-L" : "",
+    req->verifySSL ? "" : "-k",
+    escapedUserAgent,
+    req->method,
+    headerString
+  );
+  
+  // Add body data if present and not GET
+  if (req->body && strlen(req->body) > 0 && strcmp(req->method, "GET") != 0) {
+    strcat(command, " -d ");
+    strcat(command, escapedBody);
+  }
+  
+  // Add URL at the end
+  strcat(command, " ");
+  strcat(command, fullUrl);
+  
+  // Execute request
+  clock_t start = clock();
   FILE* pipe = popen(command, "r");
   if (!pipe) {
-    runtimeError("Failed to execute HTTP request.");
-    return NIL_VAL;
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(fullUrl);
+    free(command);
+    free(response);
+    return NULL;
   }
   
-  // Read the response
-  char* response = malloc(65536); // 64KB buffer
-  if (!response) {
+  // Read response with larger buffer for production use
+  size_t bufferSize = 1024 * 1024; // 1MB buffer
+  char* buffer = malloc(bufferSize);
+  if (!buffer) {
     pclose(pipe);
-    runtimeError("Out of memory for HTTP response.");
-    return NIL_VAL;
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(fullUrl);
+    free(command);
+    free(response);
+    return NULL;
   }
   
   size_t totalRead = 0;
   size_t bytesRead;
-  while ((bytesRead = fread(response + totalRead, 1, 1024, pipe)) > 0) {
+  while ((bytesRead = fread(buffer + totalRead, 1, 1024, pipe)) > 0) {
     totalRead += bytesRead;
-    if (totalRead >= 65535) break; // Leave space for null terminator
+    if (totalRead >= bufferSize - 1024) {
+      // Expand buffer if needed
+      bufferSize *= 2;
+      char* newBuffer = realloc(buffer, bufferSize);
+      if (!newBuffer) {
+        free(buffer);
+        pclose(pipe);
+        free(headerString);
+        free(queryString);
+        free(escapedUrl);
+        free(escapedBody);
+        free(escapedUserAgent);
+        free(fullUrl);
+        free(command);
+        free(response);
+        return NULL;
+      }
+      buffer = newBuffer;
+    }
   }
-  response[totalRead] = '\0';
+  buffer[totalRead] = '\0';
   
-  pclose(pipe);
+  int exitCode = pclose(pipe);
+  clock_t end = clock();
   
-  ObjString* result = copyString(response, (int)totalRead);
-  free(response);
+  response->responseTime = ((double)(end - start)) / CLOCKS_PER_SEC;
+  
+  // Parse response (body, status code, timing info)
+  char* lastNewline = strrchr(buffer, '\n');
+  if (lastNewline) {
+    *lastNewline = '\0';
+    char* secondLastNewline = strrchr(buffer, '\n');
+    if (secondLastNewline) {
+      response->statusCode = atoi(secondLastNewline + 1);
+      *secondLastNewline = '\0';
+      
+      // The remaining buffer is the response body
+      response->body = strdup(buffer);
+      response->success = (exitCode == 0 && response->statusCode >= 200 && response->statusCode < 400);
+    }
+  }
+  
+  if (!response->body) {
+    response->body = strdup(buffer);
+    response->success = (exitCode == 0);
+  }
+  
+  // Cleanup
+  free(buffer);
+  free(headerString);
+  free(queryString);
+  free(escapedUrl);
+  free(escapedBody);
+  free(escapedUserAgent);
+  free(fullUrl);
+  free(command);
+  
+  return response;
+}
+
+// Free HTTP response
+static void freeHttpResponse(HttpResponse* response) {
+  if (response) {
+    free(response->body);
+    free(response->headers);
+    free(response);
+  }
+}
+
+// Production-ready HTTP GET with full options
+static Value httpGetNative(int argCount, Value* args) {
+  if (argCount < 1 || argCount > 3) {
+    runtimeError("httpGet() takes 1-3 arguments: url, [headers], [options]");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpGet() first argument must be a URL string.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "GET";
+  req.url = AS_CSTRING(args[0]);
+  req.body = NULL;
+  req.headers = NULL;
+  req.queryParams = NULL;
+  req.timeout = 30; // Default 30 second timeout
+  req.followRedirects = true;
+  req.verifySSL = true;
+  req.userAgent = "Gem-HTTP-Client/1.0";
+  
+  // Parse optional headers (second argument)
+  if (argCount >= 2) {
+    if (IS_HASH(args[1])) {
+      req.headers = AS_HASH(args[1]);
+    } else if (!IS_NIL(args[1])) {
+      runtimeError("httpGet() second argument must be a hash of headers or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  // Parse optional options (third argument)
+  if (argCount >= 3) {
+    if (IS_HASH(args[2])) {
+      ObjHash* options = AS_HASH(args[2]);
+      
+      // Check for timeout option
+      Value timeoutVal;
+      if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal)) {
+        if (IS_NUMBER(timeoutVal)) {
+          req.timeout = (int)AS_NUMBER(timeoutVal);
+        }
+      }
+      
+      // Check for query parameters
+      Value queryVal;
+      if (tableGet(&options->table, copyString("query", 5), &queryVal)) {
+        if (IS_HASH(queryVal)) {
+          req.queryParams = AS_HASH(queryVal);
+        }
+      }
+      
+      // Check for follow redirects option
+      Value followVal;
+      if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal)) {
+        if (IS_BOOL(followVal)) {
+          req.followRedirects = AS_BOOL(followVal);
+        }
+      }
+      
+      // Check for SSL verification option
+      Value sslVal;
+      if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal)) {
+        if (IS_BOOL(sslVal)) {
+          req.verifySSL = AS_BOOL(sslVal);
+        }
+      }
+      
+      // Check for user agent option
+      Value uaVal;
+      if (tableGet(&options->table, copyString("user_agent", 10), &uaVal)) {
+        if (IS_STRING(uaVal)) {
+          req.userAgent = AS_CSTRING(uaVal);
+        }
+      }
+    } else if (!IS_NIL(args[2])) {
+      runtimeError("httpGet() third argument must be a hash of options or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP GET request.");
+    return NIL_VAL;
+  }
+  
+  ObjString* result = copyString(response->body ? response->body : "", 
+                                response->body ? strlen(response->body) : 0);
+  freeHttpResponse(response);
   
   return OBJ_VAL(result);
 }
 
+// Production-ready HTTP POST with full options
 static Value httpPostNative(int argCount, Value* args) {
-  if (argCount != 2) {
-    runtimeError("httpPost() takes exactly 2 arguments (%d given).", argCount);
+  if (argCount < 2 || argCount > 4) {
+    runtimeError("httpPost() takes 2-4 arguments: url, body, [headers], [options]");
     return NIL_VAL;
   }
   
-  if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
-    runtimeError("httpPost() arguments must be strings.");
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpPost() first argument must be a URL string.");
     return NIL_VAL;
   }
   
-  const char* url = AS_CSTRING(args[0]);
-  const char* data = AS_CSTRING(args[1]);
+  if (!IS_STRING(args[1])) {
+    runtimeError("httpPost() second argument must be a body string.");
+    return NIL_VAL;
+  }
   
-  char command[2048];
-  snprintf(command, sizeof(command), "curl -s -X POST -d \"%s\" \"%s\"", data, url);
+  HttpRequest req = {0};
+  req.method = "POST";
+  req.url = AS_CSTRING(args[0]);
+  req.body = AS_CSTRING(args[1]);
+  req.headers = NULL;
+  req.queryParams = NULL;
+  req.timeout = 30;
+  req.followRedirects = true;
+  req.verifySSL = true;
+  req.userAgent = "Gem-HTTP-Client/1.0";
   
-  FILE* pipe = popen(command, "r");
-  if (!pipe) {
+  // Parse optional headers (third argument)
+  if (argCount >= 3) {
+    if (IS_HASH(args[2])) {
+      req.headers = AS_HASH(args[2]);
+    } else if (!IS_NIL(args[2])) {
+      runtimeError("httpPost() third argument must be a hash of headers or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  // Parse optional options (fourth argument)
+  if (argCount >= 4) {
+    if (IS_HASH(args[3])) {
+      ObjHash* options = AS_HASH(args[3]);
+      
+      Value timeoutVal;
+      if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal)) {
+        if (IS_NUMBER(timeoutVal)) {
+          req.timeout = (int)AS_NUMBER(timeoutVal);
+        }
+      }
+      
+      Value followVal;
+      if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal)) {
+        if (IS_BOOL(followVal)) {
+          req.followRedirects = AS_BOOL(followVal);
+        }
+      }
+      
+      Value sslVal;
+      if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal)) {
+        if (IS_BOOL(sslVal)) {
+          req.verifySSL = AS_BOOL(sslVal);
+        }
+      }
+      
+      Value uaVal;
+      if (tableGet(&options->table, copyString("user_agent", 10), &uaVal)) {
+        if (IS_STRING(uaVal)) {
+          req.userAgent = AS_CSTRING(uaVal);
+        }
+      }
+    } else if (!IS_NIL(args[3])) {
+      runtimeError("httpPost() fourth argument must be a hash of options or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
     runtimeError("Failed to execute HTTP POST request.");
     return NIL_VAL;
   }
   
-  char* response = malloc(65536);
-  if (!response) {
-    pclose(pipe);
-    runtimeError("Out of memory for HTTP response.");
-    return NIL_VAL;
-  }
-  
-  size_t totalRead = 0;
-  size_t bytesRead;
-  while ((bytesRead = fread(response + totalRead, 1, 1024, pipe)) > 0) {
-    totalRead += bytesRead;
-    if (totalRead >= 65535) break;
-  }
-  response[totalRead] = '\0';
-  
-  pclose(pipe);
-  
-  ObjString* result = copyString(response, (int)totalRead);
-  free(response);
+  ObjString* result = copyString(response->body ? response->body : "", 
+                                response->body ? strlen(response->body) : 0);
+  freeHttpResponse(response);
   
   return OBJ_VAL(result);
 }
 
+// Production-ready HTTP PUT with full options
 static Value httpPutNative(int argCount, Value* args) {
-  if (argCount != 2) {
-    runtimeError("httpPut() takes exactly 2 arguments (%d given).", argCount);
-    return NIL_VAL;
-  }
-  
-  if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
-    runtimeError("httpPut() arguments must be strings.");
-    return NIL_VAL;
-  }
-  
-  const char* url = AS_CSTRING(args[0]);
-  const char* data = AS_CSTRING(args[1]);
-  
-  char command[2048];
-  snprintf(command, sizeof(command), "curl -s -X PUT -d \"%s\" \"%s\"", data, url);
-  
-  FILE* pipe = popen(command, "r");
-  if (!pipe) {
-    runtimeError("Failed to execute HTTP PUT request.");
-    return NIL_VAL;
-  }
-  
-  char* response = malloc(65536);
-  if (!response) {
-    pclose(pipe);
-    runtimeError("Out of memory for HTTP response.");
-    return NIL_VAL;
-  }
-  
-  size_t totalRead = 0;
-  size_t bytesRead;
-  while ((bytesRead = fread(response + totalRead, 1, 1024, pipe)) > 0) {
-    totalRead += bytesRead;
-    if (totalRead >= 65535) break;
-  }
-  response[totalRead] = '\0';
-  
-  pclose(pipe);
-  
-  ObjString* result = copyString(response, (int)totalRead);
-  free(response);
-  
-  return OBJ_VAL(result);
-}
-
-static Value httpDeleteNative(int argCount, Value* args) {
-  if (argCount != 1) {
-    runtimeError("httpDelete() takes exactly 1 argument (%d given).", argCount);
+  if (argCount < 2 || argCount > 4) {
+    runtimeError("httpPut() takes 2-4 arguments: url, body, [headers], [options]");
     return NIL_VAL;
   }
   
   if (!IS_STRING(args[0])) {
-    runtimeError("httpDelete() argument must be a string.");
+    runtimeError("httpPut() first argument must be a URL string.");
     return NIL_VAL;
   }
   
-  const char* url = AS_CSTRING(args[0]);
+  if (!IS_STRING(args[1])) {
+    runtimeError("httpPut() second argument must be a body string.");
+    return NIL_VAL;
+  }
   
-  char command[1024];
-  snprintf(command, sizeof(command), "curl -s -X DELETE \"%s\"", url);
+  HttpRequest req = {0};
+  req.method = "PUT";
+  req.url = AS_CSTRING(args[0]);
+  req.body = AS_CSTRING(args[1]);
+  req.headers = NULL;
+  req.queryParams = NULL;
+  req.timeout = 30;
+  req.followRedirects = true;
+  req.verifySSL = true;
+  req.userAgent = "Gem-HTTP-Client/1.0";
   
-  FILE* pipe = popen(command, "r");
-  if (!pipe) {
+  // Parse optional headers (third argument)
+  if (argCount >= 3) {
+    if (IS_HASH(args[2])) {
+      req.headers = AS_HASH(args[2]);
+    } else if (!IS_NIL(args[2])) {
+      runtimeError("httpPut() third argument must be a hash of headers or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  // Parse optional options (fourth argument)
+  if (argCount >= 4) {
+    if (IS_HASH(args[3])) {
+      ObjHash* options = AS_HASH(args[3]);
+      
+      Value timeoutVal;
+      if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal)) {
+        if (IS_NUMBER(timeoutVal)) {
+          req.timeout = (int)AS_NUMBER(timeoutVal);
+        }
+      }
+      
+      Value followVal;
+      if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal)) {
+        if (IS_BOOL(followVal)) {
+          req.followRedirects = AS_BOOL(followVal);
+        }
+      }
+      
+      Value sslVal;
+      if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal)) {
+        if (IS_BOOL(sslVal)) {
+          req.verifySSL = AS_BOOL(sslVal);
+        }
+      }
+      
+      Value uaVal;
+      if (tableGet(&options->table, copyString("user_agent", 10), &uaVal)) {
+        if (IS_STRING(uaVal)) {
+          req.userAgent = AS_CSTRING(uaVal);
+        }
+      }
+    } else if (!IS_NIL(args[3])) {
+      runtimeError("httpPut() fourth argument must be a hash of options or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP PUT request.");
+    return NIL_VAL;
+  }
+  
+  ObjString* result = copyString(response->body ? response->body : "", 
+                                response->body ? strlen(response->body) : 0);
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(result);
+}
+
+// Production-ready HTTP DELETE with full options
+static Value httpDeleteNative(int argCount, Value* args) {
+  if (argCount < 1 || argCount > 3) {
+    runtimeError("httpDelete() takes 1-3 arguments: url, [headers], [options]");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpDelete() first argument must be a URL string.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "DELETE";
+  req.url = AS_CSTRING(args[0]);
+  req.body = NULL;
+  req.headers = NULL;
+  req.queryParams = NULL;
+  req.timeout = 30;
+  req.followRedirects = true;
+  req.verifySSL = true;
+  req.userAgent = "Gem-HTTP-Client/1.0";
+  
+  // Parse optional headers (second argument)
+  if (argCount >= 2) {
+    if (IS_HASH(args[1])) {
+      req.headers = AS_HASH(args[1]);
+    } else if (!IS_NIL(args[1])) {
+      runtimeError("httpDelete() second argument must be a hash of headers or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  // Parse optional options (third argument)
+  if (argCount >= 3) {
+    if (IS_HASH(args[2])) {
+      ObjHash* options = AS_HASH(args[2]);
+      
+      Value timeoutVal;
+      if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal)) {
+        if (IS_NUMBER(timeoutVal)) {
+          req.timeout = (int)AS_NUMBER(timeoutVal);
+        }
+      }
+      
+      Value followVal;
+      if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal)) {
+        if (IS_BOOL(followVal)) {
+          req.followRedirects = AS_BOOL(followVal);
+        }
+      }
+      
+      Value sslVal;
+      if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal)) {
+        if (IS_BOOL(sslVal)) {
+          req.verifySSL = AS_BOOL(sslVal);
+        }
+      }
+      
+      Value uaVal;
+      if (tableGet(&options->table, copyString("user_agent", 10), &uaVal)) {
+        if (IS_STRING(uaVal)) {
+          req.userAgent = AS_CSTRING(uaVal);
+        }
+      }
+    } else if (!IS_NIL(args[2])) {
+      runtimeError("httpDelete() third argument must be a hash of options or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
     runtimeError("Failed to execute HTTP DELETE request.");
     return NIL_VAL;
   }
   
-  char* response = malloc(65536);
-  if (!response) {
-    pclose(pipe);
-    runtimeError("Out of memory for HTTP response.");
+  ObjString* result = copyString(response->body ? response->body : "", 
+                                response->body ? strlen(response->body) : 0);
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(result);
+}
+
+// Advanced HTTP request function that returns detailed response information
+static Value httpRequestNative(int argCount, Value* args) {
+  if (argCount != 1) {
+    runtimeError("httpRequest() takes exactly 1 argument: options hash");
     return NIL_VAL;
   }
   
-  size_t totalRead = 0;
-  size_t bytesRead;
-  while ((bytesRead = fread(response + totalRead, 1, 1024, pipe)) > 0) {
-    totalRead += bytesRead;
-    if (totalRead >= 65535) break;
+  if (!IS_HASH(args[0])) {
+    runtimeError("httpRequest() argument must be a hash of options.");
+    return NIL_VAL;
   }
-  response[totalRead] = '\0';
   
-  pclose(pipe);
+  ObjHash* options = AS_HASH(args[0]);
+  HttpRequest req = {0};
   
-  ObjString* result = copyString(response, (int)totalRead);
-  free(response);
+  // Required: method
+  Value methodVal;
+  if (!tableGet(&options->table, copyString("method", 6), &methodVal) || !IS_STRING(methodVal)) {
+    runtimeError("httpRequest() requires 'method' option as string.");
+    return NIL_VAL;
+  }
+  req.method = AS_CSTRING(methodVal);
   
-  return OBJ_VAL(result);
+  // Required: url
+  Value urlVal;
+  if (!tableGet(&options->table, copyString("url", 3), &urlVal) || !IS_STRING(urlVal)) {
+    runtimeError("httpRequest() requires 'url' option as string.");
+    return NIL_VAL;
+  }
+  req.url = AS_CSTRING(urlVal);
+  
+  // Optional: body
+  Value bodyVal;
+  if (tableGet(&options->table, copyString("body", 4), &bodyVal) && IS_STRING(bodyVal)) {
+    req.body = AS_CSTRING(bodyVal);
+  }
+  
+  // Optional: headers
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Optional: query parameters
+  Value queryVal;
+  if (tableGet(&options->table, copyString("query", 5), &queryVal) && IS_HASH(queryVal)) {
+    req.queryParams = AS_HASH(queryVal);
+  }
+  
+  // Optional: timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  // Optional: follow_redirects (default true)
+  req.followRedirects = true;
+  Value followVal;
+  if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal) && IS_BOOL(followVal)) {
+    req.followRedirects = AS_BOOL(followVal);
+  }
+  
+  // Optional: verify_ssl (default true)
+  req.verifySSL = true;
+  Value sslVal;
+  if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal) && IS_BOOL(sslVal)) {
+    req.verifySSL = AS_BOOL(sslVal);
+  }
+  
+  // Optional: user_agent
+  req.userAgent = "Gem-HTTP-Client/1.0";
+  Value uaVal;
+  if (tableGet(&options->table, copyString("user_agent", 10), &uaVal) && IS_STRING(uaVal)) {
+    req.userAgent = AS_CSTRING(uaVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP request.");
+    return NIL_VAL;
+  }
+  
+  // Return detailed response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
 }
 //< HTTP Native Functions
 
@@ -361,6 +965,7 @@ void initVM() {
   defineNative("httpPost", httpPostNative);
   defineNative("httpPut", httpPutNative);
   defineNative("httpDelete", httpDeleteNative);
+  defineNative("httpRequest", httpRequestNative);
 //< HTTP Native Functions define
 //> Initialize Compiler Tables
   initCompilerTables();

@@ -1,0 +1,28 @@
+require "http"
+
+puts "=== Simple HTTP Type Test ===";
+
+# Test each function individually
+puts "Testing GET...";
+string getResult = HTTP.get("https://httpbin.org/get");
+puts "GET works";
+
+puts "Testing POST...";
+string postResult = HTTP.post("https://httpbin.org/post", "test");
+puts "POST works";
+
+puts "Testing PUT...";
+string putResult = HTTP.put("https://httpbin.org/put", "test");
+puts "PUT works";
+
+puts "Testing DELETE...";
+string deleteResult = HTTP.delete("https://httpbin.org/delete");
+puts "DELETE works";
+
+# Test string concatenation
+puts "Testing string concatenation...";
+string base = "https://httpbin.org";
+string endpoint = base + "/get";
+puts "String concatenation works";
+
+puts "=== All tests passed ==="; 

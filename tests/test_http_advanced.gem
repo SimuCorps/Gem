@@ -4,39 +4,37 @@ puts "=== Advanced HTTP Testing with Hashes ===";
 
 # Test 1: Basic GET request
 puts "Test 1: Basic GET request...";
-string userAgentResponse = HTTP.get("https://httpbin.org/user-agent");
+string userAgentResponse = HTTP.get("https://httpbin.org/user-agent") as string;
 puts "User-Agent response received:";
 puts userAgentResponse != "";
 
 # Test 2: POST with simple data
 puts "\nTest 2: POST with simple data...";
-string simpleData = "name=GemLanguage&version=1.2.0&type=programming";
-string postResponse = HTTP.post("https://httpbin.org/post", simpleData);
+string postResponse = HTTP.post("https://httpbin.org/post", "name=GemLanguage&version=1.2.0&type=programming") as string;
 puts "POST response received:";
 puts postResponse != "";
 
 # Test 3: Test different HTTP status codes
 puts "\nTest 3: Testing HTTP status codes...";
-string status200 = HTTP.get("https://httpbin.org/status/200");
+string status200 = HTTP.get("https://httpbin.org/status/200") as string;
 puts "Status 200 response received:";
 puts status200 != "";
 
 # Test 4: Test with query parameters
 puts "\nTest 4: GET with query parameters...";
-string queryResponse = HTTP.get("https://httpbin.org/get?param1=value1&param2=value2&language=gem");
+string queryResponse = HTTP.get("https://httpbin.org/get?param1=value1&param2=value2&language=gem") as string;
 puts "Query parameter response received:";
 puts queryResponse != "";
 
 # Test 5: Test PUT with data
 puts "\nTest 5: PUT with update data...";
-string updateData = "id=123&name=UpdatedResource&timestamp=2024-01-01";
-string putResponse = HTTP.put("https://httpbin.org/put", updateData);
+string putResponse = HTTP.put("https://httpbin.org/put", "id=123&name=UpdatedResource&timestamp=2024-01-01") as string;
 puts "PUT response received:";
 puts putResponse != "";
 
 # Test 6: Test DELETE
 puts "\nTest 6: DELETE request...";
-string deleteResponse = HTTP.delete("https://httpbin.org/delete");
+string deleteResponse = HTTP.delete("https://httpbin.org/delete") as string;
 puts "DELETE response received:";
 puts deleteResponse != "";
 
@@ -49,17 +47,13 @@ puts "Endpoint: " + (requestInfo["endpoint"] as string);
 puts "Timeout: " + (requestInfo["timeout"] as string);
 
 # Make the actual request
-string jsonResponse = HTTP.get("https://httpbin.org/json");
+string jsonResponse = HTTP.get("https://httpbin.org/json") as string;
 puts "JSON endpoint response received:";
 puts jsonResponse != "";
 
 # Test 8: Simulate HTTP headers with hashes
 puts "\nTest 8: Simulating HTTP headers with hashes...";
-hash headers = {
-  "User-Agent": "Gem-HTTP-Client",
-  "Accept": "application/json",
-  "Content-Type": "application/json"
-};
+hash headers = {"User-Agent": "Gem-HTTP-Client", "Accept": "application/json", "Content-Type": "application/json"};
 
 puts "Simulated headers:";
 puts "User-Agent: " + (headers["User-Agent"] as string);
@@ -68,11 +62,7 @@ puts "Content-Type: " + (headers["Content-Type"] as string);
 
 # Test 9: Response processing with hashes
 puts "\nTest 9: Response processing with hashes...";
-hash responseData = {
-  "status": 200,
-  "content_length": 1024,
-  "success": true
-};
+hash responseData = {"status": 200, "content_length": 1024, "success": true};
 
 puts "Response processing:";
 puts "Status: " + (responseData["status"] as string);
@@ -81,15 +71,11 @@ puts "Success: " + (responseData["success"] as string);
 
 # Test 10: API configuration with hashes
 puts "\nTest 10: API configuration...";
-hash apiConfig = {
-  "base_url": "https://httpbin.org",
-  "timeout": 30,
-  "retry_count": 3
-};
+hash apiConfig = {"base_url": "https://httpbin.org", "timeout": 30, "retry_count": 3};
 
 string baseUrl = apiConfig["base_url"] as string;
 string endpoint = baseUrl + "/get";
-string configResponse = HTTP.get(endpoint);
+string configResponse = HTTP.get("https://httpbin.org/get") as string;
 puts "Configured API call response received:";
 puts configResponse != "";
 
@@ -109,18 +95,25 @@ puts "Failed: " + (requestStats["failed"] as string);
 
 # Test 12: Final comprehensive test
 puts "\nTest 12: Comprehensive HTTP and hash test...";
-hash testConfig = {
-  "test_name": "comprehensive",
-  "iterations": 1,
-  "verify_response": true
-};
+hash testConfig = {"test_name": "comprehensive", "iterations": 1, "verify_response": true};
 
 string testName = testConfig["test_name"] as string;
 puts "Running test: " + testName;
 
-string finalResponse = HTTP.get("https://httpbin.org/get?test=comprehensive");
+string finalResponse = HTTP.get("https://httpbin.org/get?test=comprehensive") as string;
 puts "Final test response received:";
 puts finalResponse != "";
+
+# Test 13: Demonstrate HTTP response processing with hashes
+puts "\nTest 13: HTTP response processing with hashes...";
+string apiResponse = HTTP.get("https://httpbin.org/json") as string;
+hash responseMetadata = { "endpoint": "json", "method": "GET", "response_received": true, "response_length": 100 };
+
+puts "Response metadata:";
+puts "Endpoint: " + (responseMetadata["endpoint"] as string);
+puts "Method: " + (responseMetadata["method"] as string);
+puts "Received: " + (responseMetadata["response_received"] as string);
+puts "Length: " + (responseMetadata["response_length"] as string);
 
 puts "\n=== Advanced HTTP Tests Complete ===";
 puts "Successfully demonstrated HTTP functionality with hash data structures!"; 

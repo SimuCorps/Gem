@@ -1,0 +1,18 @@
+require "http"
+
+puts "=== Advanced HTTP Testing with Hashes ===";
+
+# Test 1: Basic GET request
+puts "Test 1: Basic GET request...";
+string userAgentResponse = HTTP.get("https://httpbin.org/user-agent");
+puts "User-Agent response received:";
+puts userAgentResponse != "";
+
+# Test 2: POST with simple data
+puts "Test 2: POST with simple data...";
+string data = "test";
+string postResponse = HTTP.post("https://httpbin.org/post", data);
+puts "POST response received:";
+puts postResponse != "";
+
+puts "=== Partial test complete ==="; 
