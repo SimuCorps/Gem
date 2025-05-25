@@ -35,6 +35,7 @@
                     <nav class="docs-nav">
                         <h3>Changeblog</h3>
                         <ul>
+                            <li><a href="#v1-2-0">Version 1.2.0</a></li>
                             <li><a href="#v1-1-0">Version 1.1.0</a></li>
                             <li><a href="#v1-0-0">Version 1.0.0</a></li>
                         </ul>
@@ -46,6 +47,48 @@
                         <h1>Gem Changeblog</h1>
                         <p class="docs-subtitle">The story behind Gem's evolution and design decisions</p>
                     </header>
+
+                    <section id="v1-2-0" class="docs-section">
+                        <h2>Version 1.2.0 - Small Friendliness Tweaks</h2>
+                        <p class="version-date"><em>Released: TBD</em></p>
+                        
+                        <!-- <h3>The Twitter Moment</h3> -->
+                        <!-- <p>Sometimes the best features come from unexpected places. Version 1.1.0 was born from a simple Twitter interaction between <a href="https://twitter.com/Dishpit" target="_blank">@Dishpit</a> and <a href="https://twitter.com/null_enigma" target="_blank">@null_enigma</a> regarding <a href="https://twitter.com/null_enigma/status/1926497849996460355">semicolon preferences</a>.</p> -->
+                        
+                        <!-- <p>The brief exchange highlighted something important: developers should have the freedom to choose their preferred syntax style (within reason). Some love the explicit nature of semicolons, while others prefer the clean look of newline-terminated statements. Why force a choice when you can support both?</p> -->
+
+                        <!-- <h3>What Changed</h3> -->
+                        <!-- <p>Gem now supports <strong>optional semicolons</strong>. You can write code in whatever style feels natural:</p> -->
+
+                        <!-- <div class="code-block">
+                            <pre><code># Modern style - clean and minimal
+string name = "Alice"
+int age = 30
+puts "Hello, " + name
+
+# Traditional style - explicit and familiar  
+string name = "Alice";
+int age = 30;
+puts "Hello, " + name;
+
+# Mixed style - use what feels right
+string name = "Alice"
+int age = 30;
+puts "Hello, " + name</code></pre>
+                        </div> -->
+
+                        <!-- <h3>Technical Implementation</h3>
+                        <p>This wasn't just a simple parser change. We carefully implemented newline handling to ensure:</p>
+                        <ul>
+                            <li><strong>Backward compatibility</strong> - All existing Gem code continues to work</li>
+                            <li><strong>Clear semantics</strong> - No ambiguity about statement boundaries</li>
+                            <li><strong>Inline statements</strong> - Semicolons are still required for multiple statements on one line</li>
+                            <li><strong>Consistent behavior</strong> - The same rules apply everywhere in the language</li>
+                        </ul> -->
+
+                        <!-- <h3>Design Philosophy</h3>
+                        <p>This change reflects Gem's core philosophy: <em>developer happiness without sacrificing safety</em>. We believe that syntax should serve the programmer, not the other way around. By making semicolons optional, we're giving developers the freedom to express themselves while maintaining all of Gem's safety guarantees.</p> -->
+                    </section>
 
                     <section id="v1-1-0" class="docs-section">
                         <h2>Version 1.1.0 - Optional Semicolons</h2>
@@ -148,7 +191,7 @@ string greeting = "Hello"
             <div class="footer-content">
                 <div class="footer-brand">
                     <span class="gem-icon">💎</span>
-                    <span>Gem Programming Language v1.1.0</span>
+                    <span>Gem Programming Language v1.2.0</span>
                 </div>
                 <div class="footer-links">
                     <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>
