@@ -72,7 +72,7 @@ string? nickname = nil       # Nullable
 
 # Functions with type safety
 def greet(string name, int age) string
-    return "Hello " + name + ", age " + age
+    return "Hello #{name}, age #{age}"
 end
 
 # Classes with inheritance
@@ -82,7 +82,7 @@ class Person
     end
     
     def introduce() string
-        return "I'm " + this.name
+        return "I'm #{this.name}"
     end
 end
 
