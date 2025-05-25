@@ -237,13 +237,13 @@ calculateStats(10, 20, 30);</code></pre>
                         <div class="code-block">
                             <pre><code># Basic string operations using built-in concatenation
 def createGreeting(string name) string
-    return "Hello, " + name + "!";
+    return "Hello, #{name}!";
 end
 
 def createBanner(string message) string
     string border = "===================";
-    string spacedMessage = " " + message + " ";
-    return border + spacedMessage + border;
+    string spacedMessage = " #{message} ";
+    return "#{border}#{spacedMessage}#{border}";
 end
 
 # Usage

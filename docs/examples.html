@@ -372,7 +372,7 @@ int maximum = Math.max(10, 20);   # 20</code></pre>
                             <pre><code># utils.gem - Custom utility module
 module Utils
     def formatCurrency(int amount) string
-        return "$" + amount + ".00";
+        return "$#{amount}.00";
     end
     
     def isEven(int number) bool
