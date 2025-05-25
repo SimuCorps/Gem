@@ -98,7 +98,7 @@ run_category() {
             tests=("test_mut_comprehensive.gem" "test_mut_errors.gem" "test_mut_keyword.gem")
             ;;
         "advanced")
-            tests=("test_memory_safety.gem" "test_type_safety.gem" "test_jit_compilation.gem" "test_hashes.gem" "test_type_coercion.gem" "test_http.gem")
+            tests=("test_memory_safety.gem" "test_type_safety.gem" "test_jit_compilation.gem" "test_hashes.gem" "test_type_coercion.gem" "test_http.gem" "test_http_advanced.gem")
             ;;
         *)
             print_colored "$RED" "❌ Unknown category: $category"

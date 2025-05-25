@@ -154,7 +154,8 @@ main() {
         "test_jit_compilation.gem" \
         "test_hashes.gem" \
         "test_type_coercion.gem" \
-        "test_http.gem"
+        "test_http.gem" \
+        "test_http_advanced.gem"
     
     # Final Summary
     print_status "$CYAN" "\n🏁 Test Suite Complete!"

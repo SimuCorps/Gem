@@ -1,9 +1,0 @@
-require "http"
-
-puts "Testing HTTP module...";
-
-# Try assignment with explicit string type
-string result = HTTP.get("https://httpbin.org/get");
-
-puts "HTTP.get call completed";
-puts result != ""; 
