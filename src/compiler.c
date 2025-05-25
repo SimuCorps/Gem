@@ -1238,8 +1238,8 @@ static void namedVariable(Token name, bool canAssign) {
       }
       
       ReturnType expressionType = inferExpressionType();
-      if (!typesEqual(local->type, TYPE_VOID) && // Allow assignments to untyped vars (from old 'var' declarations)
-          !typesEqual(expressionType, TYPE_VOID) && // Allow conservative inference 
+      if (!typesEqual(local->type, TYPE_VOID) && // Allow assignments to untyped variables
+          !typesEqual(expressionType, TYPE_VOID) && // Allow conservative inference
           !isAssignmentCompatible(local->type, expressionType)) {
         error("Cannot assign value of incompatible type to variable.");
       }
@@ -1551,7 +1551,6 @@ ParseRule rules[] = {
 //> Types of Values table-true
   [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
 //< Types of Values table-true
-  [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
@@ -1842,20 +1841,6 @@ static void moduleDeclaration() {
 }
 //< Module System module-declaration
 
-//> Global Variables var-declaration
-static void varDeclaration() {
-  uint16_t global = parseVariable("Expect variable name.");
-
-  if (match(TOKEN_EQUAL)) {
-    expression();
-  } else {
-    emitByte(OP_NIL);
-  }
-  consumeStatementTerminator("Expect ';' or newline after variable declaration.");
-
-  defineVariable(global);
-}
-//< Global Variables var-declaration
 
 //> Global Variables expression-statement
 static void expressionStatement() {
@@ -1872,8 +1857,6 @@ static void forStatement() {
   
   if (match(TOKEN_SEMICOLON)) {
     // No initializer.
-  } else if (match(TOKEN_VAR)) {
-    varDeclaration();
   } else if (match(TOKEN_MUT)) {
     mutVarDeclaration();
   } else if (match(TOKEN_RETURNTYPE_INT) || match(TOKEN_RETURNTYPE_STRING) || match(TOKEN_RETURNTYPE_BOOL) ||
@@ -2818,7 +2801,6 @@ static void synchronize() {
       case TOKEN_MODULE:
       case TOKEN_DEF:
       case TOKEN_FUN:
-      case TOKEN_VAR:
       case TOKEN_MUT:
       case TOKEN_RETURNTYPE_INT:
       case TOKEN_RETURNTYPE_STRING:
@@ -2862,8 +2844,6 @@ static void declaration() {
     defDeclaration();
   } else if (match(TOKEN_FUN)) {
     defDeclaration();
-  } else if (match(TOKEN_VAR)) {
-    varDeclaration();
   } else if (match(TOKEN_MUT)) {
     mutVarDeclaration();
   } else if (match(TOKEN_RETURNTYPE_INT) || match(TOKEN_RETURNTYPE_STRING) || 
