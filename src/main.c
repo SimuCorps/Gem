@@ -18,6 +18,9 @@
 //> JIT Integration main-include-jit
 #include "jit.h"
 //< JIT Integration main-include-jit
+//> Line editing support
+#include "lineedit.h"
+//< Line editing support
 
 //> JIT Integration command line parsing
 static void printUsage() {
@@ -39,17 +42,52 @@ static bool enterReplAfterScript = false;
 //> Scanning on Demand repl
 
 static void repl() {
-  char line[1024];
+  // Initialize line editing
+  if (!initLineEdit()) {
+    fprintf(stderr, "Warning: Could not initialize line editing, using basic input\n");
+  }
+  
+  // Try to load history from home directory
+  char* home = getenv("HOME");
+  char historyPath[1024];
+  if (home) {
+    snprintf(historyPath, sizeof(historyPath), "%s/.gem_history", home);
+    loadHistory(historyPath);
+  }
+  
+  printf("Gem REPL v1.2.0 - Use Ctrl+C or Ctrl+D to exit\n");
+  printf("Arrow keys for history, Ctrl+A/E for line start/end, Ctrl+K/U for kill line\n\n");
+  
   for (;;) {
-    printf("> ");
-
-    if (!fgets(line, sizeof(line), stdin)) {
-      printf("\n");
+    char* line = readLine("> ");
+    
+    if (!line) {
+      // EOF or Ctrl+C
+      printf("\nGoodbye!\n");
       break;
     }
-
+    
+    // Skip empty lines
+    if (strlen(line) == 0) {
+      free(line);
+      continue;
+    }
+    
+    // Add to history
+    addHistory(line);
+    
+    // Interpret the line
     interpret(line);
+    
+    free(line);
   }
+  
+  // Save history before exiting
+  if (home) {
+    saveHistory(historyPath);
+  }
+  
+  cleanupLineEdit();
 }
 //< Scanning on Demand repl
 //> Scanning on Demand read-file
