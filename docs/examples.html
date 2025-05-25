@@ -83,16 +83,22 @@ int age = 25
 string name = "Alice"
 bool isActive = true
 
-# Mutable variables (with ! suffix)
-int! counter = 0
-string! message = "Hello"
+# Mutable variables (recommended syntax)
+mut int counter = 0
+mut string message = "Hello"
 
-# Nullable variables (with ? suffix)
+# Mutable variables (alternative syntax with ! suffix)
+int! altCounter = 0
+string! altMessage = "Hello"
+
+# Nullable variables
 string? optionalName = nil
-int? optionalAge = nil
 
-# Combined: mutable and nullable
-string?! mutableOptional = nil</code></pre>
+# Combined: mutable and nullable (recommended)
+mut string? mutableOptional = nil
+
+# Combined: mutable and nullable (alternative)
+string?! altMutableOptional = nil</code></pre>
                         </div>
 
                         <h3>Control Flow</h3>
@@ -107,12 +113,18 @@ end
 # Ternary operator
 string status = age >= 18 ? "Adult" : "Minor"
 
-# Loops
-for (int! i = 0; i < 10; i = i + 1)
+# For loops with mutable variables (recommended syntax)
+for (mut int i = 0; i < 10; i = i + 1)
     puts i
 end
 
-int! count = 0
+# For loops with mutable variables (alternative syntax)
+for (int! j = 0; j < 10; j = j + 1)
+    puts j
+end
+
+# While loops
+mut int count = 0
 while (count < 5)
     puts "Count: " + count
     count = count + 1
@@ -127,12 +139,16 @@ end</code></pre>
                         <h3>Immutability by Default</h3>
                         <div class="code-block">
                             <pre><code># Immutable variables cannot be reassigned
-string greeting = "Hello";
+string greeting = "Hello"
 # greeting = "Hi";  # ❌ Compile error!
 
-# Mutable variables can be reassigned
-string! mutableGreeting = "Hello";
+# Mutable variables can be reassigned (recommended syntax)
+mut string mutableGreeting = "Hello";
 mutableGreeting = "Hi";  # ✅ Valid
+
+# Mutable variables can be reassigned (alternative syntax)
+string! altMutableGreeting = "Hello";
+altMutableGreeting = "Hi";  # ✅ Valid
 
 # Function parameters are immutable by default
 def processName(string name) string

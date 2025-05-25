@@ -154,22 +154,27 @@ obj                        # Object type for class instances</code></pre>
                         </div>
 
                         <h3>Type Modifiers</h3>
-                        <p>Gem uses suffix modifiers to control mutability and nullability:</p>
+                        <p>Gem uses the <code>mut</code> keyword and suffix modifiers to control mutability and nullability:</p>
 
                         <div class="code-block">
-                            <pre><code># Mutability modifier (!)
-string! mutableText = "Can change";    # Mutable variable
-mutableText = "Changed!";              # ✅ Valid
+                            <pre><code># Mutability with 'mut' keyword (recommended)
+mut string mutableText = "Can change";     # Mutable variable
+mutableText = "Changed!";                  # ✅ Valid
+
+# Mutability with '!' suffix (syntactic sugar)
+string! alsoMutable = "Can change";        # Alternative syntax
+alsoMutable = "Changed!";                  # ✅ Valid
 
 # Nullability modifier (?)
-string? optionalText = nil;            # Can be nil
-optionalText = "Some text";            # ✅ Valid
-optionalText = nil;                    # ✅ Valid
+string? optionalText = nil;                # Can be nil
+optionalText = "Some text";                # ✅ Valid
+optionalText = nil;                        # ✅ Valid
 
-# Combined modifiers (?!)
-string?! mutableOptional = nil;        # Mutable and nullable
-mutableOptional = "Text";              # ✅ Valid
-mutableOptional = nil;                 # ✅ Valid</code></pre>
+# Combined: mutable and nullable
+mut string? mutableOptional = nil;         # Recommended syntax
+string?! alsoMutableOptional = nil;        # Alternative syntax
+mutableOptional = "Text";                  # ✅ Valid
+mutableOptional = nil;                     # ✅ Valid</code></pre>
                         </div>
 
                         <h3>Type Safety Rules</h3>
@@ -188,11 +193,15 @@ mutableOptional = nil;                 # ✅ Valid</code></pre>
 
                         <h3>Declaration Syntax</h3>
                         <div class="code-block">
-                            <pre><code># Basic syntax: type[modifiers] name = value;
-int age = 25;                    # Immutable integer
-string! name = "Alice";          # Mutable string
-bool? isActive = nil;            # Nullable boolean
-string?! status = "pending";     # Mutable and nullable</code></pre>
+                            <pre><code># Recommended syntax with 'mut' keyword
+int age = 25;                        # Immutable integer
+mut string name = "Alice";           # Mutable string
+bool? isActive = nil;                # Nullable boolean
+mut string? status = "pending";      # Mutable and nullable
+
+# Alternative syntax with '!' suffix (syntactic sugar)
+string! altName = "Bob";             # Mutable string (alternative)
+string?! altStatus = "active";       # Mutable and nullable (alternative)</code></pre>
                         </div>
 
                         <h3>Scope Rules</h3>
@@ -216,9 +225,13 @@ puts x;  # ✅ Valid: x is still in scope
 string greeting = "Hello";
 # greeting = "Hi";  # ❌ Error: Cannot modify immutable variable
 
-# Mutable variables
-string! mutableGreeting = "Hello";
+# Mutable variables (recommended syntax)
+mut string mutableGreeting = "Hello";
 mutableGreeting = "Hi";  # ✅ Valid: Variable is mutable
+
+# Mutable variables (alternative syntax with '!' suffix)
+string! altMutableGreeting = "Hello";
+altMutableGreeting = "Hi";  # ✅ Valid: Variable is mutable
 
 # Function parameters are immutable by default
 def processText(string text) string
@@ -259,10 +272,23 @@ end</code></pre>
                         <div class="code-block">
                             <pre><code># Parameters with different modifiers
 def processData(
-    string data,           # Immutable parameter
-    string! buffer,        # Mutable parameter
-    string? optional,      # Nullable parameter
-    string?! mutableOpt    # Mutable and nullable
+    string data,               # Immutable parameter
+    mut string buffer,         # Mutable parameter (recommended)
+    string? optional,          # Nullable parameter
+    mut string? mutableOpt     # Mutable and nullable (recommended)
+) string
+    if (optional != nil)
+        buffer = buffer + optional;
+    end
+    return buffer + data;
+end
+
+# Alternative syntax with '!' suffix
+def processDataAlt(
+    string data,               # Immutable parameter
+    string! buffer,            # Mutable parameter (alternative)
+    string? optional,          # Nullable parameter
+    string?! mutableOpt        # Mutable and nullable (alternative)
 ) string
     if (optional != nil)
         buffer = buffer + optional;
