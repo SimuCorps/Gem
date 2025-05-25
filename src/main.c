@@ -27,11 +27,13 @@ static void printUsage() {
   fprintf(stderr, "  --jit-stats         Print JIT statistics at exit\n");
   fprintf(stderr, "  --jit-threshold N   Set function compilation threshold (default: 100)\n");
   fprintf(stderr, "  --jit-loop-threshold N Set loop compilation threshold (default: 50)\n");
+  fprintf(stderr, "  --repl              Enter REPL after executing script\n");
   fprintf(stderr, "  --help              Show this help message\n");
 }
 
 // Global flags for JIT control
 static bool showJitStats = false;
+static bool enterReplAfterScript = false;
 //< JIT Integration command line parsing
 
 //> Scanning on Demand repl
@@ -107,6 +109,8 @@ int main(int argc, const char* argv[]) {
       // Disable JIT - we'll do this after initVM()
     } else if (strcmp(argv[i], "--jit-stats") == 0) {
       showJitStats = true;
+    } else if (strcmp(argv[i], "--repl") == 0) {
+      enterReplAfterScript = true;
     } else if (strcmp(argv[i], "--jit-threshold") == 0) {
       if (i + 1 >= argc) {
         fprintf(stderr, "Error: --jit-threshold requires a number\n");
@@ -160,6 +164,10 @@ int main(int argc, const char* argv[]) {
     repl();
   } else {
     runFile(scriptPath);
+    if (enterReplAfterScript) {
+      printf("Script executed. Entering interactive mode...\n");
+      repl();
+    }
   }
   
 //> JIT Integration print stats
