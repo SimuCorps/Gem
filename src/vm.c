@@ -12,7 +12,7 @@
 //< Calls and Functions vm-include-time
 #include <math.h>
 #include <stdlib.h>
-
+#include <limits.h>
 //< vm-include-stdio
 
 // Define this before including vm.h to prevent macro redefinition
@@ -43,6 +43,7 @@
 
 //> Forward declarations
 static Value peek(int distance);
+static int formatNumber(char* buffer, size_t bufferSize, double number);
 //< Forward declarations
 
 // Computed goto optimization detection
@@ -1264,13 +1265,13 @@ void initVM() {
   cachedRecursiveFunction = NULL;
 //< Initialize Closure Cache
 //> JIT Integration init
-  // initJIT(); // Disabled - pure overhead without actual JIT execution
+  initJIT(); // Enable JIT compilation
 //< JIT Integration init
 }
 
 void freeVM() {
 //> JIT Integration free
-  // freeJIT(); // Disabled - pure overhead without actual JIT execution
+  freeJIT(); // Enable JIT cleanup
 //< JIT Integration free
 #if !FAST_STACK_ENABLED
 //> Free dynamic stack
@@ -1360,46 +1361,44 @@ static bool call(ObjFunction* function, int argCount) {
 //> Calls and Functions call
 //> Closures call-signature
 static bool call(ObjClosure* closure, int argCount) {
-//< Closures call-signature
-/* Calls and Functions check-arity < Closures check-arity
-  if (argCount != function->arity) {
-    runtimeError("Expected %d arguments but got %d.",
-        function->arity, argCount);
-*/
-//> Closures check-arity
-#if !OPTIMIZE_SKIP_TYPE_CHECKS
-  if (argCount != closure->function->arity) {
-    runtimeError("Expected %d arguments but got %d.",
-        closure->function->arity, argCount);
-//< Closures check-arity
-//> check-arity
-    return false;
+  // In a statically typed language, arity and stack overflow should be checked at compile time
+  // These runtime checks are removed for maximum performance
+  
+  // Track function calls for JIT compilation
+  trackHotSpot(closure->function->chunk.code, true);
+  
+  // Check if we should compile this function
+  if (shouldCompile(closure->function->chunk.code)) {
+    JitFunction* jitFunc = compileFunction(closure);
+    // Removed debug output for performance
   }
-#endif
-
-//< check-arity
-
-//> check-overflow
-#if !OPTIMIZE_SKIP_TYPE_CHECKS
-  if (vm.frameCount == FRAMES_MAX) {
-    runtimeError("Stack overflow.");
-    return false;
-  }
-#endif
-
-//< check-overflow
-  {
+  
+  // Check if we have a compiled version and should execute it
+  JitFunction* jitFunc = findCompiledFunction(closure->function->chunk.code);
+  if (jitFunc != NULL) {
+    // Set up frame for JIT execution
     CallFrame* frame = &vm.frames[vm.frameCount++];
-/* Calls and Functions call < Closures call-init-closure
-  frame->function = function;
-  frame->ip = function->chunk.code;
-*/
-//> Closures call-init-closure
     frame->closure = closure;
     frame->ip = closure->function->chunk.code;
-//< Closures call-init-closure
     frame->slots = vm.stackTop - argCount - 1;
+    
+    // Execute JIT compiled function
+    InterpretResult result = executeJitFunction(jitFunc, &vm, frame);
+    if (result == INTERPRET_OK) {
+      // JIT execution successful, adjust frame count
+      vm.frameCount--;
+      return true;
+    } else {
+      // JIT execution failed, fall back to interpreter
+      vm.frameCount--;
+      // Removed debug output for performance
+    }
   }
+  
+  CallFrame* frame = &vm.frames[vm.frameCount++];
+  frame->closure = closure;
+  frame->ip = closure->function->chunk.code;
+  frame->slots = vm.stackTop - argCount - 1;
   return true;
 }
 //< Calls and Functions call
@@ -2078,24 +2077,9 @@ op_less: {
 
 op_add: {
   TRACE();
-#if OPTIMIZE_SKIP_TYPE_CHECKS
-  // In optimized mode, compiler should emit specific opcodes instead of generic OP_ADD
-  runtimeError("Generic OP_ADD used in optimized mode - compiler error.");
+  // Generic OP_ADD should never be emitted by the optimized compiler
+  runtimeError("Generic OP_ADD used - compiler error. Use OP_ADD_NUMBER or OP_ADD_STRING.");
   return INTERPRET_RUNTIME_ERROR;
-#else
-  if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
-    concatenate();
-  } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
-    double b = AS_NUMBER(pop());
-    double a = AS_NUMBER(pop());
-    push(NUMBER_VAL(a + b));
-  } else {
-    runtimeError(
-        "Operands must be two numbers or two strings.");
-    return INTERPRET_RUNTIME_ERROR;
-  }
-#endif
-  DISPATCH();
 }
 
 op_add_number: {
@@ -2121,8 +2105,9 @@ op_add_string: {
 
 op_subtract: {
   TRACE();
-  BINARY_OP(NUMBER_VAL, -);
-  DISPATCH();
+  // Generic OP_SUBTRACT should never be emitted by the optimized compiler
+  runtimeError("Generic OP_SUBTRACT used - compiler error. Use OP_SUBTRACT_NUMBER.");
+  return INTERPRET_RUNTIME_ERROR;
 }
 
 op_subtract_number: {
@@ -2141,8 +2126,9 @@ op_subtract_number: {
 
 op_multiply: {
   TRACE();
-  BINARY_OP(NUMBER_VAL, *);
-  DISPATCH();
+  // Generic OP_MULTIPLY should never be emitted by the optimized compiler
+  runtimeError("Generic OP_MULTIPLY used - compiler error. Use OP_MULTIPLY_NUMBER.");
+  return INTERPRET_RUNTIME_ERROR;
 }
 
 op_multiply_number: {
@@ -2161,8 +2147,9 @@ op_multiply_number: {
 
 op_divide: {
   TRACE();
-  BINARY_OP(NUMBER_VAL, /);
-  DISPATCH();
+  // Generic OP_DIVIDE should never be emitted by the optimized compiler
+  runtimeError("Generic OP_DIVIDE used - compiler error. Use OP_DIVIDE_NUMBER.");
+  return INTERPRET_RUNTIME_ERROR;
 }
 
 op_divide_number: {
@@ -2180,29 +2167,9 @@ op_divide_number: {
 
 op_modulo: {
   TRACE();
-#if OPTIMIZE_SKIP_TYPE_CHECKS
-  // Optimized version without type checks
-  double b = AS_NUMBER(pop());
-  double a = AS_NUMBER(pop());
-  if (b == 0.0) {
-    runtimeError("Modulo by zero.");
-    return INTERPRET_RUNTIME_ERROR;
-  }
-  push(NUMBER_VAL(fmod(a, b)));
-#else
-  if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {
-    runtimeError("Operands must be numbers.");
-    return INTERPRET_RUNTIME_ERROR;
-  }
-  double b = AS_NUMBER(pop());
-  double a = AS_NUMBER(pop());
-  if (b == 0.0) {
-    runtimeError("Modulo by zero.");
-    return INTERPRET_RUNTIME_ERROR;
-  }
-  push(NUMBER_VAL(fmod(a, b)));
-#endif
-  DISPATCH();
+  // Generic OP_MODULO should never be emitted by the optimized compiler
+  runtimeError("Generic OP_MODULO used - compiler error. Use OP_MODULO_NUMBER.");
+  return INTERPRET_RUNTIME_ERROR;
 }
 
 op_modulo_number: {
@@ -2226,18 +2193,9 @@ op_not: {
 
 op_negate: {
   TRACE();
-#if OPTIMIZE_SKIP_TYPE_CHECKS
-  // In optimized mode, compiler should emit OP_NEGATE_NUMBER instead
-  runtimeError("Generic OP_NEGATE used in optimized mode - compiler error.");
+  // Generic OP_NEGATE should never be emitted by the optimized compiler
+  runtimeError("Generic OP_NEGATE used - compiler error. Use OP_NEGATE_NUMBER.");
   return INTERPRET_RUNTIME_ERROR;
-#else
-  if (!IS_NUMBER(peek(0))) {
-    runtimeError("Operand must be a number.");
-    return INTERPRET_RUNTIME_ERROR;
-  }
-  push(NUMBER_VAL(-AS_NUMBER(pop())));
-#endif
-  DISPATCH();
 }
 
 op_negate_number: {
@@ -2388,7 +2346,9 @@ op_loop: {
   TRACE();
   uint16_t offset = READ_SHORT();
   
-  // Removed JIT tracking for performance
+  // Track loop back edge for JIT compilation
+  trackLoopBackEdge(frame->ip - offset);
+  
   frame->ip -= offset;
   DISPATCH();
 }
@@ -2571,7 +2531,7 @@ op_interpolate: {
     } else if (IS_NUMBER(part)) {
       // Convert number to string to get length
       char buffer[32];
-      int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(part));
+      int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(part));
       totalLength += len;
     } else if (IS_BOOL(part)) {
       totalLength += AS_BOOL(part) ? 4 : 5; // "true" or "false"
@@ -2595,7 +2555,7 @@ op_interpolate: {
       memcpy(result + pos, AS_CSTRING(part), str->length);
       pos += str->length;
     } else if (IS_NUMBER(part)) {
-      int len = snprintf(result + pos, totalLength - pos + 1, "%.15g", AS_NUMBER(part));
+      int len = formatNumber(result + pos, totalLength - pos + 1, AS_NUMBER(part));
       pos += len;
     } else if (IS_BOOL(part)) {
       const char* boolStr = AS_BOOL(part) ? "true" : "false";
@@ -2641,7 +2601,7 @@ op_hash_literal: {
     } else if (IS_NUMBER(key)) {
       // Convert number to string
       char buffer[32];
-      int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(key));
+      int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(key));
       keyString = copyString(buffer, len);
     } else {
       runtimeError("Hash keys must be strings or numbers.");
@@ -2674,7 +2634,7 @@ op_get_index: {
   } else if (IS_NUMBER(index)) {
     // Convert number to string
     char buffer[32];
-    int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+    int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(index));
     keyString = copyString(buffer, len);
   } else {
     runtimeError("Hash keys must be strings or numbers.");
@@ -2710,7 +2670,7 @@ op_set_index: {
   } else if (IS_NUMBER(index)) {
     // Convert number to string
     char buffer[32];
-    int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+    int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(index));
     keyString = copyString(buffer, len);
   } else {
     runtimeError("Hash keys must be strings or numbers.");
@@ -2755,7 +2715,7 @@ op_type_cast: {
       } else if (IS_NUMBER(value)) {
         // Convert number to string
         char buffer[32];
-        int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(value));
+        int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(value));
         ObjString* str = copyString(buffer, len);
         push(OBJ_VAL(str));
       } else if (IS_BOOL(value)) {
@@ -3009,24 +2969,9 @@ op_type_cast: {
 */
 //> Strings add-strings
       case OP_ADD: {
-#if OPTIMIZE_SKIP_TYPE_CHECKS
-        // In optimized mode, compiler should emit specific opcodes instead of generic OP_ADD
-        runtimeError("Generic OP_ADD used in optimized mode - compiler error.");
+        // Generic OP_ADD should never be emitted by the optimized compiler
+        runtimeError("Generic OP_ADD used - compiler error. Use OP_ADD_NUMBER or OP_ADD_STRING.");
         return INTERPRET_RUNTIME_ERROR;
-#else
-        if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
-          concatenate();
-        } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
-          double b = AS_NUMBER(pop());
-          double a = AS_NUMBER(pop());
-          push(NUMBER_VAL(a + b));
-        } else {
-          runtimeError(
-              "Operands must be two numbers or two strings.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-#endif
-        break;
       }
       case OP_ADD_NUMBER: {
         // Optimized numeric addition - no type check needed
@@ -3040,9 +2985,11 @@ op_type_cast: {
         concatenate();
         break;
       }
-//< Strings add-strings
-//> Types of Values op-arithmetic
-      case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -); break;
+      case OP_SUBTRACT: {
+        // Generic OP_SUBTRACT should never be emitted by the optimized compiler
+        runtimeError("Generic OP_SUBTRACT used - compiler error. Use OP_SUBTRACT_NUMBER.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
       case OP_SUBTRACT_NUMBER: {
         // Optimized numeric subtraction - no type check needed
         double b = AS_NUMBER(pop());
@@ -3050,7 +2997,11 @@ op_type_cast: {
         push(NUMBER_VAL(a - b));
         break;
       }
-      case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
+      case OP_MULTIPLY: {
+        // Generic OP_MULTIPLY should never be emitted by the optimized compiler
+        runtimeError("Generic OP_MULTIPLY used - compiler error. Use OP_MULTIPLY_NUMBER.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
       case OP_MULTIPLY_NUMBER: {
         // Optimized numeric multiplication - no type check needed
         double b = AS_NUMBER(pop());
@@ -3058,7 +3009,11 @@ op_type_cast: {
         push(NUMBER_VAL(a * b));
         break;
       }
-      case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /); break;
+      case OP_DIVIDE: {
+        // Generic OP_DIVIDE should never be emitted by the optimized compiler
+        runtimeError("Generic OP_DIVIDE used - compiler error. Use OP_DIVIDE_NUMBER.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
       case OP_DIVIDE_NUMBER: {
         // Optimized numeric division - no type check needed
         double b = AS_NUMBER(pop());
@@ -3067,29 +3022,9 @@ op_type_cast: {
         break;
       }
       case OP_MODULO: {
-#if OPTIMIZE_SKIP_TYPE_CHECKS
-        // Optimized version without type checks
-        double b = AS_NUMBER(pop());
-        double a = AS_NUMBER(pop());
-        if (b == 0.0) {
-          runtimeError("Modulo by zero.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        push(NUMBER_VAL(fmod(a, b)));
-#else
-        if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {
-          runtimeError("Operands must be numbers.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        double b = AS_NUMBER(pop());
-        double a = AS_NUMBER(pop());
-        if (b == 0.0) {
-          runtimeError("Modulo by zero.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        push(NUMBER_VAL(fmod(a, b)));
-#endif
-        break;
+        // Generic OP_MODULO should never be emitted by the optimized compiler
+        runtimeError("Generic OP_MODULO used - compiler error. Use OP_MODULO_NUMBER.");
+        return INTERPRET_RUNTIME_ERROR;
       }
       case OP_MODULO_NUMBER: {
         // Optimized numeric modulo - no type check needed
@@ -3102,205 +3037,23 @@ op_type_cast: {
         push(NUMBER_VAL(fmod(a, b)));
         break;
       }
-//< Types of Values op-arithmetic
-//> Types of Values op-not
       case OP_NOT:
         push(BOOL_VAL(isFalsey(pop())));
         break;
-//< Types of Values op-not
-//> Types of Values op-negate
-      case OP_NEGATE:
-#if OPTIMIZE_SKIP_TYPE_CHECKS
-        // In optimized mode, compiler should emit OP_NEGATE_NUMBER instead
-        runtimeError("Generic OP_NEGATE used in optimized mode - compiler error.");
+      case OP_NEGATE: {
+        // Generic OP_NEGATE should never be emitted by the optimized compiler
+        runtimeError("Generic OP_NEGATE used - compiler error. Use OP_NEGATE_NUMBER.");
         return INTERPRET_RUNTIME_ERROR;
-#else
-        if (!IS_NUMBER(peek(0))) {
-          runtimeError("Operand must be a number.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        push(NUMBER_VAL(-AS_NUMBER(pop())));
-#endif
-        break;
+      }
       case OP_NEGATE_NUMBER:
         // Optimized numeric negation - no type check needed
         push(NUMBER_VAL(-AS_NUMBER(pop())));
         break;
-//< Types of Values op-negate
-//> Global Variables interpret-print
       case OP_PRINT: {
         printValue(pop());
         printf("\n");
         break;
       }
-//< Global Variables interpret-print
-//> Jumping Back and Forth op-jump
-      case OP_JUMP: {
-        uint16_t offset = READ_SHORT();
-        frame->ip += offset;
-        break;
-      }
-//< Jumping Back and Forth op-jump
-//> Jumping Back and Forth op-jump-if-false
-      case OP_JUMP_IF_FALSE: {
-        uint16_t offset = READ_SHORT();
-        if (isFalsey(peek(0))) frame->ip += offset;
-        break;
-      }
-//< Jumping Back and Forth op-jump-if-false
-//> Jumping Back and Forth op-loop
-      case OP_LOOP: {
-        uint16_t offset = READ_SHORT();
-        
-        // Removed JIT tracking for performance
-        frame->ip -= offset;
-        break;
-      }
-//< Jumping Back and Forth op-loop
-//> Calls and Functions interpret-call
-      case OP_CALL: {
-        int argCount = READ_BYTE();
-        if (!callValue(peek(argCount), argCount)) {
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        frame = &vm.frames[vm.frameCount - 1];
-        break;
-      }
-//< Calls and Functions interpret-call
-//> Methods and Initializers interpret-invoke
-      case OP_INVOKE: {
-        ObjString* method = READ_STRING();
-        int argCount = READ_BYTE();
-        if (!invoke(method, argCount)) {
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        frame = &vm.frames[vm.frameCount - 1];
-        break;
-      }
-//< Methods and Initializers interpret-invoke
-//> Superclasses interpret-super-invoke
-      case OP_SUPER_INVOKE: {
-        ObjString* method = READ_STRING();
-        int argCount = READ_BYTE();
-        ObjClass* superclass = AS_CLASS(pop());
-        if (!invokeFromClass(superclass, method, argCount)) {
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        frame = &vm.frames[vm.frameCount - 1];
-        break;
-      }
-//< Superclasses interpret-super-invoke
-//> Closures interpret-closure
-      case OP_CLOSURE: {
-        ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
-        
-        // Optimization: Reuse closure for recursive functions without upvalues
-        if (function->upvalueCount == 0 && cachedRecursiveFunction == function && cachedRecursiveClosure != NULL) {
-          // Reuse the existing closure for this function
-          push(OBJ_VAL(cachedRecursiveClosure));
-          DISPATCH();
-        }
-        
-        ObjClosure* closure = newClosure(function);
-        push(OBJ_VAL(closure));
-        
-        // Cache this closure if it has no upvalues (good candidate for reuse)
-        if (function->upvalueCount == 0) {
-          cachedRecursiveFunction = function;
-          cachedRecursiveClosure = closure;
-        }
-        
-        for (int i = 0; i < closure->upvalueCount; i++) {
-          uint8_t isLocal = READ_BYTE();
-          uint8_t index = READ_BYTE();
-          if (isLocal) {
-            closure->upvalues[i] =
-                captureUpvalue(frame->slots + index);
-          } else {
-            closure->upvalues[i] = frame->closure->upvalues[index];
-          }
-        }
-        DISPATCH();
-      }
-//< Closures interpret-closure
-//> Closures interpret-close-upvalue
-      case OP_CLOSE_UPVALUE:
-        closeUpvalues(vm.stackTop - 1);
-        pop();
-        break;
-//< Closures interpret-close-upvalue
-      case OP_RETURN: {
-        Value result = pop();
-        
-        closeUpvalues(frame->slots);
-        vm.frameCount--;
-        if (vm.frameCount == 0) {
-          pop();
-          return INTERPRET_OK;
-        }
-
-        vm.stackTop = frame->slots;
-        push(result);
-        frame = &vm.frames[vm.frameCount - 1];
-        break;
-      }
-//> Classes and Instances interpret-class
-      case OP_CLASS:
-        push(OBJ_VAL(newClass(READ_STRING())));
-        break;
-//< Classes and Instances interpret-class
-//> Module System interpret-module
-      case OP_MODULE:
-        push(OBJ_VAL(newModule(READ_STRING())));
-        break;
-//< Module System interpret-module
-//> Module System interpret-module-method
-      case OP_MODULE_METHOD: {
-        ObjString* methodName = READ_STRING();
-        ObjClosure* method = AS_CLOSURE(peek(0));
-        ObjModule* module = AS_MODULE(peek(1));
-        
-        tableSet(&module->functions, methodName, OBJ_VAL(method));
-        pop(); // Method closure
-        break;
-      }
-//< Module System interpret-module-method
-//> Module System interpret-module-call
-      case OP_MODULE_CALL: {
-        ObjString* methodName = READ_STRING();
-        int argCount = READ_BYTE();
-        
-        Value moduleValue = peek(argCount);
-        if (!IS_MODULE(moduleValue)) {
-          runtimeError("Can only call methods on modules.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        
-        ObjModule* module = AS_MODULE(moduleValue);
-        Value method;
-        if (!tableGet(&module->functions, methodName, &method)) {
-          runtimeError("Undefined method '%s' in module '%s'.", 
-                       AS_CSTRING(OBJ_VAL(methodName)), 
-                       AS_CSTRING(OBJ_VAL(module->name)));
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        
-        if (!IS_CLOSURE(method)) {
-          runtimeError("Module method is not a function.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        
-        // Replace the module on the stack with the method
-        vm.stackTop[-argCount - 1] = method;
-        
-        if (!call(AS_CLOSURE(method), argCount)) {
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        frame = &vm.frames[vm.frameCount - 1];
-        break;
-      }
-//< Module System interpret-module-call
-//> Module System interpret-require
       case OP_REQUIRE: {
         ObjString* filename = AS_STRING(pop());
         const char* filenameStr = AS_CSTRING(OBJ_VAL(filename));
@@ -3415,8 +3168,264 @@ op_type_cast: {
         frame = &vm.frames[vm.frameCount - 1];
         DISPATCH();
       }
-//< Module System interpret-require
-//> Superclasses interpret-inherit
+      case OP_JUMP: {
+        uint16_t offset = READ_SHORT();
+        frame->ip += offset;
+        break;
+      }
+      case OP_JUMP_IF_FALSE: {
+        uint16_t offset = READ_SHORT();
+        if (isFalsey(peek(0))) frame->ip += offset;
+        break;
+      }
+      case OP_LOOP: {
+        uint16_t offset = READ_SHORT();
+        
+        // Track loop back edge for JIT compilation
+        trackLoopBackEdge(frame->ip - offset);
+        
+        frame->ip -= offset;
+        break;
+      }
+      case OP_CALL: {
+        int argCount = READ_BYTE();
+        if (!callValue(peek(argCount), argCount)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        frame = &vm.frames[vm.frameCount - 1];
+        break;
+      }
+      case OP_INVOKE: {
+        ObjString* method = READ_STRING();
+        int argCount = READ_BYTE();
+        if (!invoke(method, argCount)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        frame = &vm.frames[vm.frameCount - 1];
+        break;
+      }
+      case OP_SUPER_INVOKE: {
+        ObjString* method = READ_STRING();
+        int argCount = READ_BYTE();
+        ObjClass* superclass = AS_CLASS(pop());
+        if (!invokeFromClass(superclass, method, argCount)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        frame = &vm.frames[vm.frameCount - 1];
+        break;
+      }
+      case OP_CLOSURE: {
+        ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
+        
+        // Optimization: Reuse closure for recursive functions without upvalues
+        if (function->upvalueCount == 0 && cachedRecursiveFunction == function && cachedRecursiveClosure != NULL) {
+          // Reuse the existing closure for this function
+          push(OBJ_VAL(cachedRecursiveClosure));
+          DISPATCH();
+        }
+        
+        ObjClosure* closure = newClosure(function);
+        push(OBJ_VAL(closure));
+        
+        // Cache this closure if it has no upvalues (good candidate for reuse)
+        if (function->upvalueCount == 0) {
+          cachedRecursiveFunction = function;
+          cachedRecursiveClosure = closure;
+        }
+        
+        for (int i = 0; i < closure->upvalueCount; i++) {
+          uint8_t isLocal = READ_BYTE();
+          uint8_t index = READ_BYTE();
+          if (isLocal) {
+            closure->upvalues[i] =
+                captureUpvalue(frame->slots + index);
+          } else {
+            closure->upvalues[i] = frame->closure->upvalues[index];
+          }
+        }
+        DISPATCH();
+      }
+      case OP_CLOSE_UPVALUE:
+        closeUpvalues(vm.stackTop - 1);
+        pop();
+        break;
+      case OP_RETURN: {
+        Value result = pop();
+        
+        closeUpvalues(frame->slots);
+        vm.frameCount--;
+        if (vm.frameCount == 0) {
+          pop();
+          return INTERPRET_OK;
+        }
+
+        vm.stackTop = frame->slots;
+        push(result);
+        frame = &vm.frames[vm.frameCount - 1];
+        break;
+      }
+      case OP_CLASS:
+        push(OBJ_VAL(newClass(READ_STRING())));
+        break;
+      case OP_MODULE:
+        push(OBJ_VAL(newModule(READ_STRING())));
+        break;
+      case OP_MODULE_METHOD: {
+        ObjString* methodName = READ_STRING();
+        ObjClosure* method = AS_CLOSURE(peek(0));
+        ObjModule* module = AS_MODULE(peek(1));
+        
+        tableSet(&module->functions, methodName, OBJ_VAL(method));
+        pop(); // Method closure
+        break;
+      }
+      case OP_MODULE_CALL: {
+        ObjString* methodName = READ_STRING();
+        int argCount = READ_BYTE();
+        
+        Value moduleValue = peek(argCount);
+        if (!IS_MODULE(moduleValue)) {
+          runtimeError("Can only call methods on modules.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        ObjModule* module = AS_MODULE(moduleValue);
+        Value method;
+        if (!tableGet(&module->functions, methodName, &method)) {
+          runtimeError("Undefined method '%s' in module '%s'.", 
+                       AS_CSTRING(OBJ_VAL(methodName)), 
+                       AS_CSTRING(OBJ_VAL(module->name)));
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        if (!IS_CLOSURE(method)) {
+          runtimeError("Module method is not a function.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        // Replace the module on the stack with the method
+        vm.stackTop[-argCount - 1] = method;
+        
+        if (!call(AS_CLOSURE(method), argCount)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        frame = &vm.frames[vm.frameCount - 1];
+        break;
+      }
+      case OP_REQUIRE: {
+        ObjString* filename = AS_STRING(pop());
+        const char* filenameStr = AS_CSTRING(OBJ_VAL(filename));
+        
+        char* buffer = NULL;
+        bool isEmbedded = false;
+        
+      #ifdef WITH_STL
+        // First, try to find the module in embedded STL
+        const char* embeddedSource = getEmbeddedSTLModule(filenameStr);
+        if (embeddedSource != NULL) {
+          // Use embedded STL module
+          size_t sourceLen = strlen(embeddedSource);
+          buffer = (char*)malloc(sourceLen + 1);
+          if (buffer == NULL) {
+            runtimeError("Not enough memory to load embedded module \"%s\".", filenameStr);
+            return INTERPRET_RUNTIME_ERROR;
+          }
+          strcpy(buffer, embeddedSource);
+          isEmbedded = true;
+        }
+      #endif
+        
+        // If not found in embedded STL, try to read from file
+        if (buffer == NULL) {
+          FILE* file = NULL;
+          char* fullPath = NULL;
+          
+          // First try to open the file as specified
+          file = fopen(filenameStr, "rb");
+          
+      #ifdef WITH_STL
+          // If file not found and we have STL support, try the standard library path
+          if (file == NULL && STL_PATH != NULL) {
+            // Check if the filename contains a path separator - if not, it might be a standard library module
+            if (strchr(filenameStr, '/') == NULL && strchr(filenameStr, '\\') == NULL) {
+              // Construct path: STL_PATH/filename.gem
+              size_t stlPathLen = strlen(STL_PATH);
+              size_t filenameLen = strlen(filenameStr);
+              size_t fullPathLen = stlPathLen + 1 + filenameLen + 4 + 1; // +1 for '/', +4 for '.gem', +1 for '\0'
+              
+              fullPath = (char*)malloc(fullPathLen);
+              if (fullPath != NULL) {
+                snprintf(fullPath, fullPathLen, "%s/%s.gem", STL_PATH, filenameStr);
+                file = fopen(fullPath, "rb");
+              }
+            }
+          }
+      #endif
+          
+          if (file == NULL) {
+            if (fullPath != NULL) {
+              free(fullPath);
+            }
+            runtimeError("Could not open file \"%s\".", filenameStr);
+            return INTERPRET_RUNTIME_ERROR;
+          }
+          
+          fseek(file, 0L, SEEK_END);
+          size_t fileSize = ftell(file);
+          rewind(file);
+          
+          buffer = (char*)malloc(fileSize + 1);
+          if (buffer == NULL) {
+            runtimeError("Not enough memory to read \"%s\".", filenameStr);
+            fclose(file);
+            if (fullPath != NULL) {
+              free(fullPath);
+            }
+            return INTERPRET_RUNTIME_ERROR;
+          }
+          
+          size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
+          if (bytesRead < fileSize) {
+            runtimeError("Could not read file \"%s\".", filenameStr);
+            free(buffer);
+            fclose(file);
+            if (fullPath != NULL) {
+              free(fullPath);
+            }
+            return INTERPRET_RUNTIME_ERROR;
+          }
+          
+          buffer[bytesRead] = '\0';
+          fclose(file);
+          
+          // Clean up path
+          if (fullPath != NULL) {
+            free(fullPath);
+          }
+        }
+        
+        // Compile and execute the module
+        ObjFunction* function = compile(buffer);
+        free(buffer);
+        
+        if (function == NULL) {
+          runtimeError("Failed to compile \"%s\".", filenameStr);
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        // Create closure for the module
+        ObjClosure* closure = newClosure(function);
+        push(OBJ_VAL(closure));
+        
+        // Execute the module in the current context
+        if (!call(closure, 0)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        // Update frame pointer
+        frame = &vm.frames[vm.frameCount - 1];
+        DISPATCH();
+      }
       case OP_INHERIT: {
         Value superclass = peek(1);
         if (!IS_CLASS(superclass)) {
@@ -3430,8 +3439,6 @@ op_type_cast: {
         pop(); // Subclass.
         break;
       }
-      //< Classes and Instances interpret-set-property
-      //> Hash Objects interpret-get-index
       case OP_GET_INDEX: {
         Value index = pop();
         Value hashValue = pop();
@@ -3450,7 +3457,7 @@ op_type_cast: {
         } else if (IS_NUMBER(index)) {
           // Convert number to string
           char buffer[32];
-          int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+          int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(index));
           keyString = copyString(buffer, len);
         } else {
           runtimeError("Hash keys must be strings or numbers.");
@@ -3465,8 +3472,6 @@ op_type_cast: {
         }
         break;
       }
-      //< Hash Objects interpret-get-index
-      //> Hash Objects interpret-set-index
       case OP_SET_INDEX: {
         Value value = pop();
         Value index = pop();
@@ -3486,7 +3491,7 @@ op_type_cast: {
         } else if (IS_NUMBER(index)) {
           // Convert number to string
           char buffer[32];
-          int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+          int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(index));
           keyString = copyString(buffer, len);
         } else {
           runtimeError("Hash keys must be strings or numbers.");
@@ -3497,8 +3502,6 @@ op_type_cast: {
         push(value); // Assignment returns the assigned value
         break;
       }
-      //< Hash Objects interpret-set-index
-      //> Hash Objects interpret-hash-literal
       case OP_HASH_LITERAL: {
         int pairCount = READ_BYTE();
         ObjHash* hash = newHash();
@@ -3515,7 +3518,7 @@ op_type_cast: {
           } else if (IS_NUMBER(key)) {
             // Convert number to string
             char buffer[32];
-            int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(key));
+            int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(key));
             keyString = copyString(buffer, len);
           } else {
             runtimeError("Hash keys must be strings or numbers.");
@@ -3528,7 +3531,6 @@ op_type_cast: {
         push(OBJ_VAL(hash));
         break;
       }
-      //< Hash Objects interpret-hash-literal
       case OP_TYPE_CAST: {
         TokenType targetType = (TokenType)READ_BYTE();
         Value value = pop();
@@ -3561,7 +3563,7 @@ op_type_cast: {
             } else if (IS_NUMBER(value)) {
               // Convert number to string
               char buffer[32];
-              int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(value));
+              int len = formatNumber(buffer, sizeof(buffer), AS_NUMBER(value));
               ObjString* str = copyString(buffer, len);
               push(OBJ_VAL(str));
             } else if (IS_BOOL(value)) {
@@ -3776,3 +3778,42 @@ static void updateMemoCache(ObjClosure* closure, Value argument, Value result) {
 }
 #endif
 //< Memoization Helper Functions
+
+// Custom number formatting that avoids scientific notation
+static int formatNumber(char* buffer, size_t bufferSize, double number) {
+  // Handle special cases
+  if (number != number) {  // NaN
+    return snprintf(buffer, bufferSize, "nan");
+  }
+  if (number == 1.0/0.0) {  // +Infinity
+    return snprintf(buffer, bufferSize, "inf");
+  }
+  if (number == -1.0/0.0) {  // -Infinity
+    return snprintf(buffer, bufferSize, "-inf");
+  }
+  
+  // Check if it's an integer
+  if (number == (long long)number && number >= LLONG_MIN && number <= LLONG_MAX) {
+    return snprintf(buffer, bufferSize, "%.0f", number);
+  }
+  
+  // For floating point numbers, use %.15f but trim trailing zeros
+  int len = snprintf(buffer, bufferSize, "%.15f", number);
+  if (len >= bufferSize) return len;  // Buffer too small
+  
+  // Remove trailing zeros after decimal point
+  char* end = buffer + len - 1;
+  while (end > buffer && *end == '0') {
+    *end = '\0';
+    end--;
+    len--;
+  }
+  
+  // Remove trailing decimal point if no fractional part remains
+  if (end > buffer && *end == '.') {
+    *end = '\0';
+    len--;
+  }
+  
+  return len;
+}

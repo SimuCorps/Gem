@@ -238,10 +238,9 @@ static TokenType identifierType() {
       }
       break;
 //< keyword-t
-    case 'v':
+    case 'v': 
       if (scanner.current - scanner.start > 1) {
         switch (scanner.start[1]) {
-          case 'a': return checkKeyword(2, 1, "r", TOKEN_VAR);
           case 'o': return checkKeyword(2, 2, "id", TOKEN_RETURNTYPE_VOID);
         }
       }

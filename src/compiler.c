@@ -195,6 +195,47 @@ typedef struct {
   int count;
 } ModuleFunctionTable;
 
+//> Function Parameter Tracking
+typedef struct {
+  ReturnType paramTypes[UINT8_COUNT];
+  int paramCount;
+} FunctionParams;
+
+typedef struct {
+  ObjString* functionName;
+  ReturnType returnType;
+  FunctionParams params;
+} FunctionSignatureWithParams;
+
+typedef struct {
+  FunctionSignatureWithParams functions[UINT8_COUNT];
+  int count;
+} FunctionTableWithParams;
+
+typedef struct {
+  ObjString* className;
+  ObjString* methodName;
+  ReturnType returnType;
+  FunctionParams params;
+} MethodSignatureWithParams;
+
+typedef struct {
+  MethodSignatureWithParams methods[UINT8_COUNT];
+  int count;
+} MethodTableWithParams;
+
+typedef struct {
+  ObjString* moduleName;
+  ObjString* functionName;
+  ReturnType returnType;
+  FunctionParams params;
+} ModuleFunctionSignatureWithParams;
+
+typedef struct {
+  ModuleFunctionSignatureWithParams functions[UINT8_COUNT];
+  int count;
+} ModuleFunctionTableWithParams;
+
 static GlobalVarTable globalVars;
 static ClassFieldTable classFields;
 static FunctionTable globalFunctions;
@@ -203,6 +244,13 @@ static ClassTable globalClasses;
 static ModuleFunctionTable moduleFunctions;
 static ObjString* lastAccessedIdentifier = NULL; // Track for type inference
 //< Global Variable Type Tracking
+
+static FunctionTableWithParams globalFunctionsWithParams;
+static MethodTableWithParams globalMethodsWithParams;
+static ModuleFunctionTableWithParams moduleFunctionsWithParams;
+// Global variable to store last compiled function parameters
+static FunctionParams lastCompiledFunctionParams;
+//< Function Parameter Tracking
 
 Parser parser;
 //< Compiling Expressions parser
@@ -536,6 +584,18 @@ static ReturnType getMethodReturnType(ObjString* className, ObjString* methodNam
 static void initModuleFunctionTable();
 static void addModuleFunction(ObjString* moduleName, ObjString* functionName, ReturnType returnType);
 static ReturnType getModuleFunctionReturnType(ObjString* moduleName, ObjString* functionName);
+//> Enhanced Function Parameter Tracking
+static void initFunctionTableWithParams();
+static void addFunctionWithParams(ObjString* name, ReturnType returnType, FunctionParams params);
+static FunctionSignatureWithParams* getFunctionSignatureWithParams(ObjString* name);
+static void initMethodTableWithParams();
+static void addMethodWithParams(ObjString* className, ObjString* methodName, ReturnType returnType, FunctionParams params);
+static MethodSignatureWithParams* getMethodSignatureWithParams(ObjString* className, ObjString* methodName);
+static void initModuleFunctionTableWithParams();
+static void addModuleFunctionWithParams(ObjString* moduleName, ObjString* functionName, ReturnType returnType, FunctionParams params);
+static ModuleFunctionSignatureWithParams* getModuleFunctionSignatureWithParams(ObjString* moduleName, ObjString* functionName);
+static uint8_t argumentListWithTypeCheck(ObjString* functionName, FunctionParams* expectedParams);
+//< Enhanced Function Parameter Tracking
 #ifdef WITH_STL
 static const char* getCompilerEmbeddedSTLModule(const char* moduleName);
 #endif
@@ -795,90 +855,48 @@ static void binary() {
 */
 //> Global Variables binary
 static void binary(bool canAssign) {
-//< Global Variables binary
   TokenType operatorType = parser.previous.type;
+
+  // Remember the left operand type before parsing the right operand
+  ReturnType leftType = lastExpressionType;
+  
   ParseRule* rule = getRule(operatorType);
   parsePrecedence((Precedence)(rule->precedence + 1));
+  
+  // Now we have both operand types - left and right
+  ReturnType rightType = lastExpressionType;
 
   switch (operatorType) {
-//> Types of Values comparison-operators
-    case TOKEN_BANG_EQUAL:    
-      emitBytes(OP_EQUAL, OP_NOT); 
-      lastExpressionType = TYPE_BOOL;
-      break;
-    case TOKEN_EQUAL_EQUAL:   
-      emitByte(OP_EQUAL); 
-      lastExpressionType = TYPE_BOOL;
-      break;
-    case TOKEN_GREATER:       
-      emitByte(OP_GREATER); 
-      lastExpressionType = TYPE_BOOL;
-      break;
-    case TOKEN_GREATER_EQUAL: 
-      emitBytes(OP_LESS, OP_NOT); 
-      lastExpressionType = TYPE_BOOL;
-      break;
-    case TOKEN_LESS:          
-      emitByte(OP_LESS); 
-      lastExpressionType = TYPE_BOOL;
-      break;
-    case TOKEN_LESS_EQUAL:    
-      emitBytes(OP_GREATER, OP_NOT); 
-      lastExpressionType = TYPE_BOOL;
-      break;
-//< Types of Values comparison-operators
+    case TOKEN_BANG_EQUAL: emitBytes(OP_EQUAL, OP_NOT); lastExpressionType = TYPE_BOOL; break;
+    case TOKEN_EQUAL_EQUAL: emitByte(OP_EQUAL); lastExpressionType = TYPE_BOOL; break;
+    case TOKEN_GREATER:       emitByte(OP_GREATER); lastExpressionType = TYPE_BOOL; break;
+    case TOKEN_GREATER_EQUAL: emitBytes(OP_LESS, OP_NOT); lastExpressionType = TYPE_BOOL; break;
+    case TOKEN_LESS:          emitByte(OP_LESS); lastExpressionType = TYPE_BOOL; break;
+    case TOKEN_LESS_EQUAL:    emitBytes(OP_GREATER, OP_NOT); lastExpressionType = TYPE_BOOL; break;
     case TOKEN_PLUS:          
-#if OPTIMIZE_SKIP_TYPE_CHECKS
-      // Emit optimized opcodes based on operand types
-      if (typeEqualsBase(lastExpressionType, TYPE_STRING.baseType)) {
+      // Compile-time type-based optimization
+      if (typeEqualsBase(leftType, TYPE_STRING.baseType) || typeEqualsBase(rightType, TYPE_STRING.baseType)) {
         emitByte(OP_ADD_STRING);
-        lastExpressionType = TYPE_STRING; // String concatenation
+        lastExpressionType = TYPE_STRING;
       } else {
         emitByte(OP_ADD_NUMBER);
-        lastExpressionType = TYPE_INT; // Numeric addition
+        lastExpressionType = TYPE_INT;
       }
-#else
-      emitByte(OP_ADD); 
-      // For +, we need to check if we're dealing with strings or numbers
-      // This is a simplified heuristic - in a real implementation we'd need
-      // proper type analysis of both operands
-      if (typeEqualsBase(lastExpressionType, TYPE_STRING.baseType)) {
-        lastExpressionType = TYPE_STRING; // String concatenation
-      } else {
-        lastExpressionType = TYPE_INT; // Numeric addition
-      }
-#endif
       break;
     case TOKEN_MINUS:         
-#if OPTIMIZE_SKIP_TYPE_CHECKS
       emitByte(OP_SUBTRACT_NUMBER); 
-#else
-      emitByte(OP_SUBTRACT); 
-#endif
       lastExpressionType = TYPE_INT;
       break;
     case TOKEN_STAR:          
-#if OPTIMIZE_SKIP_TYPE_CHECKS
       emitByte(OP_MULTIPLY_NUMBER); 
-#else
-      emitByte(OP_MULTIPLY); 
-#endif
       lastExpressionType = TYPE_INT;
       break;
     case TOKEN_SLASH:         
-#if OPTIMIZE_SKIP_TYPE_CHECKS
       emitByte(OP_DIVIDE_NUMBER); 
-#else
-      emitByte(OP_DIVIDE); 
-#endif
       lastExpressionType = TYPE_INT;
       break;
     case TOKEN_PERCENT:       
-#if OPTIMIZE_SKIP_TYPE_CHECKS
       emitByte(OP_MODULO_NUMBER); 
-#else
-      emitByte(OP_MODULO); 
-#endif
       lastExpressionType = TYPE_INT;
       break;
     default: return; // Unreachable.
@@ -890,7 +908,21 @@ static void call(bool canAssign) {
   // Save the identifier before parsing arguments
   ObjString* calledIdentifier = lastAccessedIdentifier;
   
-  uint8_t argCount = argumentList();
+  // Try to get enhanced function signature for type checking
+  FunctionSignatureWithParams* funcSig = NULL;
+  if (calledIdentifier != NULL) {
+    funcSig = getFunctionSignatureWithParams(calledIdentifier);
+  }
+  
+  uint8_t argCount;
+  if (funcSig != NULL) {
+    // Use enhanced argument list with type checking
+    argCount = argumentListWithTypeCheck(calledIdentifier, &funcSig->params);
+  } else {
+    // Fall back to basic argument list
+    argCount = argumentList();
+  }
+  
   emitBytes(OP_CALL, argCount);
   
   // Determine the return type based on what was called
@@ -1238,8 +1270,8 @@ static void namedVariable(Token name, bool canAssign) {
       }
       
       ReturnType expressionType = inferExpressionType();
-      if (!typesEqual(local->type, TYPE_VOID) && // Allow assignments to untyped vars (from old 'var' declarations)
-          !typesEqual(expressionType, TYPE_VOID) && // Allow conservative inference 
+      if (!typesEqual(local->type, TYPE_VOID) && // Allow assignments to untyped variables
+          !typesEqual(expressionType, TYPE_VOID) && // Allow conservative inference
           !isAssignmentCompatible(local->type, expressionType)) {
         error("Cannot assign value of incompatible type to variable.");
       }
@@ -1397,28 +1429,20 @@ static void unary() {
 */
 //> Global Variables unary
 static void unary(bool canAssign) {
-//< Global Variables unary
   TokenType operatorType = parser.previous.type;
 
   // Compile the operand.
-/* Compiling Expressions unary < Compiling Expressions unary-operand
-  expression();
-*/
-//> unary-operand
   parsePrecedence(PREC_UNARY);
-//< unary-operand
 
   // Emit the operator instruction.
   switch (operatorType) {
-//> Types of Values compile-not
-    case TOKEN_BANG: emitByte(OP_NOT); break;
-//< Types of Values compile-not
+    case TOKEN_BANG: 
+      emitByte(OP_NOT); 
+      lastExpressionType = TYPE_BOOL;
+      break;
     case TOKEN_MINUS: 
-#if OPTIMIZE_SKIP_TYPE_CHECKS
       emitByte(OP_NEGATE_NUMBER); 
-#else
-      emitByte(OP_NEGATE); 
-#endif
+      lastExpressionType = TYPE_INT;
       break;
     default: return; // Unreachable.
   }
@@ -1551,7 +1575,6 @@ ParseRule rules[] = {
 //> Types of Values table-true
   [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
 //< Types of Values table-true
-  [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
@@ -1624,6 +1647,10 @@ static ReturnType function(FunctionType type) {
   initCompiler(&compiler, type);
   beginScope(); // [no-end-scope]
 
+  // Track function parameters for enhanced type checking
+  FunctionParams functionParams;
+  functionParams.paramCount = 0;
+
   consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
 //> parameters
   if (!check(TOKEN_RIGHT_PAREN)) {
@@ -1643,6 +1670,12 @@ static ReturnType function(FunctionType type) {
         paramType = tokenToBaseType(typeToken);
       } else {
         errorAtCurrent("Expect parameter type (int, string, bool, func, obj, or hash).");
+      }
+      
+      // Store parameter type for enhanced type checking
+      if (functionParams.paramCount < UINT8_COUNT) {
+        functionParams.paramTypes[functionParams.paramCount] = paramType;
+        functionParams.paramCount++;
       }
       
       consume(TOKEN_IDENTIFIER, "Expect parameter name.");
@@ -1686,7 +1719,16 @@ static ReturnType function(FunctionType type) {
   }
 //< Closures capture-upvalues
   
+  // Store the function parameters in a global variable for the calling context to access
+  // This is a simple approach - in a more sophisticated system we'd return a struct
+  lastCompiledFunctionParams = functionParams;
+  
   return functionReturnType;
+}
+
+// Helper function to get the last compiled function parameters
+static FunctionParams getLastCompiledFunctionParams() {
+  return lastCompiledFunctionParams;
 }
 //< Calls and Functions compile-function
 //> Methods and Initializers method
@@ -1842,20 +1884,6 @@ static void moduleDeclaration() {
 }
 //< Module System module-declaration
 
-//> Global Variables var-declaration
-static void varDeclaration() {
-  uint16_t global = parseVariable("Expect variable name.");
-
-  if (match(TOKEN_EQUAL)) {
-    expression();
-  } else {
-    emitByte(OP_NIL);
-  }
-  consumeStatementTerminator("Expect ';' or newline after variable declaration.");
-
-  defineVariable(global);
-}
-//< Global Variables var-declaration
 
 //> Global Variables expression-statement
 static void expressionStatement() {
@@ -1872,8 +1900,6 @@ static void forStatement() {
   
   if (match(TOKEN_SEMICOLON)) {
     // No initializer.
-  } else if (match(TOKEN_VAR)) {
-    varDeclaration();
   } else if (match(TOKEN_MUT)) {
     mutVarDeclaration();
   } else if (match(TOKEN_RETURNTYPE_INT) || match(TOKEN_RETURNTYPE_STRING) || match(TOKEN_RETURNTYPE_BOOL) ||
@@ -2777,10 +2803,15 @@ static void defDeclaration() {
 
   ReturnType functionReturnType = function(TYPE_FUNCTION);
   
+  // Get the parameters from the last compiled function
+  FunctionParams functionParams = getLastCompiledFunctionParams();
+  
   // Register the function with its return type for type inference
   if (current->scopeDepth == 0) {
     ObjString* nameString = copyString(functionName.start, functionName.length);
     addFunction(nameString, functionReturnType);
+    // Also register with enhanced parameter tracking
+    addFunctionWithParams(nameString, functionReturnType, functionParams);
   }
 
   defineVariable(nameConstant);
@@ -2818,7 +2849,6 @@ static void synchronize() {
       case TOKEN_MODULE:
       case TOKEN_DEF:
       case TOKEN_FUN:
-      case TOKEN_VAR:
       case TOKEN_MUT:
       case TOKEN_RETURNTYPE_INT:
       case TOKEN_RETURNTYPE_STRING:
@@ -2862,8 +2892,6 @@ static void declaration() {
     defDeclaration();
   } else if (match(TOKEN_FUN)) {
     defDeclaration();
-  } else if (match(TOKEN_VAR)) {
-    varDeclaration();
   } else if (match(TOKEN_MUT)) {
     mutVarDeclaration();
   } else if (match(TOKEN_RETURNTYPE_INT) || match(TOKEN_RETURNTYPE_STRING) || 
@@ -2886,6 +2914,10 @@ void initCompilerTables() {
   initClassTable();
   initMethodTable();
   initModuleFunctionTable();
+  // Initialize enhanced parameter tracking tables
+  initFunctionTableWithParams();
+  initMethodTableWithParams();
+  initModuleFunctionTableWithParams();
 }
 
 ObjFunction* compile(const char* source) {
@@ -2942,6 +2974,9 @@ static void consumeStatementTerminator(const char* message) {
 
 //> Type Casting type-cast
 static void typeCast(bool canAssign) {
+  // Get the source type before parsing the target type
+  ReturnType sourceType = lastExpressionType;
+  
   // Parse the target type
   if (!match(TOKEN_RETURNTYPE_INT) && !match(TOKEN_RETURNTYPE_STRING) && 
       !match(TOKEN_RETURNTYPE_BOOL) && !match(TOKEN_RETURNTYPE_HASH)) {
@@ -2949,29 +2984,209 @@ static void typeCast(bool canAssign) {
     return;
   }
   
-  TokenType targetType = parser.previous.type;
+  TokenType targetTypeToken = parser.previous.type;
+  ReturnType targetType;
   
-  // Emit the type cast operation with the target type
-  emitByte(OP_TYPE_CAST);
-  emitByte((uint8_t)targetType);
-  
-  // Update the expression type to reflect the cast result
-  switch (targetType) {
+  // Convert token to type
+  switch (targetTypeToken) {
     case TOKEN_RETURNTYPE_INT:
-      lastExpressionType = TYPE_INT;
+      targetType = TYPE_INT;
       break;
     case TOKEN_RETURNTYPE_STRING:
-      lastExpressionType = TYPE_STRING;
+      targetType = TYPE_STRING;
       break;
     case TOKEN_RETURNTYPE_BOOL:
-      lastExpressionType = TYPE_BOOL;
+      targetType = TYPE_BOOL;
       break;
     case TOKEN_RETURNTYPE_HASH:
-      lastExpressionType = TYPE_HASH;
+      targetType = TYPE_HASH;
       break;
     default:
-      lastExpressionType = TYPE_VOID;
-      break;
+      error("Invalid cast target type.");
+      return;
   }
+  
+  // Compile-time type compatibility checking
+  if (typesEqual(sourceType, targetType)) {
+    // Same type - no-op cast, just update the expression type
+    lastExpressionType = targetType;
+    return;
+  }
+  
+  // Check for valid compile-time conversions
+  bool validCast = false;
+  
+  // Allow casting from void/unknown types (like hash lookups) to any type - this should be first
+  if (sourceType.baseType == RETURN_TYPE_VOID) {
+    validCast = true;
+  }
+  
+  // Allow casting between numeric types (int) and string
+  if ((sourceType.baseType == RETURN_TYPE_INT && targetType.baseType == RETURN_TYPE_STRING) ||
+      (sourceType.baseType == RETURN_TYPE_STRING && targetType.baseType == RETURN_TYPE_INT)) {
+    validCast = true;
+  }
+  
+  // Allow casting any type to bool (truthiness)
+  if (targetType.baseType == RETURN_TYPE_BOOL) {
+    validCast = true;
+  }
+  
+  // Allow casting any type to string (string representation)
+  if (targetType.baseType == RETURN_TYPE_STRING) {
+    validCast = true;
+  }
+  
+  // Allow casting from hash values to any type (runtime conversion)
+  if (sourceType.baseType == RETURN_TYPE_HASH) {
+    validCast = true;
+  }
+  
+  // Allow casting from object types to any type (runtime conversion)
+  if (sourceType.baseType == RETURN_TYPE_OBJ) {
+    validCast = true;
+  }
+  
+  if (!validCast) {
+    error("Invalid type cast - cannot convert between these types at compile time.");
+    return;
+  }
+  
+  // For valid casts, emit the optimized type cast operation
+  emitByte(OP_TYPE_CAST);
+  emitByte((uint8_t)targetTypeToken);
+  
+  // Update the expression type to reflect the cast result
+  lastExpressionType = targetType;
 }
 //< Type Casting type-cast
+
+//< Module Function Tracking Functions
+
+//> Enhanced Function Parameter Tracking Functions
+static void initFunctionTableWithParams() {
+  globalFunctionsWithParams.count = 0;
+}
+
+static void addFunctionWithParams(ObjString* name, ReturnType returnType, FunctionParams params) {
+  if (globalFunctionsWithParams.count >= UINT8_COUNT) {
+    error("Too many global functions with parameters.");
+    return;
+  }
+  
+  globalFunctionsWithParams.functions[globalFunctionsWithParams.count].functionName = name;
+  globalFunctionsWithParams.functions[globalFunctionsWithParams.count].returnType = returnType;
+  globalFunctionsWithParams.functions[globalFunctionsWithParams.count].params = params;
+  globalFunctionsWithParams.count++;
+}
+
+static FunctionSignatureWithParams* getFunctionSignatureWithParams(ObjString* name) {
+  for (int i = 0; i < globalFunctionsWithParams.count; i++) {
+    if (globalFunctionsWithParams.functions[i].functionName->length == name->length &&
+        memcmp(AS_CSTRING(OBJ_VAL(globalFunctionsWithParams.functions[i].functionName)), AS_CSTRING(OBJ_VAL(name)), name->length) == 0) {
+      return &globalFunctionsWithParams.functions[i];
+    }
+  }
+  return NULL; // Not found
+}
+
+static void initMethodTableWithParams() {
+  globalMethodsWithParams.count = 0;
+}
+
+static void addMethodWithParams(ObjString* className, ObjString* methodName, ReturnType returnType, FunctionParams params) {
+  if (globalMethodsWithParams.count >= UINT8_COUNT) {
+    error("Too many global methods with parameters.");
+    return;
+  }
+  
+  globalMethodsWithParams.methods[globalMethodsWithParams.count].className = className;
+  globalMethodsWithParams.methods[globalMethodsWithParams.count].methodName = methodName;
+  globalMethodsWithParams.methods[globalMethodsWithParams.count].returnType = returnType;
+  globalMethodsWithParams.methods[globalMethodsWithParams.count].params = params;
+  globalMethodsWithParams.count++;
+}
+
+static MethodSignatureWithParams* getMethodSignatureWithParams(ObjString* className, ObjString* methodName) {
+  for (int i = 0; i < globalMethodsWithParams.count; i++) {
+    if (globalMethodsWithParams.methods[i].className->length == className->length &&
+        memcmp(AS_CSTRING(OBJ_VAL(globalMethodsWithParams.methods[i].className)), AS_CSTRING(OBJ_VAL(className)), className->length) == 0 &&
+        globalMethodsWithParams.methods[i].methodName->length == methodName->length &&
+        memcmp(AS_CSTRING(OBJ_VAL(globalMethodsWithParams.methods[i].methodName)), AS_CSTRING(OBJ_VAL(methodName)), methodName->length) == 0) {
+      return &globalMethodsWithParams.methods[i];
+    }
+  }
+  return NULL; // Not found
+}
+
+static void initModuleFunctionTableWithParams() {
+  moduleFunctionsWithParams.count = 0;
+}
+
+static void addModuleFunctionWithParams(ObjString* moduleName, ObjString* functionName, ReturnType returnType, FunctionParams params) {
+  if (moduleFunctionsWithParams.count >= UINT8_COUNT) {
+    error("Too many module functions with parameters.");
+    return;
+  }
+  
+  moduleFunctionsWithParams.functions[moduleFunctionsWithParams.count].moduleName = moduleName;
+  moduleFunctionsWithParams.functions[moduleFunctionsWithParams.count].functionName = functionName;
+  moduleFunctionsWithParams.functions[moduleFunctionsWithParams.count].returnType = returnType;
+  moduleFunctionsWithParams.functions[moduleFunctionsWithParams.count].params = params;
+  moduleFunctionsWithParams.count++;
+}
+
+static ModuleFunctionSignatureWithParams* getModuleFunctionSignatureWithParams(ObjString* moduleName, ObjString* functionName) {
+  for (int i = 0; i < moduleFunctionsWithParams.count; i++) {
+    if (moduleFunctionsWithParams.functions[i].moduleName->length == moduleName->length &&
+        memcmp(AS_CSTRING(OBJ_VAL(moduleFunctionsWithParams.functions[i].moduleName)), AS_CSTRING(OBJ_VAL(moduleName)), moduleName->length) == 0 &&
+        moduleFunctionsWithParams.functions[i].functionName->length == functionName->length &&
+        memcmp(AS_CSTRING(OBJ_VAL(moduleFunctionsWithParams.functions[i].functionName)), AS_CSTRING(OBJ_VAL(functionName)), functionName->length) == 0) {
+      return &moduleFunctionsWithParams.functions[i];
+    }
+  }
+  return NULL; // Not found
+}
+
+// Enhanced argument list parsing with compile-time type checking
+static uint8_t argumentListWithTypeCheck(ObjString* functionName, FunctionParams* expectedParams) {
+  uint8_t argCount = 0;
+  ReturnType argTypes[UINT8_COUNT];
+  
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      expression();
+      
+      // Capture the argument type
+      if (argCount < 255) {
+        argTypes[argCount] = lastExpressionType;
+      }
+      
+      if (argCount == 255) {
+        error("Can't have more than 255 arguments.");
+      }
+      argCount++;
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+  
+  // Perform compile-time type checking if we have parameter information
+  if (expectedParams != NULL && functionName != NULL) {
+    // Check argument count
+    if (argCount != expectedParams->paramCount) {
+      error("Function call argument count mismatch.");
+      return argCount;
+    }
+    
+    // Check argument types
+    for (int i = 0; i < argCount && i < expectedParams->paramCount; i++) {
+      if (!isAssignmentCompatible(expectedParams->paramTypes[i], argTypes[i]) &&
+          !typesEqual(argTypes[i], TYPE_VOID)) { // Allow conservative inference
+        error("Function call argument type mismatch.");
+      }
+    }
+  }
+  
+  return argCount;
+}
+//< Enhanced Function Parameter Tracking Functions

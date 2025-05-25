@@ -29,7 +29,7 @@
 static void printUsage() {
   fprintf(stderr, "Usage: gem [options] [path]\n");
   fprintf(stderr, "Options:\n");
-  fprintf(stderr, "  --jit-off           Disable JIT compilation\n");
+  fprintf(stderr, "  --experimental-jit  Enable experimental JIT compilation\n");
   fprintf(stderr, "  --jit-stats         Print JIT statistics at exit\n");
   fprintf(stderr, "  --jit-threshold N   Set function compilation threshold (default: 100)\n");
   fprintf(stderr, "  --jit-loop-threshold N Set loop compilation threshold (default: 50)\n");
@@ -157,8 +157,8 @@ int main(int argc, const char* argv[]) {
   const char* scriptPath = NULL;
   
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--jit-off") == 0) {
-      // Disable JIT - we'll do this after initVM()
+    if (strcmp(argv[i], "--experimental-jit") == 0) {
+      // Enable JIT - we'll do this after initVM()
     } else if (strcmp(argv[i], "--jit-stats") == 0) {
       showJitStats = true;
     } else if (strcmp(argv[i], "--repl") == 0) {
@@ -204,11 +204,11 @@ int main(int argc, const char* argv[]) {
 //< A Virtual Machine main-init-vm
 
 //> JIT Integration post-init setup
-  // Disable JIT if requested
+  // Enable JIT if requested
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--jit-off") == 0) {
-      jitContext.enabled = false;
-      printf("JIT compilation disabled\n");
+    if (strcmp(argv[i], "--experimental-jit") == 0) {
+      jitContext.enabled = true;
+      printf("Experimental JIT compilation enabled\n");
       break;
     }
   }

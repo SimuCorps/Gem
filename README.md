@@ -1,8 +1,6 @@
 # Gem Programming Language
 
 [![CI](https://github.com/SimuCorps/Gem/actions/workflows/ci.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/ci.yml)
-[![Release](https://github.com/SimuCorps/Gem/actions/workflows/release.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/release.yml)
-[![Multi-Platform](https://github.com/SimuCorps/Gem/actions/workflows/multi-platform-release.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/multi-platform-release.yml)
 
 Gem is a modern, statically-typed programming language that prioritizes safety, clarity, and developer experience. Built as a bytecode virtual machine in C, Gem combines the performance of compiled languages with the safety of modern type systems.
 
@@ -98,10 +96,6 @@ This branch serves as the primary integration branch for new features. It's the 
 **feature/***
 
 For new features or significant changes, create individual branches off dev. Name these branches clearly based on the feature or change being implemented, e.g., feature/new-syntax, feature/variable-bindings. Once the feature is completed, tested, and approved, it gets merged back into the dev branch.
-
-**release/***
-
-When dev reaches a state where it's ready to be released (after all features planned for the release are merged and tests are passed), create a release branch, e.g., release/v0.1.0. This branch is used for final testing and documentation updates. After it's fully tested and ready, it merges into main and back into dev to ensure any version updates or last-minute fixes are not lost.
 
 **hotfix/***
 
