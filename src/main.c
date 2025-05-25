@@ -21,6 +21,9 @@
 //> Line editing support
 #include "lineedit.h"
 //< Line editing support
+//> Version information
+#include "version.h"
+//< Version information
 
 //> JIT Integration command line parsing
 static void printUsage() {
@@ -31,7 +34,18 @@ static void printUsage() {
   fprintf(stderr, "  --jit-threshold N   Set function compilation threshold (default: 100)\n");
   fprintf(stderr, "  --jit-loop-threshold N Set loop compilation threshold (default: 50)\n");
   fprintf(stderr, "  --repl              Enter REPL after executing script\n");
+  fprintf(stderr, "  --version           Show version information\n");
   fprintf(stderr, "  --help              Show this help message\n");
+}
+
+static void printVersion() {
+  printf("Gem Programming Language %s\n", VERSION_DISPLAY);
+  printf("Version: %s\n", VERSION_STRING);
+  printf("Build: %d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+  if (strlen(VERSION_SUFFIX) > 0) {
+    printf("-%s", VERSION_SUFFIX);
+  }
+  printf("\n");
 }
 
 // Global flags for JIT control
@@ -55,7 +69,7 @@ static void repl() {
     loadHistory(historyPath);
   }
   
-  printf("Gem REPL v1.2.0 - Use Ctrl+C or Ctrl+D to exit\n");
+  printf("Gem REPL %s - Use Ctrl+C or Ctrl+D to exit\n", VERSION_DISPLAY);
   printf("Arrow keys for history, Ctrl+A/E for line start/end, Ctrl+K/U for kill line\n\n");
   
   for (;;) {
@@ -163,6 +177,9 @@ int main(int argc, const char* argv[]) {
       }
       // In a full implementation, we'd set the loop threshold here
       i++; // Skip the number argument
+    } else if (strcmp(argv[i], "--version") == 0) {
+      printVersion();
+      exit(0);
     } else if (strcmp(argv[i], "--help") == 0) {
       printUsage();
       exit(0);
