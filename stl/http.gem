@@ -1,0 +1,17 @@
+module HTTP
+  def get(string url) string
+    return httpGet(url);
+  end
+  
+  def post(string url, string data) string
+    return httpPost(url, data);
+  end
+  
+  def put(string url, string data) string
+    return httpPut(url, data);
+  end
+  
+  def delete(string url) string
+    return httpDelete(url);
+  end
+end

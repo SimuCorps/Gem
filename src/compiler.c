@@ -2056,10 +2056,16 @@ static void requireStatement() {
         ObjString* moduleName = copyString(moduleNameStart, current - moduleNameStart);
         
         // Look for function definitions in this module
-        while (*current != '\0' && strncmp(current, "end", 3) != 0) {
+        while (*current != '\0') {
           // Skip whitespace and comments
           while (*current == ' ' || *current == '\t' || *current == '\n' || *current == '\r') {
             current++;
+          }
+          
+          // Check if we've reached the end of the module
+          if (strncmp(current, "end", 3) == 0 && 
+              (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+            break; // End of module
           }
           
           // Look for "def" keyword
@@ -2077,16 +2083,95 @@ static void requireStatement() {
             }
             ObjString* functionName = copyString(funcNameStart, current - funcNameStart);
             
-            // Skip to return type (simplified - assume int for now)
-            // In a real implementation, we'd parse the full signature
-            ReturnType returnType = TYPE_INT;
+            // Parse function signature to extract return type
+            ReturnType returnType = TYPE_VOID; // Default fallback
+            
+            // Find the opening parenthesis
+            while (*current && *current != '(') {
+              current++;
+            }
+            if (*current == '(') current++; // Skip opening paren
+            
+            // Skip to the closing parenthesis of parameters
+            int parenDepth = 1; // We're already inside the parentheses
+            while (*current && parenDepth > 0) {
+              if (*current == '(') parenDepth++;
+              else if (*current == ')') parenDepth--;
+              current++;
+            }
+            
+            // Now we should be positioned right after the closing parenthesis
+            // Skip whitespace after parameters
+            while (*current == ' ' || *current == '\t') current++;
+            
+            // Now parse the return type
+            if (strncmp(current, "string", 6) == 0 && 
+                (current[6] == ' ' || current[6] == '\t' || current[6] == '\n' || current[6] == '\r' || current[6] == '\0')) {
+              returnType = TYPE_STRING;
+              current += 6;
+            } else if (strncmp(current, "int", 3) == 0 && 
+                      (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+              returnType = TYPE_INT;
+              current += 3;
+            } else if (strncmp(current, "bool", 4) == 0 && 
+                      (current[4] == ' ' || current[4] == '\t' || current[4] == '\n' || current[4] == '\r' || current[4] == '\0')) {
+              returnType = TYPE_BOOL;
+              current += 4;
+            } else if (strncmp(current, "void", 4) == 0 && 
+                      (current[4] == ' ' || current[4] == '\t' || current[4] == '\n' || current[4] == '\r' || current[4] == '\0')) {
+              returnType = TYPE_VOID;
+              current += 4;
+            } else if (strncmp(current, "func", 4) == 0 && 
+                      (current[4] == ' ' || current[4] == '\t' || current[4] == '\n' || current[4] == '\r' || current[4] == '\0')) {
+              returnType = TYPE_FUNC;
+              current += 4;
+            } else if (strncmp(current, "obj", 3) == 0 && 
+                      (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+              returnType = TYPE_OBJ;
+              current += 3;
+            } else if (strncmp(current, "hash", 4) == 0 && 
+                      (current[4] == ' ' || current[4] == '\t' || current[4] == '\n' || current[4] == '\r' || current[4] == '\0')) {
+              returnType = TYPE_HASH;
+              current += 4;
+            }
             
             // Register the function signature
             addModuleFunction(moduleName, functionName, returnType);
             
-            // Skip to end of line or function body
-            while (*current && *current != '\n') {
-              current++;
+            // Skip to the start of the function body (after return type)
+            // We need to find the opening of the function body and then skip to its matching 'end'
+            while (*current && *current != '\n' && *current != '\r') {
+              current++; // Skip to end of function signature line
+            }
+            
+            // Now skip the entire function body (from current position to matching 'end')
+            int defDepth = 1; // We're inside one 'def'
+            while (*current && defDepth > 0) {
+              // Skip whitespace
+              while (*current == ' ' || *current == '\t' || *current == '\n' || *current == '\r') {
+                current++;
+              }
+              
+              if (*current == '\0') {
+                break; // Safety check
+              }
+              
+              // Check for nested 'def' or 'end'
+              if (strncmp(current, "def", 3) == 0 && 
+                  (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+                defDepth++;
+                current += 3;
+              } else if (strncmp(current, "end", 3) == 0 && 
+                        (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+                defDepth--;
+                current += 3;
+                if (defDepth == 0) {
+                  // We've found the end of this function, continue to look for more functions
+                  break;
+                }
+              } else {
+                current++;
+              }
             }
           } else {
             current++;

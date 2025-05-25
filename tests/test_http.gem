@@ -1,0 +1,35 @@
+require "http"
+
+puts "=== Testing HTTP Module ===";
+
+# Test HTTP GET request
+puts "Testing HTTP.get()...";
+string response = HTTP.get("https://httpbin.org/get");
+puts "HTTP GET response received (length > 0):";
+puts response != "";
+
+# Test a simple endpoint that returns JSON
+puts "Testing HTTP.get() with JSON endpoint...";
+string jsonResponse = HTTP.get("https://httpbin.org/json");
+puts "JSON response received:";
+puts jsonResponse != "";
+
+# Test HTTP POST request
+puts "Testing HTTP.post()...";
+string postResponse = HTTP.post("https://httpbin.org/post", "test data");
+puts "HTTP POST response received:";
+puts postResponse != "";
+
+# Test HTTP PUT request
+puts "Testing HTTP.put()...";
+string putResponse = HTTP.put("https://httpbin.org/put", "updated data");
+puts "HTTP PUT response received:";
+puts putResponse != "";
+
+# Test HTTP DELETE request
+puts "Testing HTTP.delete()...";
+string deleteResponse = HTTP.delete("https://httpbin.org/delete");
+puts "HTTP DELETE response received:";
+puts deleteResponse != "";
+
+puts "=== HTTP Module Tests Complete ===";

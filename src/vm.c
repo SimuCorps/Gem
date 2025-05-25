@@ -135,6 +135,193 @@ static void defineNative(const char* name, NativeFn function) {
 }
 //< Calls and Functions define-native
 
+//> HTTP Native Functions
+static Value httpGetNative(int argCount, Value* args) {
+  if (argCount != 1) {
+    runtimeError("httpGet() takes exactly 1 argument (%d given).", argCount);
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpGet() argument must be a string.");
+    return NIL_VAL;
+  }
+  
+  const char* url = AS_CSTRING(args[0]);
+  
+  // For now, we'll use a simple system call to curl
+  // In a production implementation, you'd want to use a proper HTTP library
+  char command[1024];
+  snprintf(command, sizeof(command), "curl -s \"%s\"", url);
+  
+  FILE* pipe = popen(command, "r");
+  if (!pipe) {
+    runtimeError("Failed to execute HTTP request.");
+    return NIL_VAL;
+  }
+  
+  // Read the response
+  char* response = malloc(65536); // 64KB buffer
+  if (!response) {
+    pclose(pipe);
+    runtimeError("Out of memory for HTTP response.");
+    return NIL_VAL;
+  }
+  
+  size_t totalRead = 0;
+  size_t bytesRead;
+  while ((bytesRead = fread(response + totalRead, 1, 1024, pipe)) > 0) {
+    totalRead += bytesRead;
+    if (totalRead >= 65535) break; // Leave space for null terminator
+  }
+  response[totalRead] = '\0';
+  
+  pclose(pipe);
+  
+  ObjString* result = copyString(response, (int)totalRead);
+  free(response);
+  
+  return OBJ_VAL(result);
+}
+
+static Value httpPostNative(int argCount, Value* args) {
+  if (argCount != 2) {
+    runtimeError("httpPost() takes exactly 2 arguments (%d given).", argCount);
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
+    runtimeError("httpPost() arguments must be strings.");
+    return NIL_VAL;
+  }
+  
+  const char* url = AS_CSTRING(args[0]);
+  const char* data = AS_CSTRING(args[1]);
+  
+  char command[2048];
+  snprintf(command, sizeof(command), "curl -s -X POST -d \"%s\" \"%s\"", data, url);
+  
+  FILE* pipe = popen(command, "r");
+  if (!pipe) {
+    runtimeError("Failed to execute HTTP POST request.");
+    return NIL_VAL;
+  }
+  
+  char* response = malloc(65536);
+  if (!response) {
+    pclose(pipe);
+    runtimeError("Out of memory for HTTP response.");
+    return NIL_VAL;
+  }
+  
+  size_t totalRead = 0;
+  size_t bytesRead;
+  while ((bytesRead = fread(response + totalRead, 1, 1024, pipe)) > 0) {
+    totalRead += bytesRead;
+    if (totalRead >= 65535) break;
+  }
+  response[totalRead] = '\0';
+  
+  pclose(pipe);
+  
+  ObjString* result = copyString(response, (int)totalRead);
+  free(response);
+  
+  return OBJ_VAL(result);
+}
+
+static Value httpPutNative(int argCount, Value* args) {
+  if (argCount != 2) {
+    runtimeError("httpPut() takes exactly 2 arguments (%d given).", argCount);
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
+    runtimeError("httpPut() arguments must be strings.");
+    return NIL_VAL;
+  }
+  
+  const char* url = AS_CSTRING(args[0]);
+  const char* data = AS_CSTRING(args[1]);
+  
+  char command[2048];
+  snprintf(command, sizeof(command), "curl -s -X PUT -d \"%s\" \"%s\"", data, url);
+  
+  FILE* pipe = popen(command, "r");
+  if (!pipe) {
+    runtimeError("Failed to execute HTTP PUT request.");
+    return NIL_VAL;
+  }
+  
+  char* response = malloc(65536);
+  if (!response) {
+    pclose(pipe);
+    runtimeError("Out of memory for HTTP response.");
+    return NIL_VAL;
+  }
+  
+  size_t totalRead = 0;
+  size_t bytesRead;
+  while ((bytesRead = fread(response + totalRead, 1, 1024, pipe)) > 0) {
+    totalRead += bytesRead;
+    if (totalRead >= 65535) break;
+  }
+  response[totalRead] = '\0';
+  
+  pclose(pipe);
+  
+  ObjString* result = copyString(response, (int)totalRead);
+  free(response);
+  
+  return OBJ_VAL(result);
+}
+
+static Value httpDeleteNative(int argCount, Value* args) {
+  if (argCount != 1) {
+    runtimeError("httpDelete() takes exactly 1 argument (%d given).", argCount);
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpDelete() argument must be a string.");
+    return NIL_VAL;
+  }
+  
+  const char* url = AS_CSTRING(args[0]);
+  
+  char command[1024];
+  snprintf(command, sizeof(command), "curl -s -X DELETE \"%s\"", url);
+  
+  FILE* pipe = popen(command, "r");
+  if (!pipe) {
+    runtimeError("Failed to execute HTTP DELETE request.");
+    return NIL_VAL;
+  }
+  
+  char* response = malloc(65536);
+  if (!response) {
+    pclose(pipe);
+    runtimeError("Out of memory for HTTP response.");
+    return NIL_VAL;
+  }
+  
+  size_t totalRead = 0;
+  size_t bytesRead;
+  while ((bytesRead = fread(response + totalRead, 1, 1024, pipe)) > 0) {
+    totalRead += bytesRead;
+    if (totalRead >= 65535) break;
+  }
+  response[totalRead] = '\0';
+  
+  pclose(pipe);
+  
+  ObjString* result = copyString(response, (int)totalRead);
+  free(response);
+  
+  return OBJ_VAL(result);
+}
+//< HTTP Native Functions
+
 void initVM() {
 #if FAST_STACK_ENABLED
   // Fast stack is pre-allocated, just reset the pointer
@@ -169,6 +356,12 @@ void initVM() {
 
   defineNative("clock", clockNative);
 //< Calls and Functions define-native-clock
+//> HTTP Native Functions define
+  defineNative("httpGet", httpGetNative);
+  defineNative("httpPost", httpPostNative);
+  defineNative("httpPut", httpPutNative);
+  defineNative("httpDelete", httpDeleteNative);
+//< HTTP Native Functions define
 //> Initialize Compiler Tables
   initCompilerTables();
 //< Initialize Compiler Tables
