@@ -3190,4 +3190,3 @@ static uint8_t argumentListWithTypeCheck(ObjString* functionName, FunctionParams
   return argCount;
 }
 //< Enhanced Function Parameter Tracking Functions
-
