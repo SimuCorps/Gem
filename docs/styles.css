@@ -277,7 +277,14 @@ body {
 }
 
 .code-content code {
-    color: inherit;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* Ensure all code elements are left-aligned */
+pre, code, .code-content, .code-block {
+    text-align: left !important;
 }
 
 /* Copy Button */
@@ -575,6 +582,14 @@ body {
         text-align: center;
     }
     
+    /* Ensure code blocks remain left-aligned even when container is centered */
+    .hero .container .code-window,
+    .hero .container .code-content,
+    .hero .container pre,
+    .hero .container code {
+        text-align: left;
+    }
+    
     .hero-title {
         font-size: 2.5rem;
         flex-direction: column;
@@ -598,6 +613,12 @@ body {
     .docs-grid,
     .examples-grid {
         grid-template-columns: 1fr;
+    }
+    
+    /* Ensure example code blocks remain left-aligned */
+    .example-card pre,
+    .example-card code {
+        text-align: left;
     }
     
     .history-content {
