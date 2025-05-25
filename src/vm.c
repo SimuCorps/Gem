@@ -1264,13 +1264,13 @@ void initVM() {
   cachedRecursiveFunction = NULL;
 //< Initialize Closure Cache
 //> JIT Integration init
-  // initJIT(); // Disabled - pure overhead without actual JIT execution
+  initJIT(); // Enable JIT compilation
 //< JIT Integration init
 }
 
 void freeVM() {
 //> JIT Integration free
-  // freeJIT(); // Disabled - pure overhead without actual JIT execution
+  freeJIT(); // Enable JIT cleanup
 //< JIT Integration free
 #if !FAST_STACK_ENABLED
 //> Free dynamic stack
@@ -1362,6 +1362,37 @@ static bool call(ObjFunction* function, int argCount) {
 static bool call(ObjClosure* closure, int argCount) {
   // In a statically typed language, arity and stack overflow should be checked at compile time
   // These runtime checks are removed for maximum performance
+  
+  // Track function calls for JIT compilation
+  trackHotSpot(closure->function->chunk.code, true);
+  
+  // Check if we should compile this function
+  if (shouldCompile(closure->function->chunk.code)) {
+    JitFunction* jitFunc = compileFunction(closure);
+    // Removed debug output for performance
+  }
+  
+  // Check if we have a compiled version and should execute it
+  JitFunction* jitFunc = findCompiledFunction(closure->function->chunk.code);
+  if (jitFunc != NULL) {
+    // Set up frame for JIT execution
+    CallFrame* frame = &vm.frames[vm.frameCount++];
+    frame->closure = closure;
+    frame->ip = closure->function->chunk.code;
+    frame->slots = vm.stackTop - argCount - 1;
+    
+    // Execute JIT compiled function
+    InterpretResult result = executeJitFunction(jitFunc, &vm, frame);
+    if (result == INTERPRET_OK) {
+      // JIT execution successful, adjust frame count
+      vm.frameCount--;
+      return true;
+    } else {
+      // JIT execution failed, fall back to interpreter
+      vm.frameCount--;
+      // Removed debug output for performance
+    }
+  }
   
   CallFrame* frame = &vm.frames[vm.frameCount++];
   frame->closure = closure;
@@ -2314,7 +2345,9 @@ op_loop: {
   TRACE();
   uint16_t offset = READ_SHORT();
   
-  // Removed JIT tracking for performance
+  // Track loop back edge for JIT compilation
+  trackLoopBackEdge(frame->ip - offset);
+  
   frame->ip -= offset;
   DISPATCH();
 }
@@ -3147,7 +3180,9 @@ op_type_cast: {
       case OP_LOOP: {
         uint16_t offset = READ_SHORT();
         
-        // Removed JIT tracking for performance
+        // Track loop back edge for JIT compilation
+        trackLoopBackEdge(frame->ip - offset);
+        
         frame->ip -= offset;
         break;
       }
