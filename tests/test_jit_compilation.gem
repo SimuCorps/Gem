@@ -1,0 +1,68 @@
+# Test JIT Compilation Features
+puts "=== Testing JIT Compilation ===";
+
+# Hot function that should trigger JIT compilation
+def hotFunction(int n) int
+    int! result = 0;
+    for (int! i = 0; i < n; i = i + 1)
+        result = result + i;
+    end
+    return result;
+end
+
+# Call the function many times to trigger JIT
+puts "Calling hot function to trigger JIT:";
+for (int! call = 0; call < 5; call = call + 1)
+    int result = hotFunction(10);
+    puts "Call #{call}: #{result}";
+end
+
+# Recursive function that should benefit from JIT
+def fibonacci(int n) int
+    if (n <= 1)
+        return n;
+    else
+        return fibonacci(n - 1) + fibonacci(n - 2);
+    end
+end
+
+puts "Fibonacci calculations (should trigger JIT):";
+for (int! i = 1; i <= 5; i = i + 1)
+    int fib = fibonacci(i);
+    puts "fib(#{i}) = #{fib}";
+end
+
+# Loop-heavy function for JIT optimization
+def matrixMultiply(int size) int
+    int! total = 0;
+    for (int! i = 0; i < size; i = i + 1)
+        for (int! j = 0; j < size; j = j + 1)
+            total = total + (i * j);
+        end
+    end
+    return total;
+end
+
+puts "Matrix-like calculations (nested loops):";
+for (int! size = 1; size <= 3; size = size + 1)
+    int result = matrixMultiply(size);
+    puts "Matrix #{size}x#{size}: #{result}";
+end
+
+# Arithmetic-heavy function
+def arithmeticIntensive(int iterations) int
+    int! sum = 0;
+    for (int! i = 1; i <= iterations; i = i + 1)
+        sum = sum + i;
+        sum = sum + (i * i);
+    end
+    return sum;
+end
+
+puts "Arithmetic intensive calculations:";
+for (int! iter = 5; iter <= 15; iter = iter + 5)
+    int result = arithmeticIntensive(iter);
+    puts "Iterations #{iter}: #{result}";
+end
+
+puts "=== JIT Compilation Test Complete ==="; 

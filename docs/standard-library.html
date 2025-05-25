@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standard Library - Gem Programming Language</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="docs.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="index.html" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: inherit;">
+                    <span class="gem-icon">💎</span>
+                    <span class="brand-text">Gem</span>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
+                <li><a href="language-guide.html" class="nav-link">Language Guide</a></li>
+                <li><a href="standard-library.html" class="nav-link active">Standard Library</a></li>
+                <li><a href="https://github.com/SimuCorps/Gem" class="nav-link" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="docs-main">
+        <div class="container">
+            <div class="docs-layout">
+                <aside class="docs-sidebar">
+                    <nav class="docs-nav">
+                        <h3>Standard Library</h3>
+                        <ul>
+                            <li><a href="#overview">Overview</a></li>
+                            <li><a href="#math-module">Math Module</a></li>
+                            <li><a href="#core-functions">Core Functions</a></li>
+                            <li><a href="#importing">Importing Modules</a></li>
+                            <li><a href="#examples">Usage Examples</a></li>
+                        </ul>
+                    </nav>
+                </aside>
+
+                <article class="docs-content">
+                    <header class="docs-header">
+                        <h1>Gem Standard Library</h1>
+                        <p class="docs-subtitle">Reference for Gem's built-in modules and functions</p>
+                    </header>
+
+                    <section id="overview" class="docs-section">
+                        <h2>Standard Library Overview</h2>
+                        <p>Gem comes with a standard library that provides essential functionality for common programming tasks. The standard library is designed to be lightweight, efficient, and type-safe.</p>
+
+                        <h3>Available Modules</h3>
+                        <ul>
+                            <li><strong>Math Module</strong> - Mathematical operations</li>
+                            <li><strong>Core Functions</strong> - Built-in functions available without imports</li>
+                        </ul>
+
+                        <h3>Built-in String Operations</h3>
+                        <p>String operations are handled through built-in operators:</p>
+                        <div class="code-block">
+                            <pre><code># String concatenation (built-in)
+string combined = "Hello" + " World";  # Returns "Hello World"
+
+# String literals
+string greeting = "Hello, Gem!";
+string empty = "";</code></pre>
+                        </div>
+
+                        <h3>Design Principles</h3>
+                        <ul>
+                            <li><strong>Type Safety</strong> - All functions are fully typed with compile-time checking</li>
+                            <li><strong>Immutability</strong> - Functions don't modify their inputs unless explicitly designed to</li>
+                            <li><strong>Null Safety</strong> - Functions handle nullable types safely</li>
+                            <li><strong>Consistency</strong> - Uniform naming and behavior across modules</li>
+                        </ul>
+
+                        <div class="info-box">
+                            <h4>📦 Module System</h4>
+                            <p>Use <code>require "module_name"</code> to import standard library modules.</p>
+                        </div>
+                    </section>
+
+                    <section id="math-module" class="docs-section">
+                        <h2>Math Module</h2>
+                        <p>The Math module provides mathematical operations and utility functions.</p>
+
+                        <h3>Importing the Math Module</h3>
+                        <div class="code-block">
+                            <pre><code>require "math";</code></pre>
+                        </div>
+
+                        <h3>Basic Arithmetic</h3>
+                        <div class="code-block">
+                            <pre><code># Basic operations
+int sum = Math.add(10, 5);           # Returns 15
+int difference = Math.subtract(10, 5); # Returns 5
+int product = Math.multiply(10, 5);   # Returns 50
+int quotient = Math.divide(10, 5);    # Returns 2
+int remainder = Math.modulo(10, 3);   # Returns 1</code></pre>
+                        </div>
+
+                        <h3>Power Operations</h3>
+                        <div class="code-block">
+                            <pre><code># Exponentiation
+int squared = Math.power(5, 2);      # Returns 25
+int cubed = Math.power(3, 3);        # Returns 27
+int power = Math.power(2, 8);        # Returns 256</code></pre>
+                        </div>
+
+                        <h3>Comparison and Selection</h3>
+                        <div class="code-block">
+                            <pre><code># Min/Max operations
+int minimum = Math.min(10, 5);       # Returns 5
+int maximum = Math.max(10, 5);       # Returns 10</code></pre>
+                        </div>
+
+                        <h3>Absolute Value</h3>
+                        <div class="code-block">
+                            <pre><code># Absolute value
+int abs1 = Math.abs(-5);             # Returns 5
+int abs2 = Math.abs(5);              # Returns 5
+int abs3 = Math.abs(0);              # Returns 0</code></pre>
+                        </div>
+
+                        <h3>Math Module Function Reference</h3>
+                        <div class="code-block">
+                            <pre><code># Complete Math module API
+Math.add(int a, int b) int              # Addition
+Math.subtract(int a, int b) int         # Subtraction
+Math.multiply(int a, int b) int         # Multiplication
+Math.divide(int a, int b) int           # Division
+Math.modulo(int a, int b) int           # Modulo operation
+Math.power(int base, int exp) int       # Exponentiation
+Math.abs(int x) int                     # Absolute value
+Math.min(int a, int b) int              # Minimum of two values
+Math.max(int a, int b) int              # Maximum of two values</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="core-functions" class="docs-section">
+                        <h2>Core Functions</h2>
+                        <p>These functions are available without any imports and provide essential I/O operations.</p>
+
+                        <h3>Output Functions</h3>
+                        <div class="code-block">
+                            <pre><code># Print with newline
+puts "Hello, World!";                # Prints: Hello, World!\n
+puts 42;                             # Prints: 42
+puts true;                           # Prints: true
+puts false;                          # Prints: false</code></pre>
+                        </div>
+
+                        <h3>Core Functions Reference</h3>
+                        <div class="code-block">
+                            <pre><code># Complete core functions API
+puts(any value) void                 # Print value with newline</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="importing" class="docs-section">
+                        <h2>Importing Modules</h2>
+                        <p>Learn how to import and use standard library modules in your Gem programs.</p>
+
+                        <h3>Basic Import Syntax</h3>
+                        <div class="code-block">
+                            <pre><code># Import math module
+require "math";
+
+# Use imported module
+int sum = Math.add(10, 5);
+int product = Math.multiply(4, 7);</code></pre>
+                        </div>
+
+                        <h3>Multiple Imports</h3>
+                        <div class="code-block">
+                            <pre><code># Currently only math module is fully functional
+require "math";
+
+def calculateArea(int length, int width) int
+    return Math.multiply(length, width);
+end
+
+def calculatePerimeter(int length, int width) int
+    int doubled_length = Math.multiply(length, 2);
+    int doubled_width = Math.multiply(width, 2);
+    return Math.add(doubled_length, doubled_width);
+end</code></pre>
+                        </div>
+
+                        <h3>Module Availability</h3>
+                        <div class="info-box">
+                            <h4>📦 Standard Library Modules</h4>
+                            <ul>
+                                <li><code>"math"</code> - Mathematical operations</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <section id="examples" class="docs-section">
+                        <h2>Usage Examples</h2>
+                        <p>Practical examples showing how to use the standard library.</p>
+
+                        <h3>Mathematical Calculation Example</h3>
+                        <div class="code-block">
+                            <pre><code>require "math";
+
+def calculateStats(int a, int b, int c) void
+    # Basic statistics
+    int sum = Math.add(Math.add(a, b), c);
+    int min = Math.min(Math.min(a, b), c);
+    int max = Math.max(Math.max(a, b), c);
+    
+    # Calculate average (integer division)
+    int average = Math.divide(sum, 3);
+    
+    # Calculate range
+    int range = Math.subtract(max, min);
+    
+    # Display results
+    puts "Sum: " + sum;
+    puts "Average: " + average;
+    puts "Min: " + min;
+    puts "Max: " + max;
+    puts "Range: " + range;
+end
+
+# Usage
+calculateStats(10, 20, 30);</code></pre>
+                        </div>
+
+                        <h3>String Processing Example</h3>
+                        <div class="code-block">
+                            <pre><code># Basic string operations using built-in concatenation
+def createGreeting(string name) string
+    return "Hello, " + name + "!";
+end
+
+def createBanner(string message) string
+    string border = "===================";
+    string spacedMessage = " " + message + " ";
+    return border + spacedMessage + border;
+end
+
+# Usage
+string greeting = createGreeting("Alice");
+puts greeting;
+
+string banner = createBanner("WELCOME");
+puts banner;</code></pre>
+                        </div>
+
+                        <h3>Math Operations Example</h3>
+                        <div class="code-block">
+                            <pre><code>require "math";
+
+def printMathResults() void
+    puts "Math Operations Demo:";
+    
+    int a = 10;
+    int b = 3;
+    
+    puts "Numbers: 10 and 3";
+    
+    int sum = Math.add(a, b);
+    puts "Addition result:";
+    puts sum;
+    
+    int product = Math.multiply(a, b);
+    puts "Multiplication result:";
+    puts product;
+    
+    int power = Math.power(a, b);
+    puts "Power result:";
+    puts power;
+    
+    int maximum = Math.max(a, b);
+    puts "Maximum:";
+    puts maximum;
+end
+
+# Usage
+printMathResults();</code></pre>
+                        </div>
+                    </section>
+                </article>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="gem-icon">💎</span>
+                    <span>Gem Programming Language</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>
+                    <a href="getting-started.html">Documentation</a>
+                    <a href="examples.html">Examples</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SimuCorps LLC</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html> 

@@ -1,0 +1,91 @@
+# Test Function Definitions and Calls
+puts "=== Testing Functions ===";
+
+# Simple function
+def greet(string name) string
+    return "Hello, " + name;
+end
+
+puts greet("Alice");
+
+# Function with multiple parameters
+def add(int a, int b) int
+    return a + b;
+end
+
+puts add(5, 3);
+
+# Function with nullable parameter
+def greetOptional(string? name) string
+    if (name == nil)
+        return "Hello, stranger!";
+    else
+        return "Hello, " + name;
+    end
+end
+
+puts greetOptional("Bob");
+puts greetOptional(nil);
+
+# Function with mixed parameter types
+def formatMessage(string msg, int num, bool urgent) string
+    string! prefix = "";
+    if (urgent) 
+        prefix = "URGENT: ";
+    else
+        prefix = "INFO: ";
+    end
+    return prefix + msg + " (" + "#{num}" + ")";
+end
+
+puts formatMessage("System update", 42, true);
+puts formatMessage("Regular message", 10, false);
+
+# Recursive function
+def factorial(int n) int
+    if (n <= 1)
+        return 1;
+    else
+        return n * factorial(n - 1);
+    end
+end
+
+puts factorial(5);  # 120
+
+# Boolean returning function
+def isEven(int num) bool
+    int half = num / 2;
+    return (half * 2) == num;
+end
+
+puts isEven(4);   # true
+puts isEven(7);   # false
+
+# Void function
+def printInfo(string name, int age) void
+    puts "Name: " + name;
+    puts "Age: " + "#{age}";
+end
+
+printInfo("Charlie", 30);
+
+# Function with complex logic
+def getGrade(int score) string
+    if (score >= 90)
+        return "A";
+    elsif (score >= 80)
+        return "B";
+    elsif (score >= 70)
+        return "C";
+    elsif (score >= 60)
+        return "D";
+    else
+        return "F";
+    end
+end
+
+puts getGrade(95);
+puts getGrade(75);
+puts getGrade(55);
+
+puts "=== Functions Test Complete ==="; 

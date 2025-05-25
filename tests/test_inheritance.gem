@@ -1,0 +1,126 @@
+# Test Inheritance and Super Keyword
+puts "=== Testing Inheritance ===";
+
+# Base class
+class Animal
+    def init(string name) void
+        this.name = name;
+        this.owner = nil; # nullable field
+    end
+    
+    def speak() string
+        return this.name + " makes a sound";
+    end
+    
+    def getType() string
+        return "animal";
+    end
+    
+    def setOwner(string? ownerName) void
+        this.owner = ownerName;
+    end
+    
+    def getOwner() string
+        if (this.owner == nil)
+            return "No owner";
+        else
+            return "" + this.owner;
+        end
+    end
+    
+    def introduce() string
+        return "This is " + this.name + ", a " + this.getType();
+    end
+end
+
+# Derived class
+class Dog < Animal
+    def init(string name, string breed) void
+        super.init(name);
+        this.breed = breed;
+    end
+    
+    def speak() string
+        return this.name + " barks";
+    end
+    
+    def getType() string
+        return "dog";
+    end
+    
+    def isGoodBoy() bool
+        return true;
+    end
+    
+    def getBreed() string
+        return this.breed;
+    end
+    
+    def fullIntroduction() string
+        return super.introduce() + " of breed " + this.breed;
+    end
+end
+
+# Another derived class
+class Cat < Animal
+    def init(string name, bool isIndoor) void
+        super.init(name);
+        this.isIndoor = isIndoor;
+    end
+    
+    def speak() string
+        return this.name + " meows";
+    end
+    
+    def getType() string
+        return "cat";
+    end
+    
+    def isIndoorCat() bool
+        return this.isIndoor;
+    end
+    
+    def hunt() string
+        if (this.isIndoor)
+            return this.name + " hunts toy mice";
+        else
+            return this.name + " hunts real mice";
+        end
+    end
+end
+
+# Test base class
+obj animal = Animal("Fluffy");
+puts animal.speak();
+puts animal.getType();
+puts animal.introduce();
+puts animal.getOwner();
+animal.setOwner("John");
+puts animal.getOwner();
+
+# Test derived classes
+obj dog = Dog("Rex", "Golden Retriever");
+puts dog.speak();      # Overridden method
+puts dog.getType();    # Overridden method
+puts dog.getBreed();
+puts dog.isGoodBoy();
+puts dog.introduce();  # Uses inherited method
+puts dog.fullIntroduction(); # Uses super
+
+obj cat = Cat("Whiskers", true);
+puts cat.speak();
+puts cat.getType();
+puts cat.isIndoorCat();
+puts cat.hunt();
+puts cat.introduce();
+
+# Test polymorphism
+obj pet1 = Dog("Buddy", "Labrador");
+obj pet2 = Cat("Mittens", false);
+
+puts pet1.speak();  # Dog's speak method
+puts pet2.speak();  # Cat's speak method
+puts pet1.getType(); # Dog's getType method
+puts pet2.getType(); # Cat's getType method
+
+puts "=== Inheritance Test Complete ==="; 

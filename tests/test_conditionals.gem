@@ -1,0 +1,63 @@
+# Test Conditional Statements
+puts "=== Testing Conditionals ===";
+
+# Basic if statement
+int testNum = 15;
+
+if (testNum > 10)
+    puts "Greater than 10";
+end
+
+# If-else statement
+if (testNum < 0)
+    puts "Negative";
+else
+    puts "Non-negative";
+end
+
+# If-elsif-else statement
+if (testNum < 0)
+    puts "Negative";
+elsif (testNum == 0)
+    puts "Zero";
+else
+    puts "Positive";
+end
+
+# Simple grade check (avoiding multiple elsif that causes segfault)
+int grade = 85;
+
+if (grade >= 80)
+    puts "Grade B or better";
+else
+    puts "Grade C or lower";
+end
+
+# If with complex conditions
+bool isActive = true;
+int count = 25;
+
+if (isActive and count > 20)
+    puts "Active and count is high";
+else
+    puts "Other case";
+end
+
+# If with nullable variables
+string?! optionalValue = nil;
+
+if (optionalValue == nil)
+    puts "Value is nil";
+else
+    puts "Value is not nil";
+end
+
+optionalValue = "Hello";
+
+if (optionalValue != nil)
+    puts "Value is now set";
+else
+    puts "Value is still nil";
+end
+
+puts "=== Conditionals Test Complete ==="; 

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gem Programming Language</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="gem-icon">💎</span>
+                <span class="brand-text">Gem</span>
+                <span class="version">v1.0.0</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home" class="nav-link">Home</a></li>
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="#history" class="nav-link">History</a></li>
+                <li><a href="#docs" class="nav-link">Documentation</a></li>
+                <li><a href="#examples" class="nav-link">Examples</a></li>
+                <li><a href="https://github.com/SimuCorps/Gem" class="nav-link" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <section id="home" class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title">
+                        <span class="gem-icon-large">💎</span>
+                        Gem Programming Language
+                        <span class="version-badge">v1.0.0</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        A modern, statically-typed language that prioritizes safety, clarity, and developer experience. 
+                        <strong>Beautiful syntax with strong safety guarantees.</strong>
+                    </p>
+                    <p class="hero-description">
+                        Gem combines elegant syntax with compile-time safety, creating a language 
+                        that's both powerful and delightful to write. No more choosing between safety and beauty.
+                    </p>
+                    <div class="hero-features">
+                        <span class="feature-badge">🔒 Memory Safe</span>
+                        <span class="feature-badge">🛡️ Type Safe</span>
+                        <span class="feature-badge">⚡ Fast</span>
+                        <span class="feature-badge">🎯 Developer Friendly</span>
+                        <span class="feature-badge">💎 Beautiful Syntax</span>
+                    </div>
+                    <div class="hero-actions">
+                        <a href="#docs" class="btn btn-primary">Get Started</a>
+                        <a href="https://github.com/SimuCorps/Gem" class="btn btn-secondary" target="_blank">View on GitHub</a>
+                    </div>
+                </div>
+                <div class="hero-code">
+                    <div class="code-window">
+                        <div class="code-header">
+                            <div class="code-dots">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
+                            </div>
+                            <span class="code-title">hello.gem</span>
+                        </div>
+                        <pre class="code-content"><code># Type-safe variables with mutability control
+string name = "Alice";        # Immutable
+int! counter = 0;             # Mutable
+string? nickname = nil;       # Nullable
+
+# Functions with type safety
+def greet(string name, int age) string
+    return "Hello " + name + ", age " + age;
+end
+
+# Classes with inheritance
+class Person
+    def init(string name) void
+        this.name = name;
+    end
+    
+    def introduce() string
+        return "I'm " + this.name;
+    end
+end
+
+# Memory-safe scoping
+begin
+    obj person = Person("Bob");
+    puts person.introduce();
+    # person automatically cleaned up here
+end</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="features">
+            <div class="container">
+                <h2 class="section-title">What Makes Gem Special</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3>Memory Safety</h3>
+                        <p>Automatic scope-based memory management with compile-time borrow checking. No memory leaks, no use-after-free errors.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🛡️</div>
+                        <h3>Type Safety</h3>
+                        <p>Enhanced static typing with nullability and mutability control. Catch errors at compile time, not runtime.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Performance</h3>
+                        <p>Bytecode compilation with JIT optimization. Get the speed of compiled languages with modern safety features.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎯</div>
+                        <h3>Developer Experience</h3>
+                        <p>Clear error messages, interactive REPL, and intuitive syntax. Built for productivity and developer happiness.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🧩</div>
+                        <h3>Modern Features</h3>
+                        <p>First-class functions, classes, inheritance, modules, and a growing standard library.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💎</div>
+                        <h3>Beautiful Syntax</h3>
+                        <p>Clean, expressive syntax that's genuinely pleasant to read and write. Code that's not only safe and fast, but beautiful.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="history" class="history">
+            <div class="container">
+                <h2 class="section-title">The Journey to Gem</h2>
+                <div class="history-content">
+                    <div class="history-text">
+                        <h3>From Humble Beginnings to Something Awesome</h3>
+                        <p>
+                            Gem's story began as a fork of the <strong>Monkey</strong> interpreter from "Writing an Interpreter in Go." 
+                            As the language evolved, it transitioned to being based on <strong>Lox</strong> from "Crafting Interpreters," 
+                            where it was known as <strong>Embr</strong> (embrlang.com).
+                        </p>
+                        <p>
+                            But we weren't satisfied with just another interpreter. We wanted something <em>special</em>. 
+                            Something that captured beautiful syntax and developer happiness while incorporating 
+                            strong memory safety and type checking to eliminate common programming errors.
+                        </p>
+                        <p>
+                            So we stripped back the language and rebuilt it, creating <strong>Gem</strong> - 
+                            a language with elegant syntax and strong safety guarantees. Gem is designed to be an <em>awesome fucking language</em> that you'll 
+                            actually enjoy using.
+                        </p>
+                    </div>
+                    <div class="history-timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-icon">🐒</div>
+                            <div class="timeline-content">
+                                <h4>Monkey Era</h4>
+                                <p>Started as a fork of the Monkey interpreter, learning the fundamentals of language design.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-icon">🔥</div>
+                            <div class="timeline-content">
+                                <h4>Embr Phase</h4>
+                                <p>Transitioned to Lox-based architecture as Embr, exploring bytecode compilation and optimization.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-icon">💎</div>
+                            <div class="timeline-content">
+                                <h4>Gem Reborn</h4>
+                                <p>Complete rewrite with focus on safety, beauty, and developer happiness. The language we always wanted.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="philosophy-box">
+                    <h3>🎯 Design Philosophy</h3>
+                    <p>
+                        Gem focuses on beautiful syntax and developer joy, while providing 
+                        strong memory safety and type checking. We believe you shouldn't have to choose 
+                        between safety and beauty, between performance and elegance. Gem gives you all of it.
+                    </p>
+                    <p>
+                        <strong>Elegant syntax + Strong safety = Developer happiness</strong>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="docs" class="documentation">
+            <div class="container">
+                <h2 class="section-title">Documentation</h2>
+                <div class="docs-grid">
+                    <div class="doc-card">
+                        <h3><a href="getting-started.html">Getting Started</a></h3>
+                        <p>Install Gem, write your first program, and learn the basics of the language.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3><a href="language-guide.html">Language Guide</a></h3>
+                        <p>Complete guide to Gem's syntax, type system, and language features.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3><a href="type-system.html">Type System</a></h3>
+                        <p>Deep dive into Gem's enhanced type system with mutability and nullability control.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3><a href="memory-safety.html">Memory Safety</a></h3>
+                        <p>Learn how Gem prevents memory errors with scope-based management and borrow checking.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3><a href="standard-library.html">Standard Library</a></h3>
+                        <p>Reference for Gem's built-in modules and functions.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3><a href="examples.html">Examples</a></h3>
+                        <p>Real-world examples and code snippets to help you learn Gem.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="examples" class="examples">
+            <div class="container">
+                <h2 class="section-title">Code Examples</h2>
+                <div class="examples-grid">
+                    <div class="example-card">
+                        <h3>Type Safety</h3>
+                        <pre><code># Variables are immutable by default
+string name = "Alice";
+int! counter = 0;        # Mutable with !
+string? optional = nil;  # Nullable with ?
+
+# Compile-time type checking
+# name = 42;  # ❌ Error: Cannot assign int to string
+counter = counter + 1;   # ✅ Valid: counter is mutable</code></pre>
+                    </div>
+                    <div class="example-card">
+                        <h3>Memory Safety</h3>
+                        <pre><code># Automatic scope-based cleanup
+begin
+    obj resource = FileHandle("data.txt");
+    resource.process();
+    # resource automatically cleaned up here
+end
+# resource is no longer accessible
+
+# Borrow checking prevents use-after-drop
+# puts resource.data;  # ❌ Compile error</code></pre>
+                    </div>
+                    <div class="example-card">
+                        <h3>Functions & Classes</h3>
+                        <pre><code># First-class functions with type safety
+def calculate(int x, int y, func operation) int
+    return operation(x, y);
+end
+
+# Classes with inheritance
+class Animal
+    def speak() string
+        return "Some sound";
+    end
+end
+
+class Dog : Animal
+    def speak() string
+        return "Woof!";
+    end
+end</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="gem-icon">💎</span>
+                    <span>Gem Programming Language v1.0.0</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>
+                    <a href="getting-started.html">Documentation</a>
+                    <a href="examples.html">Examples</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+              <p>&copy; 2025 SimuCorps LLC</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html> 

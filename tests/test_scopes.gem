@@ -1,0 +1,129 @@
+# Test Scope Management
+puts "=== Testing Scopes ===";
+
+# Global scope
+string global = "global";
+string! mutableGlobal = "mutable global";
+
+puts global;
+puts mutableGlobal;
+
+# Basic begin/end block
+begin
+    string local = "local";
+    string! mutableLocal = "mutable local";
+    puts global;  # Access global from local scope
+    puts mutableGlobal;
+    puts local;
+    puts mutableLocal;
+    
+    # Modify mutable variable
+    mutableLocal = "modified local";
+    puts mutableLocal;
+end
+
+# Variables from block are not accessible here
+puts global;
+mutableGlobal = "modified global";
+puts mutableGlobal;
+
+# Nested scopes
+begin
+    string outerLocal = "outer";
+    int outerNum = 42;
+    puts outerLocal;
+    puts outerNum;
+    
+    begin
+        string innerLocal = "inner";
+        int innerNum = 24;
+        puts global;      # Access global
+        puts outerLocal;  # Access outer scope
+        puts innerLocal;  # Access current scope
+        puts outerNum;
+        puts innerNum;
+        
+        # Modify global from nested scope
+        mutableGlobal = "modified from nested";
+        
+        begin
+            string deepLocal = "deep";
+            puts global;
+            puts outerLocal;
+            puts innerLocal;
+            puts deepLocal;
+            puts outerNum;
+            puts innerNum;
+        end
+    end
+    
+    puts outerLocal;  # Still accessible
+    puts outerNum;
+end
+
+puts mutableGlobal;  # Should show modification from nested scope
+
+# Scope with functions
+def testFunction() void
+    string functionLocal = "function local";
+    puts functionLocal;
+    puts global;  # Access global from function
+    
+    begin
+        string blockInFunction = "block in function";
+        puts functionLocal;     # Access function scope
+        puts blockInFunction;   # Access block scope
+        puts global;           # Access global scope
+    end
+end
+
+testFunction();
+
+# Scope with conditionals
+int testValue = 15;
+
+if (testValue > 10)
+    string conditionalLocal = "conditional";
+    puts conditionalLocal;
+    puts global;
+    
+    begin
+        string nestedInConditional = "nested in conditional";
+        puts conditionalLocal;
+        puts nestedInConditional;
+        puts global;
+    end
+end
+
+# Scope with loops
+for (int! i = 0; i < 3; i = i + 1)
+    string loopLocal = "loop local #{i}";
+    puts loopLocal;
+    puts global;
+    
+    begin
+        string nestedInLoop = "nested in loop #{i}";
+        puts loopLocal;
+        puts nestedInLoop;
+    end
+end
+
+# Variable shadowing
+string shadowTest = "global shadow";
+puts shadowTest;
+
+begin
+    string shadowTest = "local shadow";  # Shadows global
+    puts shadowTest;  # Should print local version
+    
+    begin
+        string shadowTest = "nested shadow";  # Shadows local
+        puts shadowTest;  # Should print nested version
+    end
+    
+    puts shadowTest;  # Should print local version again
+end
+
+puts shadowTest;  # Should print global version
+
+puts "=== Scopes Test Complete ==="; 

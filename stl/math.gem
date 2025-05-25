@@ -1,0 +1,59 @@
+module Math
+  def add(int x, int y) int
+    return x + y;
+  end
+
+  def subtract(int x, int y) int
+    return x - y;
+  end
+
+  def multiply(int x, int y) int
+    return x * y;
+  end
+
+  def divide(int x, int y) int
+    return x / y;
+  end
+
+  def modulo(int x, int y) int
+    return x % y;
+  end
+
+  def power(int base, int exponent) int
+    if (exponent == 0) 
+      return 1;
+    end
+    if (exponent == 1) 
+      return base;
+    end
+    
+    int! result = 1;
+    int! i = 0;
+    while (i < exponent)
+      result = result * base;
+      i = i + 1;
+    end
+    return result;
+  end
+
+  def abs(int x) int
+    if (x < 0) 
+      return -x;
+    end
+    return x;
+  end
+
+  def max(int x, int y) int
+    if (x > y) 
+      return x;
+    end
+    return y;
+  end
+
+  def min(int x, int y) int
+    if (x < y) 
+      return x;
+    end
+    return y;
+  end
+end

@@ -1,0 +1,60 @@
+# Test Comparison Operators
+puts "=== Testing Comparisons ===";
+
+# Equality comparisons
+puts 5 == 5;       # true
+puts 5 == 3;       # false
+puts 5 != 3;       # true
+puts 5 != 5;       # false
+
+# Numeric comparisons
+puts 7 > 3;        # true
+puts 3 > 7;        # false
+puts 2 < 8;        # true
+puts 8 < 2;        # false
+puts 5 >= 5;       # true
+puts 5 >= 3;       # true
+puts 3 >= 5;       # false
+puts 3 <= 7;       # true
+puts 7 <= 3;       # false
+puts 5 <= 5;       # true
+
+# String comparisons
+puts "hello" == "hello";  # true
+puts "hello" == "world";  # false
+puts "hello" != "world";  # true
+
+# Boolean comparisons
+puts true == true;        # true
+puts false == false;      # true
+puts true == false;       # false
+puts true != false;       # true
+
+# Nil comparisons
+puts nil == nil;          # true
+puts nil != nil;          # false
+
+# Variable comparisons
+int a = 10;
+int b = 20;
+int c = 10;
+
+puts a < b;        # true
+puts a > b;        # false
+puts a == c;       # true
+puts a != b;       # true
+
+# Floating point comparisons
+puts 3.14 > 3.0;   # true
+puts 2.5 == 2.5;   # true
+puts 1.0 < 1.1;    # true
+
+# Mixed type comparisons (numbers)
+puts 5 == 5.0;     # Should work if language supports it
+puts 10 > 9.5;     # Should work if language supports it
+
+# Complex expressions in comparisons
+puts (5 + 3) == (2 * 4);  # true (both equal 8)
+puts (10 - 2) > (3 * 2);  # true (8 > 6)
+
+puts "=== Comparisons Test Complete ==="; 

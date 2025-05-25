@@ -1,0 +1,33 @@
+# Build artifacts
+bin/
+*.o
+*.a
+*.so
+*.dylib
+
+# Generated files
+src/embedded_stl.h
+
+# Compiler outputs
+gemc
+gemch
+
+# Test outputs
+test_results.log
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db

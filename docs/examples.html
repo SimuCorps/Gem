@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examples - Gem Programming Language</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="docs.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="index.html" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: inherit;">
+                    <span class="gem-icon">💎</span>
+                    <span class="brand-text">Gem</span>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
+                <li><a href="language-guide.html" class="nav-link">Language Guide</a></li>
+                <li><a href="examples.html" class="nav-link active">Examples</a></li>
+                <li><a href="https://github.com/SimuCorps/Gem" class="nav-link" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="docs-main">
+        <div class="container">
+            <div class="docs-layout">
+                <aside class="docs-sidebar">
+                    <nav class="docs-nav">
+                        <h3>Examples</h3>
+                        <ul>
+                            <li><a href="#basic-syntax">Basic Syntax</a></li>
+                            <li><a href="#type-safety">Type Safety</a></li>
+                            <li><a href="#functions">Functions</a></li>
+                            <li><a href="#classes">Classes</a></li>
+                            <li><a href="#memory-safety">Memory Safety</a></li>
+                            <li><a href="#modules">Modules</a></li>
+                            <li><a href="#real-world">Real World</a></li>
+                        </ul>
+                    </nav>
+                </aside>
+
+                <article class="docs-content">
+                    <header class="docs-header">
+                        <h1>Code Examples</h1>
+                        <p class="docs-subtitle">Practical examples showcasing Gem's features and best practices</p>
+                    </header>
+
+                    <section id="basic-syntax" class="docs-section">
+                        <h2>Basic Syntax</h2>
+                        <p>Get familiar with Gem's fundamental syntax and features.</p>
+
+                        <h3>Variables and Types</h3>
+                        <div class="code-block">
+                            <pre><code># Basic variable declarations
+int age = 25;
+string name = "Alice";
+bool isActive = true;
+
+# Mutable variables (with ! suffix)
+int! counter = 0;
+string! message = "Hello";
+
+# Nullable variables (with ? suffix)
+string? optionalName = nil;
+int? optionalAge = nil;
+
+# Combined: mutable and nullable
+string?! mutableOptional = nil;</code></pre>
+                        </div>
+
+                        <h3>Control Flow</h3>
+                        <div class="code-block">
+                            <pre><code># Conditionals
+if (age >= 18)
+    puts "Adult";
+else
+    puts "Minor";
+end
+
+# Ternary operator
+string status = age >= 18 ? "Adult" : "Minor";
+
+# Loops
+for (int! i = 0; i < 10; i = i + 1)
+    puts i;
+end
+
+int! count = 0;
+while (count < 5)
+    puts "Count: " + count;
+    count = count + 1;
+end</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="type-safety" class="docs-section">
+                        <h2>Type Safety Examples</h2>
+                        <p>See how Gem's type system prevents common programming errors.</p>
+
+                        <h3>Immutability by Default</h3>
+                        <div class="code-block">
+                            <pre><code># Immutable variables cannot be reassigned
+string greeting = "Hello";
+# greeting = "Hi";  # ❌ Compile error!
+
+# Mutable variables can be reassigned
+string! mutableGreeting = "Hello";
+mutableGreeting = "Hi";  # ✅ Valid
+
+# Function parameters are immutable by default
+def processName(string name) string
+    # name = "Modified";  # ❌ Compile error!
+    return "Processed: " + name;
+end</code></pre>
+                        </div>
+
+                        <h3>Null Safety</h3>
+                        <div class="code-block">
+                            <pre><code># Non-nullable types cannot be nil
+string name = "Alice";
+# name = nil;  # ❌ Compile error!
+
+# Nullable types can be nil
+string? optionalName = nil;
+optionalName = "Bob";  # ✅ Valid
+optionalName = nil;    # ✅ Valid
+
+# Safe null checking
+def greetOptional(string? name) string
+    if (name != nil)
+        return "Hello, " + name;
+    else
+        return "Hello, stranger!";
+    end
+end
+
+puts greetOptional("Alice");  # "Hello, Alice"
+puts greetOptional(nil);      # "Hello, stranger!"</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="functions" class="docs-section">
+                        <h2>Functions</h2>
+                        <p>Gem supports first-class functions with strong type checking.</p>
+
+                        <h3>Basic Functions</h3>
+                        <div class="code-block">
+                            <pre><code># Simple function
+def add(int x, int y) int
+    return x + y;
+end
+
+# Function with nullable parameters
+def divide(int x, int y) int?
+    if (y == 0)
+        return nil;  # Safe division
+    else
+        return x / y;
+    end
+end
+
+# Void function
+def printMessage(string message) void
+    puts "Message: " + message;
+end
+
+# Using functions
+int result = add(5, 3);
+int? divResult = divide(10, 2);
+printMessage("Hello, World!");</code></pre>
+                        </div>
+
+                        <h3>Higher-Order Functions</h3>
+                        <div class="code-block">
+                            <pre><code># Function that takes another function as parameter
+def calculate(int x, int y, func operation) int
+    return operation(x, y);
+end
+
+# Define operation functions
+def multiply(int a, int b) int
+    return a * b;
+end
+
+def subtract(int a, int b) int
+    return a - b;
+end
+
+# Use higher-order function
+int product = calculate(4, 5, multiply);    # 20
+int difference = calculate(10, 3, subtract); # 7</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="classes" class="docs-section">
+                        <h2>Classes and Objects</h2>
+                        <p>Object-oriented programming with type safety and memory management.</p>
+
+                        <h3>Basic Class</h3>
+                        <div class="code-block">
+                            <pre><code># Simple class definition
+class Person
+    def init(string name, int age) void
+        this.name = name;
+        this.age = age;
+    end
+    
+    def introduce() string
+        return "Hi, I'm " + this.name + " and I'm " + this.age + " years old.";
+    end
+    
+    def haveBirthday() void
+        this.age = this.age + 1;
+    end
+end
+
+# Using the class
+obj person = Person("Alice", 25);
+puts person.introduce();  # "Hi, I'm Alice and I'm 25 years old."
+person.haveBirthday();
+puts person.introduce();  # "Hi, I'm Alice and I'm 26 years old."</code></pre>
+                        </div>
+
+                        <h3>Inheritance</h3>
+                        <div class="code-block">
+                            <pre><code># Base class
+class Animal
+    def init(string name) void
+        this.name = name;
+    end
+    
+    def speak() string
+        return "Some generic animal sound";
+    end
+    
+    def getName() string
+        return this.name;
+    end
+end
+
+# Derived class
+class Dog : Animal
+    def init(string name, string breed) void
+        super.init(name);  # Call parent constructor
+        this.breed = breed;
+    end
+    
+    def speak() string  # Override parent method
+        return "Woof! Woof!";
+    end
+    
+    def getBreed() string
+        return this.breed;
+    end
+end
+
+# Usage
+obj dog = Dog("Buddy", "Golden Retriever");
+puts dog.getName();   # "Buddy"
+puts dog.speak();     # "Woof! Woof!"
+puts dog.getBreed();  # "Golden Retriever"</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="memory-safety" class="docs-section">
+                        <h2>Memory Safety</h2>
+                        <p>Gem automatically manages memory and prevents common memory errors.</p>
+
+                        <h3>Scope-Based Cleanup</h3>
+                        <div class="code-block">
+                            <pre><code># Objects are automatically cleaned up when scope ends
+def processFile(string filename) bool
+    begin
+        obj file = FileHandle(filename);
+        if (file.isValid())
+            file.process();
+            return true;
+        else
+            return false;
+        end
+        # file is automatically cleaned up here
+    end
+    # file is no longer accessible
+end
+
+# Nested scopes
+def complexProcessing() void
+    obj resource1 = Resource("type1");
+    
+    begin
+        obj resource2 = Resource("type2");
+        resource1.useWith(resource2);
+        # resource2 cleaned up here
+    end
+    
+    resource1.finalize();
+    # resource1 cleaned up when function ends
+end</code></pre>
+                        </div>
+
+                        <h3>Borrow Checking</h3>
+                        <div class="code-block">
+                            <pre><code># Gem prevents use-after-drop at compile time
+def borrowExample() void
+    obj resource = SomeResource("data");
+    
+    begin
+        # resource is borrowed here
+        resource.process();
+    end
+    
+    # resource.process();  # ❌ Compile error: use after potential drop
+end
+
+# Safe borrowing patterns
+def safeBorrowing() void
+    obj resource = SomeResource("data");
+    
+    if (resource.isValid())
+        resource.process();  # ✅ Safe: resource is still in scope
+    end
+    
+    # resource cleaned up here
+end</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="modules" class="docs-section">
+                        <h2>Modules</h2>
+                        <p>Organize code with Gem's module system.</p>
+
+                        <h3>Using Standard Library</h3>
+                        <div class="code-block">
+                            <pre><code># Import standard library modules
+require "math";
+
+# Use math utilities
+int sum = Math.add(10, 5);        # 15
+int power = Math.power(2, 8);     # 256
+int maximum = Math.max(10, 20);   # 20</code></pre>
+                        </div>
+
+                        <h3>Creating Custom Modules</h3>
+                        <div class="code-block">
+                            <pre><code># utils.gem - Custom utility module
+module Utils
+    def formatCurrency(int amount) string
+        return "$" + amount + ".00";
+    end
+    
+    def isEven(int number) bool
+        return number % 2 == 0;
+    end
+    
+    def clamp(int value, int min, int max) int
+        if (value < min)
+            return min;
+        else if (value > max)
+            return max;
+        else
+            return value;
+        end
+    end
+end
+
+# main.gem - Using the custom module
+require "utils";
+
+puts Utils.formatCurrency(1250);    # "$1250.00"
+puts Utils.isEven(42);              # true
+puts Utils.clamp(150, 0, 100);      # 100</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="real-world" class="docs-section">
+                        <h2>Real-World Examples</h2>
+                        <p>Practical examples that demonstrate Gem in action.</p>
+
+                        <h3>Simple Calculator</h3>
+                        <div class="code-block">
+                            <pre><code># calculator.gem - A simple calculator program
+class Calculator
+    def add(int a, int b) int
+        return a + b;
+    end
+    
+    def subtract(int a, int b) int
+        return a - b;
+    end
+    
+    def multiply(int a, int b) int
+        return a * b;
+    end
+    
+    def divide(int a, int b) int?
+        if (b == 0)
+            puts "Error: Division by zero!";
+            return nil;
+        else
+            return a / b;
+        end
+    end
+    
+    def calculate(string operation, int a, int b) int?
+        if (operation == "add")
+            return this.add(a, b);
+        else if (operation == "subtract")
+            return this.subtract(a, b);
+        else if (operation == "multiply")
+            return this.multiply(a, b);
+        else if (operation == "divide")
+            return this.divide(a, b);
+        else
+            puts "Error: Unknown operation!";
+            return nil;
+        end
+    end
+end
+
+# Usage
+obj calc = Calculator();
+int? result = calc.calculate("add", 10, 5);
+if (result != nil)
+    puts "Result: " + result;
+end</code></pre>
+                        </div>
+
+                        <h3>Data Processing</h3>
+                        <div class="code-block">
+                            <pre><code># data_processor.gem - Process a list of records
+class Record
+    def init(string name, int value) void
+        this.name = name;
+        this.value = value;
+    end
+    
+    def toString() string
+        return this.name + ": " + this.value;
+    end
+end
+
+class DataProcessor
+    def init() void
+        # Initialize empty processor
+    end
+    
+    def processRecords() void
+        # Create some sample records
+        obj record1 = Record("Sales", 1000);
+        obj record2 = Record("Marketing", 750);
+        obj record3 = Record("Development", 1200);
+        
+        # Process each record
+        this.processRecord(record1);
+        this.processRecord(record2);
+        this.processRecord(record3);
+    end
+    
+    def processRecord(obj record) void
+        puts "Processing: " + record.toString();
+        
+        if (record.value > 1000)
+            puts "  High value record!";
+        else
+            puts "  Standard record.";
+        end
+    end
+end
+
+# Main execution
+obj processor = DataProcessor();
+processor.processRecords();</code></pre>
+                        </div>
+                    </section>
+                </article>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="gem-icon">💎</span>
+                    <span>Gem Programming Language</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>
+                    <a href="getting-started.html">Documentation</a>
+                    <a href="examples.html">Examples</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SimuCorps LLC</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html> 

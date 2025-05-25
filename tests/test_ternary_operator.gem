@@ -1,0 +1,68 @@
+# Test Ternary Conditional Operator
+puts "=== Testing Ternary Operator ===";
+
+# Basic ternary operations
+puts true ? "yes" : "no";     # Should print "yes"
+puts false ? "yes" : "no";    # Should print "no"
+
+# Ternary with numbers
+puts true ? 42 : 0;           # Should print 42
+puts false ? 42 : 0;          # Should print 0
+
+# Ternary with expressions
+int x = 10;
+int y = 5;
+puts x > y ? "x is greater" : "y is greater or equal";
+puts x < y ? "x is less" : "y is less or equal";
+
+# Ternary with variables
+bool! condition = true;
+string! result = condition ? "true branch" : "false branch";
+puts result;
+
+condition = false;
+result = condition ? "true branch" : "false branch";
+puts result;
+
+# Nested ternary (right associative)
+int! score = 85;
+string! grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : "F";
+puts grade;  # Should print "B"
+
+score = 95;
+grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : "F";
+puts grade;  # Should print "A"
+
+score = 65;
+grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : "F";
+puts grade;  # Should print "F"
+
+# Ternary in expressions
+int a = 10;
+int b = 20;
+int max = a > b ? a : b;
+puts max;  # Should print 20
+
+# Ternary with complex expressions
+puts (10 + 5) > (3 * 4) ? "sum wins" : "product wins";
+
+# Ternary precedence
+puts true ? 1 + 2 : 3 + 4;    # Should print 3 (1 + 2)
+puts false ? 1 + 2 : 3 + 4;   # Should print 7 (3 + 4)
+
+# Ternary with nullable types
+string?! optionalText = nil;
+string! displayText = optionalText != nil ? "found text" : "default text";
+puts displayText;  # Should print "default text"
+
+optionalText = "actual text";
+displayText = optionalText != nil ? "found text" : "default text";
+puts displayText;  # Should print "found text"
+
+# Ternary with boolean expressions
+bool isPositive = true;
+bool isEven = false;
+string description = isPositive ? (isEven ? "positive even" : "positive odd") : (isEven ? "negative even" : "negative odd");
+puts description;  # Should print "positive odd"
+
+puts "=== Ternary Operator Test Complete ==="; 

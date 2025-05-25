@@ -1,0 +1,76 @@
+# Test Modules and Require Statement
+puts "=== Testing Modules ===";
+
+# Define a module
+module MathUtils
+    def add(int x, int y) int
+        return x + y;
+    end
+    
+    def subtract(int x, int y) int
+        return x - y;
+    end
+    
+    def multiply(int x, int y) int
+        return x * y;
+    end
+    
+    def divide(int x, int y) int
+        if (y == 0)
+            puts "Error: Division by zero";
+            return 0;
+        else
+            return x / y;
+        end
+    end
+    
+    def power(int base, int exponent) int
+        int! result = 1;
+        for (int! i = 0; i < exponent; i = i + 1)
+            result = result * base;
+        end
+        return result;
+    end
+end
+
+# Use module functions
+puts MathUtils.add(10, 5);      # 15
+puts MathUtils.subtract(10, 5); # 5
+puts MathUtils.multiply(10, 5); # 50
+puts MathUtils.divide(10, 5);   # 2
+puts MathUtils.power(2, 3);     # 8
+
+# Another module
+module StringUtils
+    def reverse(string text) string
+        # Simple reverse implementation (conceptual)
+        return text; # Would need actual reverse logic
+    end
+    
+    def uppercase(string text) string
+        # Conceptual uppercase (would need actual implementation)
+        return text;
+    end
+    
+    def length(string text) int
+        # Conceptual length function
+        return 10; # Placeholder
+    end
+    
+    def contains(string text, string substring) bool
+        # Conceptual contains check
+        return true; # Placeholder
+    end
+end
+
+# Use string utilities
+puts StringUtils.reverse("hello");
+puts StringUtils.uppercase("world");
+puts StringUtils.length("test");
+puts StringUtils.contains("hello world", "world");
+
+# Test require statement (if math.gem exists in stl/)
+# require "math";
+# puts Math.add(5, 3);
+
+puts "=== Modules Test Complete ==="; 

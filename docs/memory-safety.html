@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Safety - Gem Programming Language</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="docs.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="index.html" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: inherit;">
+                    <span class="gem-icon">💎</span>
+                    <span class="brand-text">Gem</span>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
+                <li><a href="language-guide.html" class="nav-link">Language Guide</a></li>
+                <li><a href="memory-safety.html" class="nav-link active">Memory Safety</a></li>
+                <li><a href="https://github.com/SimuCorps/Gem" class="nav-link" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="docs-main">
+        <div class="container">
+            <div class="docs-layout">
+                <aside class="docs-sidebar">
+                    <nav class="docs-nav">
+                        <h3>Memory Safety</h3>
+                        <ul>
+                            <li><a href="#overview">Overview</a></li>
+                            <li><a href="#scope-based">Scope-Based Management</a></li>
+                            <li><a href="#borrow-checking">Borrow Checking</a></li>
+                            <li><a href="#automatic-cleanup">Automatic Cleanup</a></li>
+                            <li><a href="#safety-guarantees">Safety Guarantees</a></li>
+                            <li><a href="#patterns">Common Patterns</a></li>
+                            <li><a href="#best-practices">Best Practices</a></li>
+                        </ul>
+                    </nav>
+                </aside>
+
+                <article class="docs-content">
+                    <header class="docs-header">
+                        <h1>Memory Safety in Gem</h1>
+                        <p class="docs-subtitle">Learn how Gem prevents memory errors with scope-based management and borrow checking</p>
+                    </header>
+
+                    <section id="overview" class="docs-section">
+                        <h2>Memory Safety Overview</h2>
+                        <p>Gem provides automatic memory management that eliminates entire classes of bugs common in systems programming. The language ensures memory safety without the complexity of manual memory management or the unpredictability of garbage collection.</p>
+
+                        <h3>Key Benefits</h3>
+                        <ul>
+                            <li><strong>No Memory Leaks</strong> - Objects are automatically cleaned up when they go out of scope</li>
+                            <li><strong>No Use-After-Free</strong> - Compile-time checks prevent accessing dropped objects</li>
+                            <li><strong>No Double-Free</strong> - Objects can only be dropped once</li>
+                            <li><strong>No Null Pointer Dereferences</strong> - Combined with the type system for complete safety</li>
+                            <li><strong>Predictable Performance</strong> - No garbage collection pauses</li>
+                            <li><strong>Zero Runtime Cost</strong> - Safety checks happen at compile time</li>
+                        </ul>
+
+                        <div class="info-box">
+                            <h4>🛡️ Safety Without Complexity</h4>
+                            <p>Gem's memory safety model provides strong guarantees with simple syntax. You get the safety benefits without needing to understand complex ownership rules or lifetime annotations.</p>
+                        </div>
+                    </section>
+
+                    <section id="scope-based" class="docs-section">
+                        <h2>Scope-Based Memory Management</h2>
+                        <p>Gem uses scope-based memory management where objects are automatically cleaned up when they go out of scope. This provides deterministic cleanup without manual intervention.</p>
+
+                        <h3>Basic Scope Rules</h3>
+                        <div class="code-block">
+                            <pre><code># Objects are created and destroyed within their scope
+def processData() void
+    obj resource = FileHandle("data.txt");
+    resource.read();
+    resource.process();
+    # resource is automatically cleaned up here
+end
+# resource is no longer accessible outside the function</code></pre>
+                        </div>
+
+                        <h3>Block Scopes</h3>
+                        <div class="code-block">
+                            <pre><code># Nested scopes provide fine-grained control
+def complexProcessing() void
+    obj mainResource = MainResource();
+    
+    begin
+        obj tempResource = TempResource();
+        mainResource.useWith(tempResource);
+        # tempResource is cleaned up here
+    end
+    
+    mainResource.finalize();
+    # mainResource is cleaned up when function ends
+end</code></pre>
+                        </div>
+
+                        <h3>Conditional Scopes</h3>
+                        <div class="code-block">
+                            <pre><code># Objects in conditional blocks are properly managed
+def conditionalProcessing(bool useCache) void
+    if (useCache)
+        obj cache = CacheManager();
+        cache.load();
+        # cache is cleaned up when if block ends
+    else
+        obj directProcessor = DirectProcessor();
+        directProcessor.process();
+        # directProcessor is cleaned up when else block ends
+    end
+end</code></pre>
+                        </div>
+
+                        <h3>Loop Scopes</h3>
+                        <div class="code-block">
+                            <pre><code># Objects created in loops are managed per iteration
+def processFiles() void
+    for (int! i = 0; i < 10; i = i + 1)
+        obj file = FileHandle("file" + i + ".txt");
+        file.process();
+        # file is cleaned up at end of each iteration
+    end
+end</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="borrow-checking" class="docs-section">
+                        <h2>Borrow Checking</h2>
+                        <p>Gem's borrow checker ensures that objects cannot be used after they've been dropped, preventing use-after-free errors at compile time.</p>
+
+                        <h3>Basic Borrow Rules</h3>
+                        <div class="code-block">
+                            <pre><code># Objects can be used while in scope
+def safeBorrowing() void
+                obj resource = SomeResource("data");
+    
+    if (resource.isValid())
+        resource.process();  # ✅ Safe: resource is in scope
+    end
+    
+    # resource is cleaned up here
+end</code></pre>
+                        </div>
+
+                        <h3>Preventing Use-After-Drop</h3>
+                        <div class="code-block">
+                            <pre><code># Compiler prevents use after potential drop
+def borrowExample() void
+    obj resource = SomeResource("data");
+    
+    begin
+        resource.process();  # ✅ Safe: resource is accessible
+    end
+    
+    # resource.process();  # ❌ Compile error: use after potential drop
+end</code></pre>
+                        </div>
+
+                        <h3>Function Parameter Borrowing</h3>
+                        <div class="code-block">
+                            <pre><code># Functions can safely borrow objects
+def processResource(obj resource) void
+    resource.validate();
+    resource.process();
+    # resource is not dropped here - caller owns it
+end
+
+def main() void
+    obj myResource = SomeResource("data");
+    processResource(myResource);  # Borrow myResource
+    myResource.finalize();        # ✅ Safe: still owned by main
+    # myResource is cleaned up here
+end</code></pre>
+                        </div>
+
+                        <h3>Return Value Ownership</h3>
+                        <div class="code-block">
+                            <pre><code># Functions can transfer ownership through return values
+def createResource(string name) obj
+    obj resource = SomeResource(name);
+    resource.initialize();
+    return resource;  # Ownership transferred to caller
+end
+
+def main() void
+    obj myResource = createResource("data");
+    myResource.process();
+    # myResource is cleaned up here
+end</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="automatic-cleanup" class="docs-section">
+                        <h2>Automatic Cleanup</h2>
+                        <p>Gem automatically handles resource cleanup, ensuring that objects are properly destroyed when they go out of scope.</p>
+
+                        <h3>Deterministic Destruction</h3>
+                        <div class="code-block">
+                            <pre><code># Objects are destroyed in reverse order of creation
+def resourceManagement() void
+    obj first = FirstResource();
+    obj second = SecondResource();
+    obj third = ThirdResource();
+    
+    # Cleanup order: third, second, first
+    # This ensures proper dependency management
+end</code></pre>
+                        </div>
+
+                        <h3>Exception Safety</h3>
+                        <div class="code-block">
+                            <pre><code># Resources are cleaned up even if errors occur
+def safeProcessing() void
+    obj resource = CriticalResource();
+    
+    # Even if this operation fails, resource is still cleaned up
+    resource.riskyOperation();
+    
+    # resource is guaranteed to be cleaned up
+end</code></pre>
+                        </div>
+
+                        <h3>Class Destructors</h3>
+                        <div class="code-block">
+                            <pre><code># Classes can define cleanup behavior
+class FileManager
+    def init(string filename) void
+        this.filename = filename;
+        this.handle = openFile(filename);
+    end
+    
+    def destroy() void
+        # Called automatically when object goes out of scope
+        closeFile(this.handle);
+        puts "File " + this.filename + " closed";
+    end
+    
+    def process() void
+        # Use the file handle
+        readFromFile(this.handle);
+    end
+end
+
+# Usage
+def processFile() void
+    obj manager = FileManager("data.txt");
+    manager.process();
+    # destroy() is called automatically here
+end</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="safety-guarantees" class="docs-section">
+                        <h2>Safety Guarantees</h2>
+                        <p>Gem's memory safety system provides strong compile-time guarantees that eliminate entire classes of runtime errors.</p>
+
+                        <h3>Guaranteed Safety Properties</h3>
+                        <ul>
+                            <li><strong>Memory Safety</strong> - No buffer overflows, use-after-free, or double-free errors</li>
+                            <li><strong>Type Safety</strong> - No type confusion or invalid casts</li>
+                            <li><strong>Null Safety</strong> - No null pointer dereferences (when combined with type system)</li>
+                            <li><strong>Resource Safety</strong> - Automatic cleanup of files, network connections, etc.</li>
+                            <li><strong>Thread Safety</strong> - Immutable data is inherently thread-safe</li>
+                        </ul>
+
+                        <h3>Compile-Time Verification</h3>
+                        <div class="code-block">
+                            <pre><code># These errors are caught at compile time, not runtime:
+
+def memoryErrors() void
+    obj resource = SomeResource();
+    
+    begin
+        # resource.use();  # ✅ Valid: resource is accessible
+    end
+    
+    # resource.use();    # ❌ Compile error: use after potential drop
+    # delete resource;   # ❌ Compile error: manual delete not allowed
+    # resource = nil;    # ❌ Compile error: cannot nullify object
+end</code></pre>
+                        </div>
+
+                        <h3>No Runtime Overhead</h3>
+                        <div class="info-box">
+                            <h4>⚡ Zero-Cost Abstractions</h4>
+                            <p>All safety checks happen at compile time. The generated code has no runtime overhead for memory safety - it's as fast as manually managed C code but completely safe.</p>
+                        </div>
+                    </section>
+
+                    <section id="patterns" class="docs-section">
+                        <h2>Common Memory Safety Patterns</h2>
+                        <p>Learn common patterns for safe and efficient memory management in Gem.</p>
+
+                        <h3>RAII (Resource Acquisition Is Initialization)</h3>
+                        <div class="code-block">
+                            <pre><code># Resources are acquired in constructors and released in destructors
+class DatabaseConnection
+    def init(string connectionString) void
+        this.connection = connect(connectionString);
+        puts "Database connected";
+    end
+    
+    def destroy() void
+        disconnect(this.connection);
+        puts "Database disconnected";
+    end
+    
+    def query(string sql) string
+        return executeQuery(this.connection, sql);
+    end
+end
+
+# Usage - connection is automatically managed
+def databaseOperation() void
+    obj db = DatabaseConnection("localhost:5432");
+    string result = db.query("SELECT * FROM users");
+    puts result;
+    # Database automatically disconnected here
+end</code></pre>
+                        </div>
+
+                        <h3>Scoped Resource Management</h3>
+                        <div class="code-block">
+                            <pre><code># Use scopes to control resource lifetimes precisely
+def processWithTempFiles() void
+    obj mainFile = FileHandle("main.txt");
+    
+    # Create temporary files in a nested scope
+    begin
+        obj tempFile1 = FileHandle("temp1.txt");
+        obj tempFile2 = FileHandle("temp2.txt");
+        
+        # Process with temporary files
+        processFiles(mainFile, tempFile1, tempFile2);
+        
+        # Temporary files are cleaned up here
+    end
+    
+    # Continue with main file only
+    mainFile.finalize();
+    # Main file cleaned up here
+end</code></pre>
+                        </div>
+
+                        <h3>Safe Factory Patterns</h3>
+                        <div class="code-block">
+                            <pre><code># Factory functions safely transfer ownership
+class ResourceFactory
+    def createResource(string type) obj?
+        if (type == "file")
+            return FileResource("data.txt");
+        else if (type == "network")
+            return NetworkResource("api.example.com");
+        else
+            return nil;  # Safe failure mode
+        end
+    end
+end
+
+def useFactory() void
+    obj factory = ResourceFactory();
+    obj? resource = factory.createResource("file");
+    
+    if (resource != nil)
+        resource.process();
+        # resource is cleaned up here
+    end
+end</code></pre>
+                        </div>
+
+                        <h3>Safe Collection Management</h3>
+                        <div class="code-block">
+                            <pre><code># Collections safely manage their contents
+class ResourcePool
+    def init() void
+        # Initialize empty pool
+    end
+    
+    def addResource(obj resource) void
+        # Add resource to internal collection
+        # Pool takes ownership
+    end
+    
+    def processAll() void
+        # Process all resources in the pool
+    end
+    
+    def destroy() void
+        # All resources in pool are automatically cleaned up
+    end
+end
+
+def poolExample() void
+    obj pool = ResourcePool();
+    
+    # Add resources to pool
+    pool.addResource(FileResource("file1.txt"));
+    pool.addResource(FileResource("file2.txt"));
+    
+    pool.processAll();
+    # All resources cleaned up when pool is destroyed
+end</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="best-practices" class="docs-section">
+                        <h2>Best Practices</h2>
+                        <p>Follow these best practices to write safe and efficient Gem code.</p>
+
+                        <h3>Scope Management</h3>
+                        <ul>
+                            <li><strong>Keep Scopes Small</strong> - Create objects as close to their use as possible</li>
+                            <li><strong>Use Nested Scopes</strong> - Use <code>begin...end</code> blocks for fine-grained control</li>
+                            <li><strong>Avoid Long-Lived Objects</strong> - Prefer creating objects when needed rather than keeping them around</li>
+                        </ul>
+
+                        <h3>Resource Management</h3>
+                        <div class="code-block">
+                            <pre><code># Good: Resources are scoped appropriately
+def goodResourceManagement() void
+    begin
+        obj tempResource = TempResource();
+        tempResource.process();
+        # Cleaned up immediately after use
+    end
+    
+    obj mainResource = MainResource();
+    mainResource.process();
+    # Cleaned up at function end
+end
+
+# Avoid: Unnecessarily long-lived resources
+def avoidThis() void
+    obj tempResource = TempResource();  # Created too early
+    obj mainResource = MainResource();
+    
+    # ... lots of code that doesn't use tempResource ...
+    
+    tempResource.process();  # Used much later
+    mainResource.process();
+    # Both cleaned up at end (tempResource lived too long)
+end</code></pre>
+                        </div>
+
+                        <h3>Error Handling</h3>
+                        <div class="code-block">
+                            <pre><code># Use nullable returns for safe error handling
+def safeFileOperation(string filename) bool
+    obj? file = tryOpenFile(filename);
+    if (file == nil)
+        return false;  # Safe failure
+    end
+    
+    file.process();
+    return true;
+    # file is automatically cleaned up
+end</code></pre>
+                        </div>
+
+                        <h3>Performance Tips</h3>
+                        <ul>
+                            <li><strong>Minimize Object Creation</strong> - Create objects only when necessary</li>
+                            <li><strong>Use Immutable Data</strong> - Immutable objects are more efficient and safer</li>
+                            <li><strong>Prefer Stack Allocation</strong> - Gem's scope-based model is optimized for stack allocation</li>
+                            <li><strong>Avoid Circular References</strong> - Design object relationships to avoid cycles</li>
+                        </ul>
+
+                        <div class="info-box">
+                            <h4>🎯 Memory Safety Philosophy</h4>
+                            <p>Gem's memory safety isn't just about preventing crashes - it's about making your code more predictable, maintainable, and performant. Safe code is often simpler code.</p>
+                        </div>
+                    </section>
+                </article>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="gem-icon">💎</span>
+                    <span>Gem Programming Language</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>
+                    <a href="getting-started.html">Documentation</a>
+                    <a href="examples.html">Examples</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SimuCorps LLC</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html> 

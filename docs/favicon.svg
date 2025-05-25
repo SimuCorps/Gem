@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="gemGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <polygon points="16,2 26,10 22,26 10,26 6,10" fill="url(#gemGradient)" stroke="#4f46e5" stroke-width="1"/>
+  <polygon points="16,2 6,10 16,14 26,10" fill="#ffffff" fill-opacity="0.3"/>
+</svg> 

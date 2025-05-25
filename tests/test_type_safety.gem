@@ -1,0 +1,171 @@
+# Test Type Safety Features
+puts "=== Testing Type Safety ===";
+
+# Basic type declarations
+int number = 42;
+string text = "Hello";
+bool flag = true;
+string? optionalText = nil;
+
+puts number;
+puts text;
+puts flag;
+puts optionalText;
+
+# Type-safe assignments
+int! mutableNumber = 10;
+string! mutableText = "World";
+bool! mutableFlag = false;
+
+mutableNumber = 20;      # Valid: int to int
+mutableText = "Updated"; # Valid: string to string
+mutableFlag = true;      # Valid: bool to bool
+
+puts mutableNumber;
+puts mutableText;
+puts mutableFlag;
+
+# Nullable type safety
+string?! nullableString = "initial";
+nullableString = nil;           # Valid: can assign nil to nullable
+nullableString = "not nil";     # Valid: can assign string to nullable string
+
+puts nullableString;
+
+# Type-safe function parameters
+def processNumber(int value) string
+    return "Number: " + "#{value}";
+end
+
+def processString(string value) string
+    return "String: " + value;
+end
+
+def processOptional(string? value) string
+    if (value == nil)
+        return "No value provided";
+    else
+        return "Value: " + value;
+    end
+end
+
+puts processNumber(42);
+puts processString("test");
+puts processOptional("hello");
+puts processOptional(nil);
+
+# Type-safe return values
+def getNumber() int
+    return 100;
+end
+
+def getString() string
+    return "returned string";
+end
+
+def getBool() bool
+    return true;
+end
+
+def getOptionalString(bool shouldReturn) string?
+    if (shouldReturn)
+        return "optional string";
+    else
+        return nil;
+    end
+end
+
+int returnedNumber = getNumber();
+string returnedString = getString();
+bool returnedBool = getBool();
+string? optionalReturn = getOptionalString(true);
+
+puts returnedNumber;
+puts returnedString;
+puts returnedBool;
+puts optionalReturn;
+
+# Type-safe class fields
+class TypedClass
+    def init(string name, int value, bool active) void
+        this.name = name;        # string field
+        this.value = value;      # int field
+        this.active = active;    # bool field
+        this.optional = nil;     # nullable string field
+    end
+    
+    def setOptional(string? opt) void
+        this.optional = opt;
+    end
+    
+    def getInfo() string
+        string activeStr = this.active ? "active" : "inactive";
+        return this.name + " (" + "#{this.value}" + ") - " + activeStr;
+    end
+    
+    def getOptional() string?
+        return this.optional;
+    end
+end
+
+obj typedObj = TypedClass("Test", 42, true);
+puts typedObj.getInfo();
+puts typedObj.getOptional();
+typedObj.setOptional("optional value");
+puts typedObj.getOptional();
+
+# Type-safe arithmetic
+int a = 10;
+int b = 5;
+int sum = a + b;
+int difference = a - b;
+int product = a * b;
+int quotient = a / b;
+int remainder = a % b;
+
+puts sum;
+puts difference;
+puts product;
+puts quotient;
+puts remainder;
+
+# Type-safe string operations
+string str1 = "Hello";
+string str2 = "World";
+string concatenated = str1 + " " + str2;
+
+puts concatenated;
+
+# Type-safe comparisons
+bool numComparison = a > b;
+bool strComparison = str1 == "Hello";
+bool nilComparison = optionalText == nil;
+
+puts numComparison;
+puts strComparison;
+puts nilComparison;
+
+# Type-safe logical operations
+bool logicalAnd = flag and mutableFlag;
+bool logicalOr = flag or mutableFlag;
+bool logicalNot = !flag;
+
+puts logicalAnd;
+puts logicalOr;
+puts logicalNot;
+
+# Type-safe ternary operations
+string ternaryResult = flag ? "true branch" : "false branch";
+int ternaryNumber = a > b ? a : b;
+
+puts ternaryResult;
+puts ternaryNumber;
+
+# Mixed type expressions with proper type inference
+string mixedExpression = "Result: " + "#{sum}";
+bool complexCondition = (a > b) and (str1 == "Hello");
+
+puts mixedExpression;
+puts complexCondition;
+
+puts "=== Type Safety Test Complete ==="; 

@@ -1,0 +1,49 @@
+# Test String Operations
+puts "=== Testing Strings ===";
+
+# String concatenation
+string firstName = "John";
+string lastName = "Doe";
+string fullName = firstName + " " + lastName;
+puts fullName;
+
+# Direct string concatenation
+puts "Hello, " + "World!";
+
+# String concatenation with mutable variables
+string! greeting = "Hi";
+greeting = greeting + ", there!";
+puts greeting;
+
+# Multiple concatenations
+string part1 = "This";
+string part2 = "is";
+string part3 = "a";
+string part4 = "test";
+string combined = part1 + " " + part2 + " " + part3 + " " + part4;
+puts combined;
+
+# Empty string handling
+string empty = "";
+string withEmpty = "Start" + empty + "End";
+puts withEmpty;
+
+# String with special characters
+string special = "String with quotes and apostrophes";
+puts special;
+
+# Mutable string operations
+string! dynamic = "Base";
+dynamic = dynamic + " + Addition1";
+dynamic = dynamic + " + Addition2";
+puts dynamic;
+
+# String comparison (should work with == operator)
+string str1 = "hello";
+string str2 = "hello";
+string str3 = "world";
+
+puts str1 == str2;  # Should be true
+puts str1 == str3;  # Should be false
+
+puts "=== Strings Test Complete ==="; 

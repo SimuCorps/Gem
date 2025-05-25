@@ -1,0 +1,38 @@
+# Test Variable Declarations and Assignments
+puts "=== Testing Variables ===";
+
+# Immutable variables (default)
+int age = 25;
+string name = "Alice";
+bool isActive = true;
+
+puts age;
+puts name;
+puts isActive;
+
+# Mutable variables (with ! suffix)
+int! counter = 0;
+string! message = "Hello";
+bool! flag = false;
+
+puts counter;
+puts message;
+puts flag;
+
+# Reassignment of mutable variables
+counter = 100;
+message = "Updated message";
+flag = true;
+
+puts counter;
+puts message;
+puts flag;
+
+# Multiple assignments
+counter = counter + 50;
+message = message + " - appended";
+
+puts counter;
+puts message;
+
+puts "=== Variables Test Complete ==="; 

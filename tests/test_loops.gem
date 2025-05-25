@@ -1,0 +1,83 @@
+# Test Loop Constructs
+puts "=== Testing Loops ===";
+
+# Basic while loop
+puts "While loop test:";
+int! i = 0;
+while (i < 5)
+    puts i;
+    i = i + 1;
+end
+
+# While loop with complex condition
+puts "While loop with complex condition:";
+int! counter = 0;
+bool! keepGoing = true;
+while (counter < 10 and keepGoing)
+    puts counter;
+    counter = counter + 1;
+    if (counter == 3)
+        keepGoing = false;
+    end
+end
+
+# Basic for loop
+puts "For loop test:";
+for (int! j = 0; j < 5; j = j + 1)
+    puts j;
+end
+
+# For loop with different increment
+puts "For loop with step 2:";
+for (int! k = 0; k < 10; k = k + 2)
+    puts k;
+end
+
+# For loop counting down
+puts "For loop counting down:";
+for (int! m = 5; m > 0; m = m - 1)
+    puts m;
+end
+
+# Nested loops
+puts "Nested loops:";
+for (int! outer = 1; outer <= 3; outer = outer + 1)
+    puts "Outer: #{outer}";
+    for (int! inner = 1; inner <= 2; inner = inner + 1)
+        puts "  Inner: #{inner}";
+    end
+end
+
+# Loop with break-like behavior using conditions
+puts "Loop with early termination:";
+int! n = 0;
+while (n < 10)
+    if (n == 5)
+        n = 10;  # Force loop to end
+    else
+        puts n;
+        n = n + 1;
+    end
+end
+
+# Loop with mutable variables
+puts "Loop modifying multiple variables:";
+int! sum = 0;
+int! product = 1;
+for (int! val = 1; val <= 4; val = val + 1)
+    sum = sum + val;
+    product = product * val;
+    puts "val: #{val}, sum: #{sum}, product: #{product}";
+end
+
+# While loop with string manipulation
+puts "String building in loop:";
+string! result = "";
+int! count = 1;
+while (count <= 3)
+    result = result + "Item" + "#{count}" + " ";
+    count = count + 1;
+end
+puts result;
+
+puts "=== Loops Test Complete ==="; 

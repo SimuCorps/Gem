@@ -1,0 +1,118 @@
+# Test Classes and Objects
+puts "=== Testing Classes ===";
+
+# Basic class definition
+class Person
+    def init(string name, int age) void
+        this.name = name;
+        this.age = age;
+        this.nickname = nil; # nullable field
+    end
+    
+    def introduce() string
+        return "Hi, I'm " + this.name;
+    end
+    
+    def haveBirthday() int
+        this.age = this.age + 1;
+        return this.age;
+    end
+    
+    def isAdult() bool
+        return this.age >= 18;
+    end
+    
+    def setNickname(string? nick) void
+        this.nickname = nick;
+    end
+    
+    def getNickname() string
+        if (this.nickname == nil)
+            return "No nickname";
+        else
+            return "" + this.nickname;
+        end
+    end
+end
+
+# Create and use objects
+obj person1 = Person("Alice", 25);
+puts person1.introduce();
+puts person1.haveBirthday();
+puts person1.isAdult();
+
+# Test nullable fields
+puts person1.getNickname();
+person1.setNickname("Ace");
+puts person1.getNickname();
+
+# Multiple objects
+obj person2 = Person("Bob", 17);
+puts person2.introduce();
+puts person2.isAdult();
+
+# Class with more complex methods
+class Calculator
+    def init() void
+        this.result = 0;
+    end
+    
+    def add(int value) int
+        this.result = this.result + value;
+        return this.result;
+    end
+    
+    def multiply(int value) int
+        this.result = this.result * value;
+        return this.result;
+    end
+    
+    def getResult() int
+        return this.result;
+    end
+    
+    def reset() void
+        this.result = 0;
+    end
+end
+
+obj calc = Calculator();
+puts calc.add(10);      # 10
+puts calc.multiply(3);  # 30
+puts calc.add(5);       # 35
+puts calc.getResult();  # 35
+calc.reset();
+puts calc.getResult();  # 0
+
+# Class with string manipulation
+class StringBuilder
+    def init() void
+        this.content = "";
+    end
+    
+    def append(string text) void
+        this.content = this.content + text;
+    end
+    
+    def prepend(string text) void
+        this.content = text + this.content;
+    end
+    
+    def toString() string
+        return this.content;
+    end
+    
+    def clear() void
+        this.content = "";
+    end
+end
+
+obj sb = StringBuilder();
+sb.append("Hello");
+sb.append(" ");
+sb.append("World");
+puts sb.toString();  # Hello World
+sb.prepend("Say: ");
+puts sb.toString();  # Say: Hello World
+
+puts "=== Classes Test Complete ==="; 

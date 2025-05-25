@@ -1,0 +1,33 @@
+# Test String Interpolation
+puts "=== Testing String Interpolation ===";
+
+# Basic interpolation with variables
+string name = "Alice";
+int age = 25;
+puts "Hello, #{name}! You are #{age} years old.";
+
+# Interpolation with expressions
+int x = 10;
+int y = 5;
+puts "The sum of #{x} and #{y} is #{x + y}";
+
+# Interpolation with boolean values
+bool isActive = true;
+puts "Status: #{isActive}";
+
+# Multiple interpolations in one string
+string firstName = "John";
+string lastName = "Doe";
+int score = 95;
+puts "Student: #{firstName} #{lastName}, Score: #{score}%";
+
+# Interpolation with simple expressions
+int a = 3;
+int b = 4;
+puts "The sum of #{a} and #{b} is #{a + b}";
+
+# Interpolation at start and end of string
+puts "#{name} says hello";
+puts "Hello there, #{name}";
+
+puts "=== String Interpolation Test Complete ==="; 

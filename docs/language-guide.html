@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Guide - Gem Programming Language</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="docs.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="index.html" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: inherit;">
+                    <span class="gem-icon">💎</span>
+                    <span class="brand-text">Gem</span>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
+                <li><a href="language-guide.html" class="nav-link active">Language Guide</a></li>
+                <li><a href="examples.html" class="nav-link">Examples</a></li>
+                <li><a href="https://github.com/SimuCorps/Gem" class="nav-link" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="docs-main">
+        <div class="container">
+            <div class="docs-layout">
+                <aside class="docs-sidebar">
+                    <nav class="docs-nav">
+                        <h3>Language Guide</h3>
+                        <ul>
+                            <li><a href="#overview">Overview</a></li>
+                            <li><a href="#types">Type System</a></li>
+                            <li><a href="#variables">Variables</a></li>
+                            <li><a href="#functions">Functions</a></li>
+                            <li><a href="#classes">Classes</a></li>
+                            <li><a href="#control-flow">Control Flow</a></li>
+                            <li><a href="#modules">Modules</a></li>
+                            <li><a href="#memory">Memory Safety</a></li>
+                        </ul>
+                    </nav>
+                </aside>
+
+                <article class="docs-content">
+                    <header class="docs-header">
+                        <h1>Gem Language Guide</h1>
+                        <p class="docs-subtitle">Complete reference for Gem's syntax, features, and programming concepts</p>
+                    </header>
+
+                    <section id="overview" class="docs-section">
+                        <h2>Language Overview</h2>
+                        <p>Gem is a statically-typed programming language designed for safety, performance, and developer productivity. It combines modern language features with compile-time guarantees to prevent common programming errors.</p>
+
+                        <h3>Key Principles</h3>
+                        <ul>
+                            <li><strong>Safety First</strong> - Memory safety and type safety are built into the language</li>
+                            <li><strong>Explicit is Better</strong> - Clear, explicit syntax over implicit behavior</li>
+                            <li><strong>Immutable by Default</strong> - Variables are immutable unless explicitly marked mutable</li>
+                            <li><strong>Null Safety</strong> - Nullable types prevent null reference errors</li>
+                            <li><strong>Zero-Cost Abstractions</strong> - High-level features with minimal runtime overhead</li>
+                        </ul>
+
+                        <h3>Program Structure</h3>
+                        <div class="code-block">
+                            <pre><code># Comments start with #
+# This is a simple Gem program
+
+# Variable declarations
+string message = "Hello, World!";
+int count = 42;
+
+# Function definition
+def greet(string name) string
+    return "Hello, " + name + "!";
+end
+
+# Main execution
+puts message;
+puts greet("Gem");</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="types" class="docs-section">
+                        <h2>Type System</h2>
+                        <p>Gem features a rich static type system with enhanced safety features.</p>
+
+                        <h3>Basic Types</h3>
+                        <div class="code-block">
+                            <pre><code># Primitive types
+int number = 42;           # Integer numbers
+string text = "Hello";     # Text strings
+bool flag = true;          # Boolean values (true/false)
+
+# Special types
+void                       # Used for functions that don't return a value
+func                       # Function type for first-class functions
+obj                        # Object type for class instances</code></pre>
+                        </div>
+
+                        <h3>Type Modifiers</h3>
+                        <p>Gem uses suffix modifiers to control mutability and nullability:</p>
+
+                        <div class="code-block">
+                            <pre><code># Mutability modifier (!)
+string! mutableText = "Can change";    # Mutable variable
+mutableText = "Changed!";              # ✅ Valid
+
+# Nullability modifier (?)
+string? optionalText = nil;            # Can be nil
+optionalText = "Some text";            # ✅ Valid
+optionalText = nil;                    # ✅ Valid
+
+# Combined modifiers (?!)
+string?! mutableOptional = nil;        # Mutable and nullable
+mutableOptional = "Text";              # ✅ Valid
+mutableOptional = nil;                 # ✅ Valid</code></pre>
+                        </div>
+
+                        <h3>Type Safety Rules</h3>
+                        <ul>
+                            <li>All variables must have explicit types</li>
+                            <li>Type mismatches are caught at compile time</li>
+                            <li>Immutable variables cannot be reassigned</li>
+                            <li>Non-nullable variables cannot be assigned <code>nil</code></li>
+                            <li>Nullable variables must be checked before use</li>
+                        </ul>
+                    </section>
+
+                    <section id="variables" class="docs-section">
+                        <h2>Variables</h2>
+                        <p>Variables in Gem are immutable by default and require explicit type declarations.</p>
+
+                        <h3>Declaration Syntax</h3>
+                        <div class="code-block">
+                            <pre><code># Basic syntax: type[modifiers] name = value;
+int age = 25;                    # Immutable integer
+string! name = "Alice";          # Mutable string
+bool? isActive = nil;            # Nullable boolean
+string?! status = "pending";     # Mutable and nullable</code></pre>
+                        </div>
+
+                        <h3>Scope Rules</h3>
+                        <div class="code-block">
+                            <pre><code># Variables are scoped to their declaration block
+int x = 10;
+
+begin
+    int y = 20;
+    puts x;  # ✅ Valid: x is in scope
+    puts y;  # ✅ Valid: y is in scope
+end
+
+puts x;  # ✅ Valid: x is still in scope
+# puts y;  # ❌ Error: y is out of scope</code></pre>
+                        </div>
+
+                        <h3>Mutability Examples</h3>
+                        <div class="code-block">
+                            <pre><code># Immutable variables (default)
+string greeting = "Hello";
+# greeting = "Hi";  # ❌ Error: Cannot modify immutable variable
+
+# Mutable variables
+string! mutableGreeting = "Hello";
+mutableGreeting = "Hi";  # ✅ Valid: Variable is mutable
+
+# Function parameters are immutable by default
+def processText(string text) string
+    # text = "modified";  # ❌ Error: Parameter is immutable
+    return "Processed: " + text;
+end</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="functions" class="docs-section">
+                        <h2>Functions</h2>
+                        <p>Functions in Gem are first-class values with strong type checking.</p>
+
+                        <h3>Function Declaration</h3>
+                        <div class="code-block">
+                            <pre><code># Basic function syntax
+def functionName(type param1, type param2) returnType
+    # function body
+    return value;
+end
+
+# Examples
+def add(int x, int y) int
+    return x + y;
+end
+
+def greet(string name) string
+    return "Hello, " + name + "!";
+end
+
+def printMessage(string message) void
+    puts message;
+    # void functions don't need explicit return
+end</code></pre>
+                        </div>
+
+                        <h3>Function Parameters</h3>
+                        <div class="code-block">
+                            <pre><code># Parameters with different modifiers
+def processData(
+    string data,           # Immutable parameter
+    string! buffer,        # Mutable parameter
+    string? optional,      # Nullable parameter
+    string?! mutableOpt    # Mutable and nullable
+) string
+    if (optional != nil)
+        buffer = buffer + optional;
+    end
+    return buffer + data;
+end</code></pre>
+                        </div>
+
+                        <h3>Higher-Order Functions</h3>
+                        <div class="code-block">
+                            <pre><code># Functions as parameters
+def applyOperation(int x, int y, func operation) int
+    return operation(x, y);
+end
+
+def multiply(int a, int b) int
+    return a * b;
+end
+
+# Usage
+int result = applyOperation(5, 3, multiply);  # 15</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="classes" class="docs-section">
+                        <h2>Classes and Objects</h2>
+                        <p>Gem supports object-oriented programming with classes, inheritance, and encapsulation.</p>
+
+                        <h3>Class Definition</h3>
+                        <div class="code-block">
+                            <pre><code># Basic class structure
+class ClassName
+    # Constructor
+    def init(parameters) void
+        # Initialize instance variables
+    end
+    
+    # Methods
+    def methodName(parameters) returnType
+        # method body
+    end
+end
+
+# Example
+class Person
+    def init(string name, int age) void
+        this.name = name;
+        this.age = age;
+    end
+    
+    def getName() string
+        return this.name;
+    end
+    
+    def getAge() int
+        return this.age;
+    end
+    
+    def introduce() string
+        return "Hi, I'm " + this.name + ", age " + this.age;
+    end
+end</code></pre>
+                        </div>
+
+                        <h3>Object Creation and Usage</h3>
+                        <div class="code-block">
+                            <pre><code># Creating objects
+obj person = Person("Alice", 30);
+
+# Calling methods
+string name = person.getName();
+string intro = person.introduce();
+puts intro;  # "Hi, I'm Alice, age 30"</code></pre>
+                        </div>
+
+                        <h3>Inheritance</h3>
+                        <div class="code-block">
+                            <pre><code># Base class
+class Animal
+    def init(string name) void
+        this.name = name;
+    end
+    
+    def speak() string
+        return "Some sound";
+    end
+end
+
+# Derived class
+class Dog : Animal
+    def init(string name, string breed) void
+        super.init(name);  # Call parent constructor
+        this.breed = breed;
+    end
+    
+    def speak() string  # Override parent method
+        return "Woof!";
+    end
+    
+    def getBreed() string
+        return this.breed;
+    end
+end
+
+# Usage
+obj dog = Dog("Buddy", "Labrador");
+puts dog.speak();     # "Woof!"
+puts dog.getBreed();  # "Labrador"</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="control-flow" class="docs-section">
+                        <h2>Control Flow</h2>
+                        <p>Gem provides standard control flow constructs with type-safe conditions.</p>
+
+                        <h3>Conditionals</h3>
+                        <div class="code-block">
+                            <pre><code># if-else statements
+if (condition)
+    # code block
+else if (otherCondition)
+    # code block
+else
+    # code block
+end
+
+# Example
+int age = 20;
+if (age >= 18)
+    puts "Adult";
+else
+    puts "Minor";
+end
+
+# Ternary operator
+string status = age >= 18 ? "Adult" : "Minor";</code></pre>
+                        </div>
+
+                        <h3>Loops</h3>
+                        <div class="code-block">
+                            <pre><code># For loops
+for (int! i = 0; i < 10; i = i + 1)
+    puts i;
+end
+
+# While loops
+int! count = 0;
+while (count < 5)
+    puts "Count: " + count;
+    count = count + 1;
+end
+
+# Loop with break and continue
+for (int! i = 0; i < 20; i = i + 1)
+    if (i % 2 == 0)
+        continue;  # Skip even numbers
+    end
+    
+    if (i > 15)
+        break;     # Exit loop
+    end
+    
+    puts i;
+end</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="modules" class="docs-section">
+                        <h2>Modules</h2>
+                        <p>Modules provide a way to organize and reuse code across different parts of your program.</p>
+
+                        <h3>Module Definition</h3>
+                        <div class="code-block">
+                            <pre><code># math_utils.gem
+module MathUtils
+    def square(int x) int
+        return x * x;
+    end
+    
+    def cube(int x) int
+        return x * x * x;
+    end
+    
+    def factorial(int n) int
+        if (n <= 1)
+            return 1;
+        else
+            return n * factorial(n - 1);
+        end
+    end
+end</code></pre>
+                        </div>
+
+                        <h3>Using Modules</h3>
+                        <div class="code-block">
+                            <pre><code># Import and use modules
+require "math_utils";
+
+int squared = MathUtils.square(5);      # 25
+int cubed = MathUtils.cube(3);          # 27
+int fact = MathUtils.factorial(5);      # 120</code></pre>
+                        </div>
+
+                        <h3>Standard Library Modules</h3>
+                        <div class="code-block">
+                            <pre><code># Built-in modules
+require "math";
+
+# Math utilities
+int sum = Math.add(10, 5);
+int max = Math.max(10, 20);
+int power = Math.power(2, 8);</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="memory" class="docs-section">
+                        <h2>Memory Safety</h2>
+                        <p>Gem provides automatic memory management with compile-time safety guarantees.</p>
+
+                        <h3>Scope-Based Management</h3>
+                        <div class="code-block">
+                            <pre><code># Objects are automatically cleaned up when scope ends
+def processData() void
+    begin
+        obj resource = DataResource("file.txt");
+        resource.process();
+        # resource is automatically cleaned up here
+    end
+    # resource is no longer accessible
+end</code></pre>
+                        </div>
+
+                        <h3>Borrow Checking</h3>
+                        <div class="code-block">
+                            <pre><code># Gem prevents use-after-drop at compile time
+def borrowExample() void
+    obj data = SomeData("value");
+    
+    begin
+        data.process();  # ✅ Valid: data is in scope
+    end
+    
+    # data.process();  # ❌ Compile error: potential use after drop
+end</code></pre>
+                        </div>
+
+                        <h3>Memory Safety Rules</h3>
+                        <ul>
+                            <li>Objects are automatically dropped when they go out of scope</li>
+                            <li>No manual memory management required</li>
+                            <li>Compile-time checks prevent use-after-drop</li>
+                            <li>No null pointer dereferences</li>
+                            <li>No memory leaks or double-free errors</li>
+                        </ul>
+
+                        <div class="info-box">
+                            <h4>💡 Memory Safety Benefits</h4>
+                            <ul>
+                                <li>Eliminates entire classes of bugs</li>
+                                <li>No runtime overhead for safety checks</li>
+                                <li>Predictable performance characteristics</li>
+                                <li>Easier to reason about program behavior</li>
+                            </ul>
+                        </div>
+                    </section>
+                </article>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="gem-icon">💎</span>
+                    <span>Gem Programming Language</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>
+                    <a href="getting-started.html">Documentation</a>
+                    <a href="examples.html">Examples</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+              <p>&copy; 2025 SimuCorps LLC</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html> 

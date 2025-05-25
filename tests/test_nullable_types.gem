@@ -1,0 +1,47 @@
+# Test Nullable Types and Nil Handling
+puts "=== Testing Nullable Types ===";
+
+# Nullable variables (with ? suffix)
+string? optionalName = "Bob";
+int? optionalAge = nil;
+bool? optionalFlag = nil;
+
+puts optionalName;
+puts optionalAge;
+puts optionalFlag;
+
+# Mutable and nullable (with ?! suffix)
+string?! mutableOptional = nil;
+int?! mutableOptionalCount = 50;
+
+puts mutableOptional;
+puts mutableOptionalCount;
+
+# Assigning values to nullable variables
+mutableOptional = "Now has value";
+mutableOptionalCount = nil;
+
+puts mutableOptional;
+puts mutableOptionalCount;
+
+# Nil checking
+if (optionalName != nil)
+    puts "optionalName has a value";
+else
+    puts "optionalName is nil";
+end
+
+if (optionalAge == nil)
+    puts "optionalAge is nil";
+else
+    puts "optionalAge has a value";
+end
+
+# Reassigning nullable variables
+mutableOptional = nil;
+mutableOptionalCount = 999;
+
+puts mutableOptional;
+puts mutableOptionalCount;
+
+puts "=== Nullable Types Test Complete ==="; 

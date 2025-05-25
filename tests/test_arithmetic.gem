@@ -1,0 +1,47 @@
+# Test Arithmetic Operations
+puts "=== Testing Arithmetic ===";
+
+# Basic arithmetic
+puts 5 + 3;        # Addition
+puts 10 - 4;       # Subtraction
+puts 6 * 7;        # Multiplication
+puts 15 / 3;       # Division
+puts 17 % 5;       # Modulo
+
+# Order of operations
+puts 2 + 3 * 4;    # Should be 14 (3*4 first, then +2)
+puts (2 + 3) * 4;  # Should be 20 (parentheses first)
+
+# Negative numbers
+puts -5 + 3;       # Should be -2
+puts -(-5);        # Should be 5
+
+# Floating point arithmetic
+puts 3.14 + 2.86;  # Should be 6.0
+puts 10.5 / 2.0;   # Should be 5.25
+
+# With variables
+int x = 10;
+int y = 5;
+puts x + y;        # 15
+puts x - y;        # 5
+puts x * y;        # 50
+puts x / y;        # 2
+puts x % y;        # 0
+
+# Complex expressions
+int a = 2;
+int b = 3;
+int c = 4;
+puts a + b * c;    # Should be 14
+puts (a + b) * c;  # Should be 20
+puts a * b + c;    # Should be 10
+
+# Mutable variable arithmetic
+int! result = 0;
+result = result + 10;
+result = result * 2;
+result = result - 5;
+puts result;       # Should be 15
+
+puts "=== Arithmetic Test Complete ==="; 

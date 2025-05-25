@@ -1,0 +1,66 @@
+# Test Logical Operators
+puts "=== Testing Logical Operators ===";
+
+# Basic logical AND
+puts true and true;    # true
+puts true and false;   # false
+puts false and true;   # false
+puts false and false;  # false
+
+# Basic logical OR
+puts true or true;     # true
+puts true or false;    # true
+puts false or true;    # true
+puts false or false;   # false
+
+# Logical NOT
+puts !true;            # false
+puts !false;           # true
+puts !nil;             # true (nil is falsy)
+
+# Logical operations with variables
+bool flag1 = true;
+bool flag2 = false;
+bool flag3 = true;
+
+puts flag1 and flag2;  # false
+puts flag1 or flag2;   # true
+puts !flag2;           # true
+
+# Complex logical expressions
+puts flag1 and flag3;  # true
+puts flag2 or flag3;   # true
+puts !flag1 and flag2; # false
+puts flag1 or !flag2;  # true
+
+# Short-circuit evaluation (and)
+puts false and true;   # Should short-circuit, return false
+puts true and true;    # Should evaluate both, return true
+
+# Short-circuit evaluation (or)
+puts true or false;    # Should short-circuit, return true
+puts false or true;    # Should evaluate both, return true
+
+# Logical operations with comparisons
+int x = 10;
+int y = 5;
+int z = 15;
+
+puts x > y and y < z;  # true and true = true
+puts x < y or y < z;   # false or true = true
+puts !(x == y);        # !(false) = true
+
+# Nested logical expressions
+puts (x > y) and (z > x) and (y > 0);  # true and true and true = true
+puts (x < y) or (z < x) or (y == 5);   # false or false or true = true
+
+# Logical operations with nullable types
+bool?! nullableBool = nil;
+puts nullableBool == nil;              # true
+puts !(nullableBool != nil);           # true
+
+nullableBool = true;
+puts nullableBool and true;            # true
+puts nullableBool or false;            # true
+
+puts "=== Logical Operators Test Complete ==="; 

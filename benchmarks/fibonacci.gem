@@ -1,0 +1,22 @@
+# Fibonacci Benchmark for Gem Language
+# Calculates the 40th Fibonacci number recursively
+
+puts "=== GEM FIBONACCI BENCHMARK ===";
+puts "Calculating 40th Fibonacci number recursively...";
+puts "";
+
+def fibonacci(int n) int
+    if (n <= 1)
+        return n;
+    else
+        return fibonacci(n - 1) + fibonacci(n - 2);
+    end
+end
+
+# Calculate and display the result
+int result = fibonacci(40);
+
+puts "Fibonacci(40) = ";
+puts result;
+puts "";
+puts "Benchmark complete!"; 

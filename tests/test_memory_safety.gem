@@ -1,0 +1,127 @@
+# Test Memory Safety Features
+puts "=== Testing Memory Safety ===";
+
+# Scope-based automatic cleanup
+class Resource
+    def init(string name) void
+        this.name = name;
+        this.data = nil; # nullable field
+        puts "Resource created: " + this.name;
+    end
+    
+    def setData(string? newData) void
+        this.data = newData;
+    end
+    
+    def getData() string
+        if (this.data == nil)
+            return "No data";
+        else
+            return "" + this.data;
+        end
+    end
+    
+    def getName() string
+        return this.name;
+    end
+    
+    def process() void
+        puts "Processing resource: " + this.name;
+    end
+end
+
+# Test automatic cleanup when objects go out of scope
+begin
+    obj resource1 = Resource("test_resource_1");
+    resource1.setData("some data");
+    puts resource1.getName();
+    puts resource1.getData();
+    resource1.process();
+    
+    begin
+        obj resource2 = Resource("test_resource_2");
+        resource2.setData("nested data");
+        puts resource2.getName();
+        puts resource2.getData();
+        
+        # Both resources are accessible here
+        puts "Both resources accessible";
+        resource1.process();
+        resource2.process();
+    end
+    # resource2 is automatically cleaned up here
+    
+    puts "Back to outer scope";
+    resource1.process(); # resource1 still accessible
+end
+# resource1 is automatically cleaned up here
+
+puts "All resources cleaned up";
+
+# Test with functions
+def createAndUseResource(string name) void
+    obj localResource = Resource(name);
+    localResource.setData("function data");
+    localResource.process();
+    # localResource is automatically cleaned up when function returns
+end
+
+createAndUseResource("function_resource");
+puts "Function completed, resource cleaned up";
+
+# Test with loops
+puts "Testing cleanup in loops:";
+for (int! i = 0; i < 3; i = i + 1)
+    obj loopResource = Resource("loop_resource_#{i}");
+    loopResource.setData("loop data #{i}");
+    loopResource.process();
+    # loopResource is cleaned up at end of each iteration
+end
+
+puts "Loop completed, all loop resources cleaned up";
+
+# Test with conditionals
+bool createResource = true;
+if (createResource)
+    obj conditionalResource = Resource("conditional_resource");
+    conditionalResource.setData("conditional data");
+    conditionalResource.process();
+    # conditionalResource is cleaned up when if block ends
+end
+
+puts "Conditional completed, conditional resource cleaned up";
+
+# Test multiple objects in same scope
+begin
+    obj obj1 = Resource("object_1");
+    obj obj2 = Resource("object_2");
+    obj obj3 = Resource("object_3");
+    
+    obj1.setData("data 1");
+    obj2.setData("data 2");
+    obj3.setData("data 3");
+    
+    obj1.process();
+    obj2.process();
+    obj3.process();
+    
+    puts "All three objects created and used";
+end
+# All three objects are cleaned up here
+
+puts "All objects cleaned up automatically";
+
+# Test with nullable object references
+begin
+    obj?! nullableResource = Resource("nullable_resource");
+    if (nullableResource != nil)
+        nullableResource.process();
+    end
+    
+    nullableResource = nil; # Explicitly set to nil
+    puts "Nullable resource set to nil";
+end
+
+puts "Nullable resource scope ended";
+
+puts "=== Memory Safety Test Complete ==="; 

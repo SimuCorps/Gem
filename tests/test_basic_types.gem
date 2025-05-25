@@ -1,0 +1,30 @@
+# Test Basic Data Types and Literals
+puts "=== Testing Basic Data Types ===";
+
+# Integer literals
+puts 42;
+puts -123;
+puts 0;
+puts 999999;
+
+# Floating point numbers
+puts 3.14159;
+puts -2.5;
+puts 0.0;
+puts 123.456;
+
+# Boolean literals
+puts true;
+puts false;
+
+# Nil literal
+puts nil;
+
+# String literals
+puts "Hello, World!";
+puts "Empty string: ";
+puts "String with spaces";
+puts "String with numbers: 123";
+puts "String with symbols: !@#$%^&*()";
+
+puts "=== Basic Types Test Complete ==="; 

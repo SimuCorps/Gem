@@ -1,0 +1,36 @@
+# Test Closures and First-Class Functions
+puts "=== Testing Closures ===";
+
+# Basic closure
+def makeCounter() func
+    int! count = 0;
+    
+    def increment() int
+        count = count + 1;
+        return count;
+    end
+    
+    return increment;
+end
+
+func counter = makeCounter();
+puts counter();  # 1
+puts counter();  # 2
+puts counter();  # 3
+
+# Function returning function with parameters
+def makeMultiplier(int factor) func
+    def multiply(int x) int
+        return x * factor;
+    end
+    return multiply;
+end
+
+func double = makeMultiplier(2);
+func triple = makeMultiplier(3);
+
+puts double(5);   # 10
+puts triple(5);   # 15
+puts double(10);  # 20
+
+puts "=== Closures Test Complete ==="; 

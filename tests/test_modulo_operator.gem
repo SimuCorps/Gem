@@ -1,0 +1,111 @@
+# Test Modulo Operator
+puts "=== Testing Modulo Operator ===";
+
+# Basic modulo operations
+puts 10 % 3;    # 1
+puts 15 % 4;    # 3
+puts 20 % 5;    # 0
+puts 7 % 2;     # 1
+puts 8 % 2;     # 0
+
+# Modulo with variables
+int dividend = 17;
+int divisor = 5;
+int remainder = dividend % divisor;
+puts remainder;  # 2
+
+# Modulo in expressions
+puts (10 + 5) % 4;    # 15 % 4 = 3
+puts 20 % (3 + 2);    # 20 % 5 = 0
+puts (7 * 3) % 8;     # 21 % 8 = 5
+
+# Modulo with negative numbers
+puts -10 % 3;    # Implementation dependent
+puts 10 % -3;    # Implementation dependent
+puts -10 % -3;   # Implementation dependent
+
+# Modulo in loops (useful for cycling)
+puts "Cycling with modulo:";
+for (int! i = 0; i < 10; i = i + 1)
+    int cycle = i % 3;
+    puts "i: #{i}, cycle: #{cycle}";
+end
+
+# Even/odd detection using modulo
+def isEven(int num) bool
+    return num % 2 == 0;
+end
+
+def isOdd(int num) bool
+    return num % 2 == 1;
+end
+
+puts "Even/odd tests:";
+for (int! num = 1; num <= 10; num = num + 1)
+    string evenOdd = isEven(num) ? "even" : "odd";
+    puts "#{num} is #{evenOdd}";
+end
+
+# Modulo for range wrapping
+def wrapValue(int value, int max) int
+    return value % max;
+end
+
+puts "Range wrapping:";
+for (int! val = 0; val < 15; val = val + 1)
+    int wrapped = wrapValue(val, 5);
+    puts "#{val} wrapped to 0-4: #{wrapped}";
+end
+
+# Modulo with larger numbers
+puts "Large number modulo:";
+puts 1000 % 7;     # 6
+puts 12345 % 100;  # 45
+puts 999999 % 13;  # 3
+
+# Modulo in mathematical calculations
+def gcd(int! a, int! b) int
+    while (b != 0)
+        int temp = b;
+        b = a % b;
+        a = temp;
+    end
+    return a;
+end
+
+puts "GCD calculations:";
+puts gcd(48, 18);  # 6
+puts gcd(100, 25); # 25
+puts gcd(17, 13);  # 1
+
+# Modulo for digit extraction
+def getLastDigit(int num) int
+    return num % 10;
+end
+
+def removeLastDigit(int num) int
+    return num / 10;
+end
+
+puts "Digit operations:";
+int! number = 12345;
+int! iterations = 0;
+while (number > 0 and iterations < 10)  # Add safety limit
+    int digit = getLastDigit(number);
+    puts "Last digit: #{digit}";
+    number = removeLastDigit(number);
+    iterations = iterations + 1;
+end
+
+# Modulo with floating point (if supported)
+puts "Floating point modulo:";
+puts 10.5 % 3.0;   # Should work if language supports it
+puts 7.8 % 2.5;    # Should work if language supports it
+
+# Modulo precedence
+puts "Modulo precedence:";
+puts 10 + 3 % 2;   # Should be 11 (3 % 2 = 1, then 10 + 1)
+puts (10 + 3) % 2; # Should be 1 (13 % 2)
+puts 10 * 3 % 7;   # Should be 2 (30 % 7)
+
+puts "=== Modulo Operator Test Complete ==="; 
