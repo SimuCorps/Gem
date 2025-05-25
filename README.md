@@ -1,5 +1,9 @@
 # Gem Programming Language
 
+[![CI](https://github.com/SimuCorps/Gem/actions/workflows/ci.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/ci.yml)
+[![Release](https://github.com/SimuCorps/Gem/actions/workflows/release.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/release.yml)
+[![Multi-Platform](https://github.com/SimuCorps/Gem/actions/workflows/multi-platform-release.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/multi-platform-release.yml)
+
 Gem is a modern, statically-typed programming language that prioritizes safety, clarity, and developer experience. Built as a bytecode virtual machine in C, Gem combines the performance of compiled languages with the safety of modern type systems.
 
 ## What Makes Gem Special
