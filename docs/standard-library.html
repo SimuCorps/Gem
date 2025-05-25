@@ -37,6 +37,7 @@
                         <ul>
                             <li><a href="#overview">Overview</a></li>
                             <li><a href="#math-module">Math Module</a></li>
+                            <li><a href="#http-module">HTTP Module</a></li>
                             <li><a href="#core-functions">Core Functions</a></li>
                             <li><a href="#importing">Importing Modules</a></li>
                             <li><a href="#examples">Usage Examples</a></li>
@@ -57,6 +58,7 @@
                         <h3>Available Modules</h3>
                         <ul>
                             <li><strong>Math Module</strong> - Mathematical operations</li>
+                            <li><strong>HTTP Module</strong> - HTTP client functionality for web requests</li>
                             <li><strong>Core Functions</strong> - Built-in functions available without imports</li>
                         </ul>
 
@@ -142,6 +144,213 @@ Math.max(int a, int b) int              # Maximum of two values</code></pre>
                         </div>
                     </section>
 
+                    <section id="http-module" class="docs-section">
+                        <h2>HTTP Module</h2>
+                        <p>The HTTP module provides a comprehensive HTTP client for making web requests. It supports all major HTTP methods, custom headers, request data, and detailed response handling.</p>
+
+                        <h3>Importing the HTTP Module</h3>
+                        <div class="code-block">
+                            <pre><code>require "http";</code></pre>
+                        </div>
+
+                        <h3>Basic GET Request</h3>
+                        <div class="code-block">
+                            <pre><code># Simple GET request
+hash response = Http.get("https://api.example.com/data");
+
+# Check if request was successful
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+string body = response["body"] as string;
+
+if (success)
+    puts "Request successful!";
+    puts "Status: " + status;
+    puts "Response: " + body;
+else
+    puts "Request failed with status: " + status;
+end</code></pre>
+                        </div>
+
+                        <h3>GET Request with Custom Headers</h3>
+                        <div class="code-block">
+                            <pre><code># GET request with custom headers
+hash headers = {};
+headers["Authorization"] = "Bearer your-token-here";
+headers["Content-Type"] = "application/json";
+headers["User-Agent"] = "MyApp/1.0";
+
+hash response = Http.get("https://api.example.com/protected", headers);
+
+# Access response details
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+string body = response["body"] as string;
+int responseTime = response["response_time"] as int;</code></pre>
+                        </div>
+
+                        <h3>POST Request with Data</h3>
+                        <div class="code-block">
+                            <pre><code># POST request with form data
+hash data = {};
+data["name"] = "John Doe";
+data["email"] = "john@example.com";
+data["age"] = "30";
+
+hash response = Http.post("https://api.example.com/users", data);
+
+if (response["success"] as bool)
+    puts "User created successfully!";
+    puts "Response: " + (response["body"] as string);
+end</code></pre>
+                        </div>
+
+                        <h3>POST Request with JSON and Headers</h3>
+                        <div class="code-block">
+                            <pre><code># POST request with JSON data and custom headers
+hash headers = {};
+headers["Content-Type"] = "application/json";
+headers["Authorization"] = "Bearer token123";
+
+hash jsonData = {};
+jsonData["title"] = "New Post";
+jsonData["content"] = "This is the post content";
+jsonData["published"] = "true";
+
+hash response = Http.post("https://api.example.com/posts", jsonData, headers);
+
+# Check response
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+
+if (success)
+    puts "Post created! Status: " + status;
+else
+    puts "Failed to create post. Status: " + status;
+end</code></pre>
+                        </div>
+
+                        <h3>PUT Request for Updates</h3>
+                        <div class="code-block">
+                            <pre><code># PUT request to update a resource
+hash updateData = {};
+updateData["name"] = "Jane Doe";
+updateData["email"] = "jane@example.com";
+
+hash headers = {};
+headers["Content-Type"] = "application/json";
+
+hash response = Http.put("https://api.example.com/users/123", updateData, headers);
+
+if (response["success"] as bool)
+    puts "User updated successfully!";
+    puts "Response time: " + (response["response_time"] as int) + "ms";
+end</code></pre>
+                        </div>
+
+                        <h3>DELETE Request</h3>
+                        <div class="code-block">
+                            <pre><code># DELETE request with authorization
+hash headers = {};
+headers["Authorization"] = "Bearer admin-token";
+
+hash response = Http.delete("https://api.example.com/users/123", headers);
+
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+
+if (success)
+    puts "Resource deleted successfully!";
+else
+    puts "Failed to delete resource. Status: " + status;
+end</code></pre>
+                        </div>
+
+                        <h3>Error Handling</h3>
+                        <div class="code-block">
+                            <pre><code># Comprehensive error handling
+hash response = Http.get("https://invalid-url-example.com");
+
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+
+if (!success)
+    if (status == 0)
+        puts "Network error or invalid URL";
+    elsif (status == 404)
+        puts "Resource not found";
+    elsif (status == 500)
+        puts "Server error";
+    else
+        puts "Request failed with status: " + status;
+    end
+else
+    puts "Request successful!";
+    string body = response["body"] as string;
+    puts "Response: " + body;
+end</code></pre>
+                        </div>
+
+                        <h3>Performance Monitoring</h3>
+                        <div class="code-block">
+                            <pre><code># Monitor request performance
+hash response = Http.get("https://api.example.com/data");
+
+int responseTime = response["response_time"] as int;
+bool success = response["success"] as bool;
+
+puts "Request completed in " + responseTime + " microseconds";
+
+if (responseTime > 1000000)  # 1 second in microseconds
+    puts "Warning: Slow response detected";
+end</code></pre>
+                        </div>
+
+                        <h3>HTTP Module Function Reference</h3>
+                        <div class="code-block">
+                            <pre><code># Complete HTTP module API
+
+# GET requests
+Http.get(string url) hash                           # Simple GET
+Http.get(string url, hash headers) hash             # GET with headers
+
+# POST requests  
+Http.post(string url, hash data) hash               # POST with data
+Http.post(string url, hash data, hash headers) hash # POST with data and headers
+
+# PUT requests
+Http.put(string url, hash data) hash                # PUT with data
+Http.put(string url, hash data, hash headers) hash  # PUT with data and headers
+
+# DELETE requests
+Http.delete(string url) hash                        # Simple DELETE
+Http.delete(string url, hash headers) hash          # DELETE with headers
+
+# Response hash structure:
+# {
+#   "success": bool,        # Whether request succeeded
+#   "status": int,          # HTTP status code (0 for network errors)
+#   "body": string,         # Response body content
+#   "response_time": int    # Response time in microseconds
+# }</code></pre>
+                        </div>
+
+                        <h3>Common HTTP Status Codes</h3>
+                        <div class="info-box">
+                            <h4>📡 HTTP Status Codes</h4>
+                            <ul>
+                                <li><code>200</code> - OK (Success)</li>
+                                <li><code>201</code> - Created</li>
+                                <li><code>400</code> - Bad Request</li>
+                                <li><code>401</code> - Unauthorized</li>
+                                <li><code>403</code> - Forbidden</li>
+                                <li><code>404</code> - Not Found</li>
+                                <li><code>500</code> - Internal Server Error</li>
+                                <li><code>0</code> - Network Error/Invalid URL</li>
+                            </ul>
+                        </div>
+                    </section>
+
                     <section id="core-functions" class="docs-section">
                         <h2>Core Functions</h2>
                         <p>These functions are available without any imports and provide essential I/O operations.</p>
@@ -171,24 +380,29 @@ puts(any value) void                 # Print value with newline</code></pre>
                             <pre><code># Import math module
 require "math";
 
-# Use imported module
+# Import HTTP module
+require "http";
+
+# Use imported modules
 int sum = Math.add(10, 5);
-int product = Math.multiply(4, 7);</code></pre>
+hash response = Http.get("https://api.example.com");</code></pre>
                         </div>
 
                         <h3>Multiple Imports</h3>
                         <div class="code-block">
-                            <pre><code># Currently only math module is fully functional
+                            <pre><code># Import multiple modules
 require "math";
+require "http";
 
-def calculateArea(int length, int width) int
-    return Math.multiply(length, width);
-end
-
-def calculatePerimeter(int length, int width) int
-    int doubled_length = Math.multiply(length, 2);
-    int doubled_width = Math.multiply(width, 2);
-    return Math.add(doubled_length, doubled_width);
+def fetchAndCalculate() void
+    # Make HTTP request
+    hash response = Http.get("https://api.example.com/numbers");
+    
+    if (response["success"] as bool)
+        # Use math operations on the response
+        int result = Math.multiply(10, 5);
+        puts "Calculation result: " + result;
+    end
 end</code></pre>
                         </div>
 
@@ -197,6 +411,7 @@ end</code></pre>
                             <h4>📦 Standard Library Modules</h4>
                             <ul>
                                 <li><code>"math"</code> - Mathematical operations</li>
+                                <li><code>"http"</code> - HTTP client functionality</li>
                             </ul>
                         </div>
                     </section>
@@ -233,6 +448,107 @@ end
 calculateStats(10, 20, 30);</code></pre>
                         </div>
 
+                        <h3>HTTP API Client Example</h3>
+                        <div class="code-block">
+                            <pre><code>require "http";
+
+def fetchUserData(string userId) void
+    # Prepare headers
+    hash headers = {};
+    headers["Authorization"] = "Bearer your-api-token";
+    headers["Content-Type"] = "application/json";
+    
+    # Make GET request
+    string url = "https://api.example.com/users/" + userId;
+    hash response = Http.get(url, headers);
+    
+    # Handle response
+    bool success = response["success"] as bool;
+    int status = response["status"] as int;
+    
+    if (success)
+        puts "User data retrieved successfully!";
+        puts "Status: " + status;
+        puts "Response: " + (response["body"] as string);
+        puts "Response time: " + (response["response_time"] as int) + " microseconds";
+    else
+        puts "Failed to fetch user data";
+        puts "Status code: " + status;
+    end
+end
+
+def createUser(string name, string email) void
+    # Prepare user data
+    hash userData = {};
+    userData["name"] = name;
+    userData["email"] = email;
+    userData["active"] = "true";
+    
+    # Prepare headers
+    hash headers = {};
+    headers["Content-Type"] = "application/json";
+    headers["Authorization"] = "Bearer your-api-token";
+    
+    # Make POST request
+    hash response = Http.post("https://api.example.com/users", userData, headers);
+    
+    # Handle response
+    if (response["success"] as bool)
+        puts "User created successfully!";
+        puts "Response: " + (response["body"] as string);
+    else
+        puts "Failed to create user";
+        puts "Status: " + (response["status"] as int);
+    end
+end
+
+# Usage examples
+fetchUserData("123");
+createUser("Alice Johnson", "alice@example.com");</code></pre>
+                        </div>
+
+                        <h3>Combined Math and HTTP Example</h3>
+                        <div class="code-block">
+                            <pre><code>require "math";
+require "http";
+
+def calculateAndSubmit(int a, int b) void
+    # Perform calculations
+    int sum = Math.add(a, b);
+    int product = Math.multiply(a, b);
+    int power = Math.power(a, 2);
+    
+    puts "Calculations completed:";
+    puts "Sum: " + sum;
+    puts "Product: " + product;
+    puts "A squared: " + power;
+    
+    # Prepare data for submission
+    hash calculationData = {};
+    calculationData["input_a"] = "" + a;
+    calculationData["input_b"] = "" + b;
+    calculationData["sum"] = "" + sum;
+    calculationData["product"] = "" + product;
+    calculationData["power"] = "" + power;
+    
+    # Submit results via HTTP
+    hash headers = {};
+    headers["Content-Type"] = "application/json";
+    
+    hash response = Http.post("https://api.example.com/calculations", calculationData, headers);
+    
+    if (response["success"] as bool)
+        puts "Results submitted successfully!";
+        puts "Server response: " + (response["body"] as string);
+    else
+        puts "Failed to submit results";
+    end
+end
+
+# Usage
+calculateAndSubmit(10, 5);</code></pre>
+                        </div>
+
                         <h3>String Processing Example</h3>
                         <div class="code-block">
                             <pre><code># Basic string operations using built-in concatenation
@@ -252,39 +568,6 @@ puts greeting;
 
 string banner = createBanner("WELCOME");
 puts banner;</code></pre>
-                        </div>
-
-                        <h3>Math Operations Example</h3>
-                        <div class="code-block">
-                            <pre><code>require "math";
-
-def printMathResults() void
-    puts "Math Operations Demo:";
-    
-    int a = 10;
-    int b = 3;
-    
-    puts "Numbers: 10 and 3";
-    
-    int sum = Math.add(a, b);
-    puts "Addition result:";
-    puts sum;
-    
-    int product = Math.multiply(a, b);
-    puts "Multiplication result:";
-    puts product;
-    
-    int power = Math.power(a, b);
-    puts "Power result:";
-    puts power;
-    
-    int maximum = Math.max(a, b);
-    puts "Maximum:";
-    puts maximum;
-end
-
-# Usage
-printMathResults();</code></pre>
                         </div>
                     </section>
                 </article>
