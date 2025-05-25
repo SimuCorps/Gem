@@ -926,6 +926,287 @@ static Value httpRequestNative(int argCount, Value* args) {
 }
 //< HTTP Native Functions
 
+// Enhanced HTTP functions that accept options hash and return structured response
+static Value httpGetWithOptionsNative(int argCount, Value* args) {
+  if (argCount != 2) {
+    runtimeError("httpGetWithOptions() takes exactly 2 arguments: url and options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpGetWithOptions() first argument must be a string URL.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[1])) {
+    runtimeError("httpGetWithOptions() second argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "GET";
+  req.url = AS_CSTRING(args[0]);
+  
+  ObjHash* options = AS_HASH(args[1]);
+  
+  // Extract headers if provided
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Extract timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP GET request.");
+    return NIL_VAL;
+  }
+  
+  // Return structured response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+
+static Value httpPostWithOptionsNative(int argCount, Value* args) {
+  if (argCount != 3) {
+    runtimeError("httpPostWithOptions() takes exactly 3 arguments: url, data, and options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpPostWithOptions() first argument must be a string URL.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[1])) {
+    runtimeError("httpPostWithOptions() second argument must be a string data.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[2])) {
+    runtimeError("httpPostWithOptions() third argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "POST";
+  req.url = AS_CSTRING(args[0]);
+  req.body = AS_CSTRING(args[1]);
+  
+  ObjHash* options = AS_HASH(args[2]);
+  
+  // Extract headers if provided
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Extract timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP POST request.");
+    return NIL_VAL;
+  }
+  
+  // Return structured response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+
+static Value httpPutWithOptionsNative(int argCount, Value* args) {
+  if (argCount != 3) {
+    runtimeError("httpPutWithOptions() takes exactly 3 arguments: url, data, and options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpPutWithOptions() first argument must be a string URL.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[1])) {
+    runtimeError("httpPutWithOptions() second argument must be a string data.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[2])) {
+    runtimeError("httpPutWithOptions() third argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "PUT";
+  req.url = AS_CSTRING(args[0]);
+  req.body = AS_CSTRING(args[1]);
+  
+  ObjHash* options = AS_HASH(args[2]);
+  
+  // Extract headers if provided
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Extract timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP PUT request.");
+    return NIL_VAL;
+  }
+  
+  // Return structured response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+
+static Value httpDeleteWithOptionsNative(int argCount, Value* args) {
+  if (argCount != 2) {
+    runtimeError("httpDeleteWithOptions() takes exactly 2 arguments: url and options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpDeleteWithOptions() first argument must be a string URL.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[1])) {
+    runtimeError("httpDeleteWithOptions() second argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "DELETE";
+  req.url = AS_CSTRING(args[0]);
+  
+  ObjHash* options = AS_HASH(args[1]);
+  
+  // Extract headers if provided
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Extract timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP DELETE request.");
+    return NIL_VAL;
+  }
+  
+  // Return structured response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+
 void initVM() {
 #if FAST_STACK_ENABLED
   // Fast stack is pre-allocated, just reset the pointer
@@ -966,6 +1247,10 @@ void initVM() {
   defineNative("httpPut", httpPutNative);
   defineNative("httpDelete", httpDeleteNative);
   defineNative("httpRequest", httpRequestNative);
+  defineNative("httpGetWithOptions", httpGetWithOptionsNative);
+  defineNative("httpPostWithOptions", httpPostWithOptionsNative);
+  defineNative("httpPutWithOptions", httpPutWithOptionsNative);
+  defineNative("httpDeleteWithOptions", httpDeleteWithOptionsNative);
 //< HTTP Native Functions define
 //> Initialize Compiler Tables
   initCompilerTables();

@@ -939,15 +939,18 @@ static void dot(bool canAssign) {
     emitByte(name & 0xff);         // Low byte
 //> Methods and Initializers parse-call
   } else if (match(TOKEN_LEFT_PAREN)) {
+    // Save the identifier before parsing arguments (like call() function does)
+    ObjString* moduleIdentifier = lastAccessedIdentifier;
+    
     uint8_t argCount = argumentList();
     
     // Check if this is a module function call
     // For now, we'll use a simple heuristic: if the previous expression type 
     // suggests it's a module, use OP_MODULE_CALL
-    if (lastAccessedIdentifier != NULL) {
+    if (moduleIdentifier != NULL) {
       // Check if the last accessed identifier is a module
       // For simplicity, assume any identifier starting with capital letter is a module
-      if (lastAccessedIdentifier->chars[0] >= 'A' && lastAccessedIdentifier->chars[0] <= 'Z') {
+      if (moduleIdentifier->chars[0] >= 'A' && moduleIdentifier->chars[0] <= 'Z') {
         emitByte(OP_MODULE_CALL);
         emitByte((name >> 8) & 0xff);  // High byte
         emitByte(name & 0xff);         // Low byte
@@ -955,36 +958,14 @@ static void dot(bool canAssign) {
         
         // Use proper module function signature lookup instead of hardcoded nonsense
         ObjString* methodNameString = copyString(propertyName.start, propertyName.length);
-        ReturnType functionReturnType = getModuleFunctionReturnType(lastAccessedIdentifier, methodNameString);
-        if (functionReturnType.baseType != TYPE_VOID.baseType) {
-          lastExpressionType = functionReturnType;
-        } else {
-          lastExpressionType = TYPE_VOID; // fallback if function not found in module table
-        }
+        ReturnType functionReturnType = getModuleFunctionReturnType(moduleIdentifier, methodNameString);
+        lastExpressionType = functionReturnType;
         return;
       }
     }
     
-    // Regular method call
-    emitByte(OP_INVOKE);
-    emitByte((name >> 8) & 0xff);  // High byte
-    emitByte(name & 0xff);         // Low byte
+    emitBytes(OP_INVOKE, name);
     emitByte(argCount);
-    
-    // For method calls, try to determine the return type based on the object's class
-    if (lastExpressionType.baseType == TYPE_OBJ.baseType && lastExpressionType.className != NULL) {
-      // We know the specific class, look up the method in that class
-      ObjString* methodNameString = copyString(propertyName.start, propertyName.length);
-      ReturnType methodReturnType = getMethodReturnType(lastExpressionType.className, methodNameString);
-      lastExpressionType = methodReturnType;
-    } else if (currentClass != NULL && lastExpressionType.baseType == TYPE_OBJ.baseType) {
-      // Fallback: if we're in a method and accessing an obj, assume it's the current class
-      ObjString* methodNameString = copyString(propertyName.start, propertyName.length);
-      ReturnType methodReturnType = getMethodReturnType(currentClass->className, methodNameString);
-      lastExpressionType = methodReturnType;
-    } else {
-      lastExpressionType = TYPE_VOID; // Conservative fallback for method calls
-    }
 //< Methods and Initializers parse-call
   } else {
     emitByte(OP_GET_PROPERTY);
@@ -1646,7 +1627,8 @@ static ReturnType function(FunctionType type) {
   ReturnType functionReturnType = IMMUTABLE_NONNULL_TYPE(TYPE_VOID.baseType);
   if (check(TOKEN_RETURNTYPE_INT) || check(TOKEN_RETURNTYPE_STRING) || 
       check(TOKEN_RETURNTYPE_BOOL) || check(TOKEN_RETURNTYPE_VOID) || 
-      check(TOKEN_RETURNTYPE_FUNC) || check(TOKEN_RETURNTYPE_OBJ)) {
+      check(TOKEN_RETURNTYPE_FUNC) || check(TOKEN_RETURNTYPE_OBJ) ||
+      check(TOKEN_RETURNTYPE_HASH)) {
     // Store the return type in the function object
     TokenType typeToken = parser.current.type;
     advance(); // Consume the type token first

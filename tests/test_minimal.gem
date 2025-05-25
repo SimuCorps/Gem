@@ -1,4 +1,0 @@
-require "http"
-
-string postResponse = HTTP.post("https://httpbin.org/post", "test data");
-puts "Success"; 
