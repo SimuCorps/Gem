@@ -1,7 +1,0 @@
-puts "Starting test...";
-
-require "http"
-
-puts "HTTP module loaded";
-
-puts "Test complete"; 
