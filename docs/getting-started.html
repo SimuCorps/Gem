@@ -99,20 +99,20 @@ sudo make install</code></pre>
 
                         <div class="code-block">
                             <pre><code># hello.gem - Your first Gem program
-puts "Hello, World!";
+puts "Hello, World!"
 
 # Variables with type safety
-string name = "Gem";
-int version = 1;
+string name = "Gem"
+int version = 1
 
-puts "Welcome to " + name + " v" + version + "!";
+puts "Welcome to " + name + " v" + version + "!"
 
 # Functions
 def greet(string person) string
-    return "Hello, " + person + "!";
+    return "Hello, " + person + "!"
 end
 
-puts greet("Developer");</code></pre>
+puts greet("Developer")</code></pre>
                         </div>
 
                         <h3>Run the Program</h3>
@@ -141,14 +141,14 @@ Hello, Developer!</pre>
 
                         <p>You'll see a prompt where you can type Gem code:</p>
                         <div class="output-block">
-                            <pre>> puts "Hello from REPL!";
+                            <pre>> puts "Hello from REPL!"
 Hello from REPL!
-> int x = 42;
-> puts x;
+> int x = 42
+> puts x
 42
-> string! message = "Mutable string";
-> message = "Changed!";
-> puts message;
+> string! message = "Mutable string"
+> message = "Changed!"
+> puts message
 Changed!
 > </pre>
                         </div>
@@ -172,37 +172,37 @@ Changed!
                         <p>Gem is statically typed, meaning all variables must have explicit types:</p>
                         <div class="code-block">
                             <pre><code># Basic types
-int age = 25;
-string name = "Alice";
-bool isActive = true;
+int age = 25
+string name = "Alice"
+bool isActive = true
 
 # Type errors are caught at compile time
-# age = "not a number";  # ❌ Error!</code></pre>
+# age = "not a number"  # ❌ Error!</code></pre>
                         </div>
 
                         <h3>Mutability Control</h3>
                         <p>Variables are immutable by default. Use <code>!</code> to make them mutable:</p>
                         <div class="code-block">
                             <pre><code># Immutable (default)
-string message = "Hello";
-# message = "Goodbye";  # ❌ Error: Cannot modify immutable variable
+string message = "Hello"
+# message = "Goodbye"  # ❌ Error: Cannot modify immutable variable
 
 # Mutable
-string! mutableMessage = "Hello";
-mutableMessage = "Goodbye";  # ✅ Valid</code></pre>
+string! mutableMessage = "Hello"
+mutableMessage = "Goodbye"  # ✅ Valid</code></pre>
                         </div>
 
                         <h3>Nullability Safety</h3>
                         <p>Use <code>?</code> to allow variables to be <code>nil</code>:</p>
                         <div class="code-block">
                             <pre><code># Non-nullable (default)
-string name = "Alice";
-# name = nil;  # ❌ Error: Cannot assign nil
+string name = "Alice"
+# name = nil  # ❌ Error: Cannot assign nil
 
 # Nullable
-string? optionalName = nil;  # ✅ Valid
-optionalName = "Bob";        # ✅ Valid
-optionalName = nil;          # ✅ Valid</code></pre>
+string? optionalName = nil  # ✅ Valid
+optionalName = "Bob"        # ✅ Valid
+optionalName = nil          # ✅ Valid</code></pre>
                         </div>
 
                         <h3>Memory Safety</h3>

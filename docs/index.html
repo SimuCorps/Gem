@@ -66,30 +66,30 @@
                             <span class="code-title">hello.gem</span>
                         </div>
                         <pre class="code-content"><code># Type-safe variables with mutability control
-string name = "Alice";        # Immutable
-int! counter = 0;             # Mutable
-string? nickname = nil;       # Nullable
+string name = "Alice"        # Immutable
+int! counter = 0             # Mutable
+string? nickname = nil       # Nullable
 
 # Functions with type safety
 def greet(string name, int age) string
-    return "Hello " + name + ", age " + age;
+    return "Hello " + name + ", age " + age
 end
 
 # Classes with inheritance
 class Person
     def init(string name) void
-        this.name = name;
+        this.name = name
     end
     
     def introduce() string
-        return "I'm " + this.name;
+        return "I'm " + this.name
     end
 end
 
 # Memory-safe scoping
 begin
-    obj person = Person("Bob");
-    puts person.introduce();
+    obj person = Person("Bob")
+    puts person.introduce()
     # person automatically cleaned up here
 end</code></pre>
                     </div>
@@ -234,44 +234,44 @@ end</code></pre>
                     <div class="example-card">
                         <h3>Type Safety</h3>
                         <pre><code># Variables are immutable by default
-string name = "Alice";
-int! counter = 0;        # Mutable with !
-string? optional = nil;  # Nullable with ?
+string name = "Alice"
+int! counter = 0        # Mutable with !
+string? optional = nil  # Nullable with ?
 
 # Compile-time type checking
-# name = 42;  # ❌ Error: Cannot assign int to string
-counter = counter + 1;   # ✅ Valid: counter is mutable</code></pre>
+# name = 42  # ❌ Error: Cannot assign int to string
+counter = counter + 1   # ✅ Valid: counter is mutable</code></pre>
                     </div>
                     <div class="example-card">
                         <h3>Memory Safety</h3>
                         <pre><code># Automatic scope-based cleanup
 begin
-    obj resource = FileHandle("data.txt");
-    resource.process();
+    obj resource = FileHandle("data.txt")
+    resource.process()
     # resource automatically cleaned up here
 end
 # resource is no longer accessible
 
 # Borrow checking prevents use-after-drop
-# puts resource.data;  # ❌ Compile error</code></pre>
+# puts resource.data  # ❌ Compile error</code></pre>
                     </div>
                     <div class="example-card">
                         <h3>Functions & Classes</h3>
                         <pre><code># First-class functions with type safety
 def calculate(int x, int y, func operation) int
-    return operation(x, y);
+    return operation(x, y)
 end
 
 # Classes with inheritance
 class Animal
     def speak() string
-        return "Some sound";
+        return "Some sound"
     end
 end
 
 class Dog : Animal
     def speak() string
-        return "Woof!";
+        return "Woof!"
     end
 end</code></pre>
                     </div>
