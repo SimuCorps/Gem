@@ -1,0 +1,97 @@
+# Test Type Coercion with 'as' Syntax
+puts "=== Testing Type Coercion ===";
+
+# Test number to string conversion
+int num = 42;
+string numStr = num as string;
+puts "Number to string: " + numStr;
+
+# Test string to number conversion
+string strNum = "123";
+int parsedNum = strNum as int;
+puts "String to number: " + (parsedNum as string);
+
+# Test decimal string to number
+string decimalStr = "3.14159";
+int decimalNum = decimalStr as int;
+puts "Decimal string to number: " + (decimalNum as string);
+
+# Test boolean to string conversion
+bool trueVal = true;
+bool falseVal = false;
+string trueStr = trueVal as string;
+string falseStr = falseVal as string;
+puts "Boolean to string: " + trueStr + ", " + falseStr;
+
+# Test nil to string conversion
+string nilStr = nil as string;
+puts "Nil to string: " + nilStr;
+
+# Test Ruby-style truthiness (only false and nil are falsey)
+puts "=== Testing Ruby-style Truthiness ===";
+
+# Numbers are truthy (including 0)
+int zero = 0;
+int negative = -5;
+int positive = 42;
+bool zeroTruthy = zero as bool;
+bool negativeTruthy = negative as bool;
+bool positiveTruthy = positive as bool;
+puts "0 as bool: " + (zeroTruthy as string);
+puts "-5 as bool: " + (negativeTruthy as string);
+puts "42 as bool: " + (positiveTruthy as string);
+
+# Strings are truthy (including empty strings)
+string emptyStr = "";
+string nonEmptyStr = "hello";
+bool emptyStringTruthy = emptyStr as bool;
+bool nonEmptyStringTruthy = nonEmptyStr as bool;
+puts "Empty string as bool: " + (emptyStringTruthy as string);
+puts "Non-empty string as bool: " + (nonEmptyStringTruthy as string);
+
+# Only false and nil are falsey
+bool falseFalsey = false as bool;
+bool nilFalsey = nil as bool;
+puts "false as bool: " + (falseFalsey as string);
+puts "nil as bool: " + (nilFalsey as string);
+
+# Test hash type coercion
+puts "=== Testing Hash Type Coercion ===";
+
+hash! testHash = {"name": "Alice", "age": 25, "active": true, "score": 0};
+
+# Extract and cast hash values
+string name = testHash["name"] as string;
+int age = testHash["age"] as int;
+bool active = testHash["active"] as bool;
+bool scoreActive = testHash["score"] as bool; # 0 should be truthy in Ruby
+
+puts "Name: " + name;
+puts "Age: " + (age as string);
+puts "Active: " + (active as string);
+puts "Score (0) as bool: " + (scoreActive as string);
+
+# Test casting non-existent hash key (should be nil)
+string missing = testHash["missing"] as string;
+puts "Missing key as string: " + missing;
+
+# Test identity casts (casting to same type)
+puts "=== Testing Identity Casts ===";
+
+string alreadyString = "test";
+string stillString = alreadyString as string;
+puts "String as string: " + stillString;
+
+int alreadyInt = 100;
+int stillInt = alreadyInt as int;
+puts "Int as int: " + (stillInt as string);
+
+bool alreadyBool = true;
+bool stillBool = alreadyBool as bool;
+puts "Bool as bool: " + (stillBool as string);
+
+hash! alreadyHash = {"key": "value"};
+hash! stillHash = alreadyHash as hash;
+puts "Hash as hash: " + (stillHash["key"] as string);
+
+puts "=== Type Coercion Test Complete ==="; 

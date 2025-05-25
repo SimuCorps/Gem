@@ -44,6 +44,9 @@ typedef struct BorrowInfo {
 //> Calls and Functions is-function
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 //< Calls and Functions is-function
+//> Hash Objects is-hash
+#define IS_HASH(value)         isObjType(value, OBJ_HASH)
+//< Hash Objects is-hash
 //> Classes and Instances is-instance
 #define IS_INSTANCE(value)     isObjType(value, OBJ_INSTANCE)
 //< Classes and Instances is-instance
@@ -69,6 +72,9 @@ typedef struct BorrowInfo {
 //> Calls and Functions as-function
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
 //< Calls and Functions as-function
+//> Hash Objects as-hash
+#define AS_HASH(value)         ((ObjHash*)AS_OBJ(value))
+//< Hash Objects as-hash
 //> Classes and Instances as-instance
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
 //< Classes and Instances as-instance
@@ -97,6 +103,9 @@ typedef enum {
 //> Calls and Functions obj-type-function
   OBJ_FUNCTION,
 //< Calls and Functions obj-type-function
+//> Hash Objects obj-type-hash
+  OBJ_HASH,
+//< Hash Objects obj-type-hash
 //> Classes and Instances obj-type-instance
   OBJ_INSTANCE,
 //< Classes and Instances obj-type-instance
@@ -120,7 +129,8 @@ typedef enum {
   RETURN_TYPE_BOOL,
   RETURN_TYPE_VOID,
   RETURN_TYPE_FUNC,
-  RETURN_TYPE_OBJ
+  RETURN_TYPE_OBJ,
+  RETURN_TYPE_HASH
 } BaseType;
 
 // New type system with mutability and nullability
@@ -219,6 +229,7 @@ static const GemType TYPE_BOOL = {RETURN_TYPE_BOOL, false, false, NULL};
 static const GemType TYPE_VOID = {RETURN_TYPE_VOID, false, false, NULL};
 static const GemType TYPE_FUNC = {RETURN_TYPE_FUNC, false, false, NULL};
 static const GemType TYPE_OBJ = {RETURN_TYPE_OBJ, false, false, NULL};
+static const GemType TYPE_HASH = {RETURN_TYPE_HASH, false, false, NULL};
 
 // Helper functions for backward compatibility
 static inline GemType makeType(BaseType baseType) {
@@ -326,6 +337,13 @@ typedef struct {
 } ObjInstance;
 //< Classes and Instances obj-instance
 
+//> Hash Objects obj-hash
+typedef struct {
+  Obj obj;
+  Table table; // Hash table for key-value pairs
+} ObjHash;
+//< Hash Objects obj-hash
+
 //> Module System obj-module
 typedef struct {
   Obj obj;
@@ -358,6 +376,9 @@ ObjFunction* newFunction();
 //> Classes and Instances new-instance-h
 ObjInstance* newInstance(ObjClass* klass);
 //< Classes and Instances new-instance-h
+//> Hash Objects new-hash-h
+ObjHash* newHash();
+//< Hash Objects new-hash-h
 //> Module System new-module-h
 ObjModule* newModule(ObjString* name);
 //< Module System new-module-h

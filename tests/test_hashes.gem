@@ -1,0 +1,13 @@
+# basic hash creation and access
+string hashkey = "zaphod"
+hash my_hash = { "key": "value", 42: "another value", "zaphod": 69 }
+puts my_hash["key"] # should return value
+puts my_hash[42] # should return another value
+puts my_hash[hashkey] # should return 69
+
+# Hash lookup returns a generic value, so we can't assign to a specific type by default
+# instead, we need to do type coercion
+int somevalue = my_hash["zaphod"] as int
+puts somevalue
+
+puts "=== Hash Test Complete ==="

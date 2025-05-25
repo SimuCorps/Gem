@@ -508,6 +508,7 @@ static void interpolatedString(bool canAssign);
 static void typedVarDeclaration();
 static void mutVarDeclaration();
 static void consumeStatementTerminator(const char* message);
+static void typeCast(bool canAssign);
 //< Global Variables forward-declarations
 
 static ParseRule* getRule(TokenType type);
@@ -938,15 +939,18 @@ static void dot(bool canAssign) {
     emitByte(name & 0xff);         // Low byte
 //> Methods and Initializers parse-call
   } else if (match(TOKEN_LEFT_PAREN)) {
+    // Save the identifier before parsing arguments (like call() function does)
+    ObjString* moduleIdentifier = lastAccessedIdentifier;
+    
     uint8_t argCount = argumentList();
     
     // Check if this is a module function call
     // For now, we'll use a simple heuristic: if the previous expression type 
     // suggests it's a module, use OP_MODULE_CALL
-    if (lastAccessedIdentifier != NULL) {
+    if (moduleIdentifier != NULL) {
       // Check if the last accessed identifier is a module
       // For simplicity, assume any identifier starting with capital letter is a module
-      if (lastAccessedIdentifier->chars[0] >= 'A' && lastAccessedIdentifier->chars[0] <= 'Z') {
+      if (moduleIdentifier->chars[0] >= 'A' && moduleIdentifier->chars[0] <= 'Z') {
         emitByte(OP_MODULE_CALL);
         emitByte((name >> 8) & 0xff);  // High byte
         emitByte(name & 0xff);         // Low byte
@@ -954,37 +958,44 @@ static void dot(bool canAssign) {
         
         // Use proper module function signature lookup instead of hardcoded nonsense
         ObjString* methodNameString = copyString(propertyName.start, propertyName.length);
-        ReturnType functionReturnType = getModuleFunctionReturnType(lastAccessedIdentifier, methodNameString);
-        if (functionReturnType.baseType != TYPE_VOID.baseType) {
-          lastExpressionType = functionReturnType;
-        } else {
-          lastExpressionType = TYPE_VOID; // fallback if function not found in module table
-        }
+        ReturnType functionReturnType = getModuleFunctionReturnType(moduleIdentifier, methodNameString);
+        lastExpressionType = functionReturnType;
         return;
       }
     }
     
-    // Regular method call
     emitByte(OP_INVOKE);
     emitByte((name >> 8) & 0xff);  // High byte
     emitByte(name & 0xff);         // Low byte
     emitByte(argCount);
     
-    // For method calls, try to determine the return type based on the object's class
-    if (lastExpressionType.baseType == TYPE_OBJ.baseType && lastExpressionType.className != NULL) {
-      // We know the specific class, look up the method in that class
-      ObjString* methodNameString = copyString(propertyName.start, propertyName.length);
-      ReturnType methodReturnType = getMethodReturnType(lastExpressionType.className, methodNameString);
-      lastExpressionType = methodReturnType;
-    } else if (currentClass != NULL && lastExpressionType.baseType == TYPE_OBJ.baseType) {
-      // Fallback: if we're in a method and accessing an obj, assume it's the current class
-      ObjString* methodNameString = copyString(propertyName.start, propertyName.length);
+    // Infer method return type using the method table
+    ObjString* methodNameString = copyString(propertyName.start, propertyName.length);
+    if (currentClass != NULL) {
+      // Try to get method return type from the current class
       ReturnType methodReturnType = getMethodReturnType(currentClass->className, methodNameString);
-      lastExpressionType = methodReturnType;
+      if (methodReturnType.baseType != RETURN_TYPE_VOID) {
+        lastExpressionType = methodReturnType;
+      } else {
+        // Conservative fallback - assume string for most methods, void for setters
+        if (propertyName.length > 3 && memcmp(propertyName.start, "set", 3) == 0) {
+          lastExpressionType = TYPE_VOID;
+        } else if (propertyName.length > 2 && memcmp(propertyName.start, "is", 2) == 0) {
+          lastExpressionType = TYPE_BOOL;
+        } else {
+          lastExpressionType = TYPE_STRING; // Conservative default for getters
+        }
+      }
     } else {
-      lastExpressionType = TYPE_VOID; // Conservative fallback for method calls
+      // No class context - conservative inference
+      if (propertyName.length > 3 && memcmp(propertyName.start, "set", 3) == 0) {
+        lastExpressionType = TYPE_VOID;
+      } else if (propertyName.length > 2 && memcmp(propertyName.start, "is", 2) == 0) {
+        lastExpressionType = TYPE_BOOL;
+      } else {
+        lastExpressionType = TYPE_STRING;
+      }
     }
-//< Methods and Initializers parse-call
   } else {
     emitByte(OP_GET_PROPERTY);
     emitByte((name >> 8) & 0xff);  // High byte
@@ -1129,6 +1140,52 @@ static void interpolatedString(bool canAssign) {
   lastExpressionType = TYPE_STRING;
 }
 //< String interpolation function
+
+//> Hash literal function
+static void hashLiteral(bool canAssign) {
+  int pairCount = 0;
+  
+  if (!check(TOKEN_RIGHT_BRACE)) {
+    do {
+      // Parse key
+      expression();
+      consume(TOKEN_COLON, "Expect ':' after hash key.");
+      
+      // Parse value
+      expression();
+      
+      pairCount++;
+      if (pairCount > 255) {
+        error("Can't have more than 255 key-value pairs in hash literal.");
+      }
+    } while (match(TOKEN_COMMA));
+  }
+  
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after hash literal.");
+  
+  emitBytes(OP_HASH_LITERAL, pairCount);
+  lastExpressionType = TYPE_HASH;
+}
+//< Hash literal function
+
+//> Hash indexing function
+static void indexing(bool canAssign) {
+  // Parse the index expression
+  expression();
+  consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index.");
+  
+  if (canAssign && match(TOKEN_EQUAL)) {
+    // Hash assignment: hash[key] = value
+    expression();
+    emitByte(OP_SET_INDEX);
+    lastExpressionType = TYPE_VOID; // Assignment returns void
+  } else {
+    // Hash access: hash[key]
+    emitByte(OP_GET_INDEX);
+    lastExpressionType = TYPE_VOID; // Conservative - we don't know the value type
+  }
+}
+//< Hash indexing function
 
 /* Global Variables read-named-variable < Global Variables named-variable-signature
 static void namedVariable(Token name) {
@@ -1298,15 +1355,17 @@ static void super_(bool canAssign) {
     emitByte(name & 0xff);         // Low byte
     emitByte(argCount);
     
-    // Try to infer method return type based on method name
-    // This is a simplified approach - in a full implementation we'd need
-    // proper method signature tracking
-    if (methodNameToken.length == 7 && memcmp(methodNameToken.start, "getName", 7) == 0) {
-      lastExpressionType = TYPE_STRING;
-    } else if (methodNameToken.length == 7 && memcmp(methodNameToken.start, "process", 7) == 0) {
+    // Infer method return type for super calls
+    // For super calls, we can't easily look up the superclass methods during compilation
+    // Use conservative pattern-based inference
+    if (methodNameToken.length > 3 && memcmp(methodNameToken.start, "set", 3) == 0) {
+      lastExpressionType = TYPE_VOID;
+    } else if (methodNameToken.length > 2 && memcmp(methodNameToken.start, "is", 2) == 0) {
+      lastExpressionType = TYPE_BOOL;
+    } else if (methodNameToken.length == 4 && memcmp(methodNameToken.start, "init", 4) == 0) {
       lastExpressionType = TYPE_VOID;
     } else {
-      lastExpressionType = TYPE_VOID; // Conservative fallback for method calls
+      lastExpressionType = TYPE_STRING; // Conservative default for most methods
     }
   } else {
     namedVariable(syntheticToken("super"), false);
@@ -1374,8 +1433,10 @@ ParseRule rules[] = {
   [TOKEN_LEFT_PAREN]    = {grouping, call,   PREC_CALL},
 //< Calls and Functions infix-left-paren
   [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE}, // [big]
+  [TOKEN_LEFT_BRACE]    = {hashLiteral, NULL, PREC_NONE},
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LEFT_BRACKET]  = {NULL,     indexing, PREC_CALL},
+  [TOKEN_RIGHT_BRACKET] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
 /* Compiling Expressions rules < Classes and Instances table-dot
   [TOKEN_DOT]           = {NULL,     NULL,   PREC_NONE},
@@ -1442,6 +1503,7 @@ ParseRule rules[] = {
 //> Jumping Back and Forth table-and
   [TOKEN_AND]           = {NULL,     and_,   PREC_AND},
 //< Jumping Back and Forth table-and
+  [TOKEN_AS]            = {NULL,     typeCast, PREC_CALL},
   [TOKEN_BEGIN]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_DEF]           = {NULL,     NULL,   PREC_NONE},
@@ -1575,12 +1637,12 @@ static ReturnType function(FunctionType type) {
       ReturnType paramType = IMMUTABLE_NONNULL_TYPE(TYPE_VOID.baseType);
       if (check(TOKEN_RETURNTYPE_INT) || check(TOKEN_RETURNTYPE_STRING) || 
           check(TOKEN_RETURNTYPE_BOOL) || check(TOKEN_RETURNTYPE_FUNC) ||
-          check(TOKEN_RETURNTYPE_OBJ)) {
+          check(TOKEN_RETURNTYPE_OBJ) || check(TOKEN_RETURNTYPE_HASH)) {
         TokenType typeToken = parser.current.type;
         advance(); // Consume the type token first
         paramType = tokenToBaseType(typeToken);
       } else {
-        errorAtCurrent("Expect parameter type (int, string, bool, func, or obj).");
+        errorAtCurrent("Expect parameter type (int, string, bool, func, obj, or hash).");
       }
       
       consume(TOKEN_IDENTIFIER, "Expect parameter name.");
@@ -1596,7 +1658,8 @@ static ReturnType function(FunctionType type) {
   ReturnType functionReturnType = IMMUTABLE_NONNULL_TYPE(TYPE_VOID.baseType);
   if (check(TOKEN_RETURNTYPE_INT) || check(TOKEN_RETURNTYPE_STRING) || 
       check(TOKEN_RETURNTYPE_BOOL) || check(TOKEN_RETURNTYPE_VOID) || 
-      check(TOKEN_RETURNTYPE_FUNC) || check(TOKEN_RETURNTYPE_OBJ)) {
+      check(TOKEN_RETURNTYPE_FUNC) || check(TOKEN_RETURNTYPE_OBJ) ||
+      check(TOKEN_RETURNTYPE_HASH)) {
     // Store the return type in the function object
     TokenType typeToken = parser.current.type;
     advance(); // Consume the type token first
@@ -1631,16 +1694,8 @@ static void method() {
   consume(TOKEN_IDENTIFIER, "Expect method name.");
   Token methodName = parser.previous;
   uint16_t constant = identifierConstant(&parser.previous);
-//> method-body
 
-//< method-body
-/* Methods and Initializers method-body < Methods and Initializers method-type
-  FunctionType type = TYPE_FUNCTION;
-*/
-//> method-type
   FunctionType type = TYPE_METHOD;
-//< method-type
-//> initializer-name
   if (parser.previous.length == 4 &&
       memcmp(parser.previous.start, "init", 4) == 0) {
     type = TYPE_INITIALIZER;
@@ -1664,9 +1719,7 @@ static void method() {
 //> Classes and Instances class-declaration
 static void classDeclaration() {
   consume(TOKEN_IDENTIFIER, "Expect class name.");
-//> Methods and Initializers class-name
   Token className = parser.previous;
-//< Methods and Initializers class-name
   uint16_t nameConstant = identifierConstant(&parser.previous);
   declareVariable();
 
@@ -1681,45 +1734,31 @@ static void classDeclaration() {
   emitByte(nameConstant & 0xff);         // Low byte
   defineVariable(nameConstant);
 
-//> Methods and Initializers create-class-compiler
   ClassCompiler classCompiler;
-//> Superclasses init-has-superclass
   classCompiler.hasSuperclass = false;
-//< Superclasses init-has-superclass
   classCompiler.className = copyString(className.start, className.length);
   classCompiler.enclosing = currentClass;
   currentClass = &classCompiler;
 
-//< Methods and Initializers create-class-compiler
-//> Superclasses compile-superclass
   if (match(TOKEN_LESS)) {
     consume(TOKEN_IDENTIFIER, "Expect superclass name.");
     variable(false);
-//> inherit-self
 
     if (identifiersEqual(&className, &parser.previous)) {
       error("A class can't inherit from itself.");
     }
 
-//< inherit-self
-//> superclass-variable
     beginScope();
     addLocal(syntheticToken("super"), TYPE_VOID);
     defineVariable(0);
     
-//< superclass-variable
     namedVariable(className, false);
     emitByte(OP_INHERIT);
-//> set-has-superclass
     classCompiler.hasSuperclass = true;
-//< set-has-superclass
   }
   
-//< Superclasses compile-superclass
-//> Methods and Initializers load-class
   namedVariable(className, false);
-//< Methods and Initializers load-class
-//> Methods and Initializers class-body
+  
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
     // Skip any newlines in the class body
     while (match(TOKEN_NEWLINE)) {
@@ -1737,21 +1776,15 @@ static void classDeclaration() {
       errorAtCurrent("Expect method definition in class body.");
     }
   }
-//< Methods and Initializers class-body
+  
   consume(TOKEN_END, "Expect 'end' after class body.");
-//> Methods and Initializers pop-class
   emitByte(OP_POP);
-//< Methods and Initializers pop-class
-//> Superclasses end-superclass-scope
 
   if (classCompiler.hasSuperclass) {
     endScope();
   }
-//< Superclasses end-superclass-scope
-//> Methods and Initializers pop-enclosing
 
   currentClass = currentClass->enclosing;
-//< Methods and Initializers pop-enclosing
 }
 //< Classes and Instances class-declaration
 //> Module System module-declaration
@@ -2006,10 +2039,16 @@ static void requireStatement() {
         ObjString* moduleName = copyString(moduleNameStart, current - moduleNameStart);
         
         // Look for function definitions in this module
-        while (*current != '\0' && strncmp(current, "end", 3) != 0) {
+        while (*current != '\0') {
           // Skip whitespace and comments
           while (*current == ' ' || *current == '\t' || *current == '\n' || *current == '\r') {
             current++;
+          }
+          
+          // Check if we've reached the end of the module
+          if (strncmp(current, "end", 3) == 0 && 
+              (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+            break; // End of module
           }
           
           // Look for "def" keyword
@@ -2027,16 +2066,95 @@ static void requireStatement() {
             }
             ObjString* functionName = copyString(funcNameStart, current - funcNameStart);
             
-            // Skip to return type (simplified - assume int for now)
-            // In a real implementation, we'd parse the full signature
-            ReturnType returnType = TYPE_INT;
+            // Parse function signature to extract return type
+            ReturnType returnType = TYPE_VOID; // Default fallback
+            
+            // Find the opening parenthesis
+            while (*current && *current != '(') {
+              current++;
+            }
+            if (*current == '(') current++; // Skip opening paren
+            
+            // Skip to the closing parenthesis of parameters
+            int parenDepth = 1; // We're already inside the parentheses
+            while (*current && parenDepth > 0) {
+              if (*current == '(') parenDepth++;
+              else if (*current == ')') parenDepth--;
+              current++;
+            }
+            
+            // Now we should be positioned right after the closing parenthesis
+            // Skip whitespace after parameters
+            while (*current == ' ' || *current == '\t') current++;
+            
+            // Now parse the return type
+            if (strncmp(current, "string", 6) == 0 && 
+                (current[6] == ' ' || current[6] == '\t' || current[6] == '\n' || current[6] == '\r' || current[6] == '\0')) {
+              returnType = TYPE_STRING;
+              current += 6;
+            } else if (strncmp(current, "int", 3) == 0 && 
+                      (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+              returnType = TYPE_INT;
+              current += 3;
+            } else if (strncmp(current, "bool", 4) == 0 && 
+                      (current[4] == ' ' || current[4] == '\t' || current[4] == '\n' || current[4] == '\r' || current[4] == '\0')) {
+              returnType = TYPE_BOOL;
+              current += 4;
+            } else if (strncmp(current, "void", 4) == 0 && 
+                      (current[4] == ' ' || current[4] == '\t' || current[4] == '\n' || current[4] == '\r' || current[4] == '\0')) {
+              returnType = TYPE_VOID;
+              current += 4;
+            } else if (strncmp(current, "func", 4) == 0 && 
+                      (current[4] == ' ' || current[4] == '\t' || current[4] == '\n' || current[4] == '\r' || current[4] == '\0')) {
+              returnType = TYPE_FUNC;
+              current += 4;
+            } else if (strncmp(current, "obj", 3) == 0 && 
+                      (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+              returnType = TYPE_OBJ;
+              current += 3;
+            } else if (strncmp(current, "hash", 4) == 0 && 
+                      (current[4] == ' ' || current[4] == '\t' || current[4] == '\n' || current[4] == '\r' || current[4] == '\0')) {
+              returnType = TYPE_HASH;
+              current += 4;
+            }
             
             // Register the function signature
             addModuleFunction(moduleName, functionName, returnType);
             
-            // Skip to end of line or function body
-            while (*current && *current != '\n') {
-              current++;
+            // Skip to the start of the function body (after return type)
+            // We need to find the opening of the function body and then skip to its matching 'end'
+            while (*current && *current != '\n' && *current != '\r') {
+              current++; // Skip to end of function signature line
+            }
+            
+            // Now skip the entire function body (from current position to matching 'end')
+            int defDepth = 1; // We're inside one 'def'
+            while (*current && defDepth > 0) {
+              // Skip whitespace
+              while (*current == ' ' || *current == '\t' || *current == '\n' || *current == '\r') {
+                current++;
+              }
+              
+              if (*current == '\0') {
+                break; // Safety check
+              }
+              
+              // Check for nested 'def' or 'end'
+              if (strncmp(current, "def", 3) == 0 && 
+                  (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+                defDepth++;
+                current += 3;
+              } else if (strncmp(current, "end", 3) == 0 && 
+                        (current[3] == ' ' || current[3] == '\t' || current[3] == '\n' || current[3] == '\r' || current[3] == '\0')) {
+                defDepth--;
+                current += 3;
+                if (defDepth == 0) {
+                  // We've found the end of this function, continue to look for more functions
+                  break;
+                }
+              } else {
+                current++;
+              }
             }
           } else {
             current++;
@@ -2112,6 +2230,7 @@ static GemType tokenToBaseType(TokenType token) {
     case TOKEN_RETURNTYPE_VOID: baseType = TYPE_VOID.baseType; break;
     case TOKEN_RETURNTYPE_FUNC: baseType = TYPE_FUNC.baseType; break;
     case TOKEN_RETURNTYPE_OBJ: baseType = TYPE_OBJ.baseType; break;
+    case TOKEN_RETURNTYPE_HASH: baseType = TYPE_HASH.baseType; break;
     default: baseType = TYPE_VOID.baseType; break; // Should never happen
   }
   
@@ -2405,6 +2524,7 @@ static void typedVarDeclaration() {
     case TOKEN_RETURNTYPE_BOOL: baseType = TYPE_BOOL.baseType; break;
     case TOKEN_RETURNTYPE_FUNC: baseType = TYPE_FUNC.baseType; break;
     case TOKEN_RETURNTYPE_OBJ: baseType = TYPE_OBJ.baseType; break;
+    case TOKEN_RETURNTYPE_HASH: baseType = TYPE_HASH.baseType; break;
     default: 
       error("Unknown type in variable declaration.");
       return;
@@ -2491,7 +2611,7 @@ static void mutVarDeclaration() {
   // Now we expect a type token
   if (!match(TOKEN_RETURNTYPE_INT) && !match(TOKEN_RETURNTYPE_STRING) && 
       !match(TOKEN_RETURNTYPE_BOOL) && !match(TOKEN_RETURNTYPE_FUNC) &&
-      !match(TOKEN_RETURNTYPE_OBJ)) {
+      !match(TOKEN_RETURNTYPE_OBJ) && !match(TOKEN_RETURNTYPE_HASH)) {
     error("Expect type after 'mut' keyword.");
     return;
   }
@@ -2505,6 +2625,7 @@ static void mutVarDeclaration() {
     case TOKEN_RETURNTYPE_BOOL: baseType = TYPE_BOOL.baseType; break;
     case TOKEN_RETURNTYPE_FUNC: baseType = TYPE_FUNC.baseType; break;
     case TOKEN_RETURNTYPE_OBJ: baseType = TYPE_OBJ.baseType; break;
+    case TOKEN_RETURNTYPE_HASH: baseType = TYPE_HASH.baseType; break;
     default: 
       error("Unknown type in variable declaration.");
       return;
@@ -2704,6 +2825,7 @@ static void synchronize() {
       case TOKEN_RETURNTYPE_BOOL:
       case TOKEN_RETURNTYPE_FUNC:
       case TOKEN_RETURNTYPE_OBJ:
+      case TOKEN_RETURNTYPE_HASH:
       case TOKEN_FOR:
       case TOKEN_IF:
       case TOKEN_WHILE:
@@ -2746,7 +2868,7 @@ static void declaration() {
     mutVarDeclaration();
   } else if (match(TOKEN_RETURNTYPE_INT) || match(TOKEN_RETURNTYPE_STRING) || 
              match(TOKEN_RETURNTYPE_BOOL) || match(TOKEN_RETURNTYPE_FUNC) ||
-             match(TOKEN_RETURNTYPE_OBJ)) {
+             match(TOKEN_RETURNTYPE_OBJ) || match(TOKEN_RETURNTYPE_HASH)) {
     typedVarDeclaration();
   } else {
     statement();
@@ -2817,3 +2939,39 @@ static void consumeStatementTerminator(const char* message) {
   
   errorAtCurrent(message);
 }
+
+//> Type Casting type-cast
+static void typeCast(bool canAssign) {
+  // Parse the target type
+  if (!match(TOKEN_RETURNTYPE_INT) && !match(TOKEN_RETURNTYPE_STRING) && 
+      !match(TOKEN_RETURNTYPE_BOOL) && !match(TOKEN_RETURNTYPE_HASH)) {
+    error("Expect type after 'as' keyword (int, string, bool, or hash).");
+    return;
+  }
+  
+  TokenType targetType = parser.previous.type;
+  
+  // Emit the type cast operation with the target type
+  emitByte(OP_TYPE_CAST);
+  emitByte((uint8_t)targetType);
+  
+  // Update the expression type to reflect the cast result
+  switch (targetType) {
+    case TOKEN_RETURNTYPE_INT:
+      lastExpressionType = TYPE_INT;
+      break;
+    case TOKEN_RETURNTYPE_STRING:
+      lastExpressionType = TYPE_STRING;
+      break;
+    case TOKEN_RETURNTYPE_BOOL:
+      lastExpressionType = TYPE_BOOL;
+      break;
+    case TOKEN_RETURNTYPE_HASH:
+      lastExpressionType = TYPE_HASH;
+      break;
+    default:
+      lastExpressionType = TYPE_VOID;
+      break;
+  }
+}
+//< Type Casting type-cast

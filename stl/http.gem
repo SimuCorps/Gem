@@ -1,0 +1,17 @@
+module HTTP
+  def get(string url, hash options) hash
+    return httpGetWithOptions(url, options);
+  end
+  
+  def post(string url, string data, hash options) hash
+    return httpPostWithOptions(url, data, options);
+  end
+  
+  def put(string url, string data, hash options) hash
+    return httpPutWithOptions(url, data, options);
+  end
+  
+  def delete(string url, hash options) hash
+    return httpDeleteWithOptions(url, options);
+  end
+end 

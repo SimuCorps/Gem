@@ -22,6 +22,7 @@
 //> Scanning on Demand vm-include-compiler
 #include "compiler.h"
 //< Scanning on Demand vm-include-compiler
+#include "scanner.h"
 //> vm-include-debug
 #include "debug.h"
 //< vm-include-debug
@@ -134,6 +135,1078 @@ static void defineNative(const char* name, NativeFn function) {
 }
 //< Calls and Functions define-native
 
+//> HTTP Native Functions
+
+// HTTP Response structure for returning detailed response information
+typedef struct {
+  char* body;
+  int statusCode;
+  char* headers;
+  double responseTime;
+  bool success;
+} HttpResponse;
+
+// HTTP Request configuration structure
+typedef struct {
+  const char* method;
+  const char* url;
+  const char* body;
+  ObjHash* headers;
+  ObjHash* queryParams;
+  int timeout;
+  bool followRedirects;
+  bool verifySSL;
+  const char* userAgent;
+} HttpRequest;
+
+// Helper function to escape shell arguments
+static char* escapeShellArg(const char* arg) {
+  if (!arg) return strdup("");
+  
+  size_t len = strlen(arg);
+  size_t escaped_len = len * 2 + 3; // Worst case: every char needs escaping + quotes + null
+  char* escaped = malloc(escaped_len);
+  if (!escaped) return NULL;
+  
+  escaped[0] = '"';
+  size_t pos = 1;
+  
+  for (size_t i = 0; i < len; i++) {
+    char c = arg[i];
+    if (c == '"' || c == '\\' || c == '$' || c == '`') {
+      escaped[pos++] = '\\';
+    }
+    escaped[pos++] = c;
+  }
+  
+  escaped[pos++] = '"';
+  escaped[pos] = '\0';
+  
+  return escaped;
+}
+
+// Helper function to build curl headers from hash
+static char* buildCurlHeaders(ObjHash* headers) {
+  if (!headers || headers->table.count == 0) {
+    return strdup("");
+  }
+  
+  // Estimate size needed for headers
+  size_t totalSize = 0;
+  for (int i = 0; i < headers->table.capacity; i++) {
+    Entry* entry = &headers->table.entries[i];
+    if (entry->key != NULL) {
+      const char* key = AS_CSTRING(OBJ_VAL(entry->key));
+      const char* value = AS_CSTRING(entry->value);
+      totalSize += strlen(key) + strlen(value) + 20; // " -H \"key: value\""
+    }
+  }
+  
+  char* headerString = malloc(totalSize + 1);
+  if (!headerString) return NULL;
+  
+  headerString[0] = '\0';
+  for (int i = 0; i < headers->table.capacity; i++) {
+    Entry* entry = &headers->table.entries[i];
+    if (entry->key != NULL) {
+      const char* key = AS_CSTRING(OBJ_VAL(entry->key));
+      const char* value = AS_CSTRING(entry->value);
+      
+      char* escapedKey = escapeShellArg(key);
+      char* escapedValue = escapeShellArg(value);
+      
+      if (escapedKey && escapedValue) {
+        char headerPart[1024];
+        snprintf(headerPart, sizeof(headerPart), " -H %s:%s", escapedKey, escapedValue);
+        strcat(headerString, headerPart);
+      }
+      
+      free(escapedKey);
+      free(escapedValue);
+    }
+  }
+  
+  return headerString;
+}
+
+// Helper function to build query parameters
+static char* buildQueryParams(ObjHash* params) {
+  if (!params || params->table.count == 0) {
+    return strdup("");
+  }
+  
+  size_t totalSize = 1; // For '?'
+  for (int i = 0; i < params->table.capacity; i++) {
+    Entry* entry = &params->table.entries[i];
+    if (entry->key != NULL) {
+      const char* key = AS_CSTRING(OBJ_VAL(entry->key));
+      const char* value = AS_CSTRING(entry->value);
+      totalSize += strlen(key) + strlen(value) + 2; // key=value&
+    }
+  }
+  
+  char* queryString = malloc(totalSize + 1);
+  if (!queryString) return NULL;
+  
+  strcpy(queryString, "?");
+  bool first = true;
+  
+  for (int i = 0; i < params->table.capacity; i++) {
+    Entry* entry = &params->table.entries[i];
+    if (entry->key != NULL) {
+      const char* key = AS_CSTRING(OBJ_VAL(entry->key));
+      const char* value = AS_CSTRING(entry->value);
+      
+      if (!first) {
+        strcat(queryString, "&");
+      }
+      strcat(queryString, key);
+      strcat(queryString, "=");
+      strcat(queryString, value);
+      first = false;
+    }
+  }
+  
+  return queryString;
+}
+
+// Execute HTTP request with comprehensive options
+static HttpResponse* executeHttpRequest(HttpRequest* req) {
+  HttpResponse* response = malloc(sizeof(HttpResponse));
+  if (!response) return NULL;
+  
+  // Initialize response
+  response->body = NULL;
+  response->statusCode = 0;
+  response->headers = NULL;
+  response->responseTime = 0.0;
+  response->success = false;
+  
+  // Build command components
+  char* headerString = buildCurlHeaders(req->headers);
+  char* queryString = buildQueryParams(req->queryParams);
+  char* escapedUrl = escapeShellArg(req->url);
+  char* escapedBody = req->body ? escapeShellArg(req->body) : strdup("");
+  char* escapedUserAgent = req->userAgent ? escapeShellArg(req->userAgent) : strdup("\"Gem-HTTP-Client/1.0\"");
+  
+  if (!headerString || !queryString || !escapedUrl || !escapedBody || !escapedUserAgent) {
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(response);
+    return NULL;
+  }
+  
+  // Build full URL with query parameters
+  char* fullUrl = malloc(strlen(escapedUrl) + strlen(queryString) + 1);
+  if (!fullUrl) {
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(response);
+    return NULL;
+  }
+  strcpy(fullUrl, escapedUrl);
+  strcat(fullUrl, queryString);
+  
+  // Build curl command with comprehensive options
+  size_t cmdSize = 4096 + strlen(headerString) + strlen(fullUrl) + strlen(escapedBody) + strlen(escapedUserAgent);
+  char* command = malloc(cmdSize);
+  if (!command) {
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(fullUrl);
+    free(response);
+    return NULL;
+  }
+  
+  // Build basic curl command
+  snprintf(command, cmdSize,
+    "curl -s -w \"\\n%%{http_code}\\n%%{time_total}\" "
+    "--max-time %d "
+    "%s " // follow redirects
+    "%s " // SSL verification
+    "-A %s " // User agent
+    "-X %s " // HTTP method
+    "%s", // headers
+    req->timeout,
+    req->followRedirects ? "-L" : "",
+    req->verifySSL ? "" : "-k",
+    escapedUserAgent,
+    req->method,
+    headerString
+  );
+  
+  // Add body data if present and not GET
+  if (req->body && strlen(req->body) > 0 && strcmp(req->method, "GET") != 0) {
+    strcat(command, " -d ");
+    strcat(command, escapedBody);
+  }
+  
+  // Add URL at the end
+  strcat(command, " ");
+  strcat(command, fullUrl);
+  
+  // Execute request
+  clock_t start = clock();
+  FILE* pipe = popen(command, "r");
+  if (!pipe) {
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(fullUrl);
+    free(command);
+    free(response);
+    return NULL;
+  }
+  
+  // Read response with larger buffer for production use
+  size_t bufferSize = 1024 * 1024; // 1MB buffer
+  char* buffer = malloc(bufferSize);
+  if (!buffer) {
+    pclose(pipe);
+    free(headerString);
+    free(queryString);
+    free(escapedUrl);
+    free(escapedBody);
+    free(escapedUserAgent);
+    free(fullUrl);
+    free(command);
+    free(response);
+    return NULL;
+  }
+  
+  size_t totalRead = 0;
+  size_t bytesRead;
+  while ((bytesRead = fread(buffer + totalRead, 1, 1024, pipe)) > 0) {
+    totalRead += bytesRead;
+    if (totalRead >= bufferSize - 1024) {
+      // Expand buffer if needed
+      bufferSize *= 2;
+      char* newBuffer = realloc(buffer, bufferSize);
+      if (!newBuffer) {
+        free(buffer);
+        pclose(pipe);
+        free(headerString);
+        free(queryString);
+        free(escapedUrl);
+        free(escapedBody);
+        free(escapedUserAgent);
+        free(fullUrl);
+        free(command);
+        free(response);
+        return NULL;
+      }
+      buffer = newBuffer;
+    }
+  }
+  buffer[totalRead] = '\0';
+  
+  int exitCode = pclose(pipe);
+  clock_t end = clock();
+  
+  response->responseTime = ((double)(end - start)) / CLOCKS_PER_SEC;
+  
+  // Parse response (body, status code, timing info)
+  char* lastNewline = strrchr(buffer, '\n');
+  if (lastNewline) {
+    *lastNewline = '\0';
+    char* secondLastNewline = strrchr(buffer, '\n');
+    if (secondLastNewline) {
+      response->statusCode = atoi(secondLastNewline + 1);
+      *secondLastNewline = '\0';
+      
+      // The remaining buffer is the response body
+      response->body = strdup(buffer);
+      response->success = (exitCode == 0 && response->statusCode >= 200 && response->statusCode < 400);
+    }
+  }
+  
+  if (!response->body) {
+    response->body = strdup(buffer);
+    response->success = (exitCode == 0);
+  }
+  
+  // Cleanup
+  free(buffer);
+  free(headerString);
+  free(queryString);
+  free(escapedUrl);
+  free(escapedBody);
+  free(escapedUserAgent);
+  free(fullUrl);
+  free(command);
+  
+  return response;
+}
+
+// Free HTTP response
+static void freeHttpResponse(HttpResponse* response) {
+  if (response) {
+    free(response->body);
+    free(response->headers);
+    free(response);
+  }
+}
+
+// Production-ready HTTP GET with full options
+static Value httpGetNative(int argCount, Value* args) {
+  if (argCount < 1 || argCount > 3) {
+    runtimeError("httpGet() takes 1-3 arguments: url, [headers], [options]");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpGet() first argument must be a URL string.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "GET";
+  req.url = AS_CSTRING(args[0]);
+  req.body = NULL;
+  req.headers = NULL;
+  req.queryParams = NULL;
+  req.timeout = 30; // Default 30 second timeout
+  req.followRedirects = true;
+  req.verifySSL = true;
+  req.userAgent = "Gem-HTTP-Client/1.0";
+  
+  // Parse optional headers (second argument)
+  if (argCount >= 2) {
+    if (IS_HASH(args[1])) {
+      req.headers = AS_HASH(args[1]);
+    } else if (!IS_NIL(args[1])) {
+      runtimeError("httpGet() second argument must be a hash of headers or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  // Parse optional options (third argument)
+  if (argCount >= 3) {
+    if (IS_HASH(args[2])) {
+      ObjHash* options = AS_HASH(args[2]);
+      
+      // Check for timeout option
+      Value timeoutVal;
+      if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal)) {
+        if (IS_NUMBER(timeoutVal)) {
+          req.timeout = (int)AS_NUMBER(timeoutVal);
+        }
+      }
+      
+      // Check for query parameters
+      Value queryVal;
+      if (tableGet(&options->table, copyString("query", 5), &queryVal)) {
+        if (IS_HASH(queryVal)) {
+          req.queryParams = AS_HASH(queryVal);
+        }
+      }
+      
+      // Check for follow redirects option
+      Value followVal;
+      if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal)) {
+        if (IS_BOOL(followVal)) {
+          req.followRedirects = AS_BOOL(followVal);
+        }
+      }
+      
+      // Check for SSL verification option
+      Value sslVal;
+      if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal)) {
+        if (IS_BOOL(sslVal)) {
+          req.verifySSL = AS_BOOL(sslVal);
+        }
+      }
+      
+      // Check for user agent option
+      Value uaVal;
+      if (tableGet(&options->table, copyString("user_agent", 10), &uaVal)) {
+        if (IS_STRING(uaVal)) {
+          req.userAgent = AS_CSTRING(uaVal);
+        }
+      }
+    } else if (!IS_NIL(args[2])) {
+      runtimeError("httpGet() third argument must be a hash of options or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP GET request.");
+    return NIL_VAL;
+  }
+  
+  ObjString* result = copyString(response->body ? response->body : "", 
+                                response->body ? strlen(response->body) : 0);
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(result);
+}
+
+// Production-ready HTTP POST with full options
+static Value httpPostNative(int argCount, Value* args) {
+  if (argCount < 2 || argCount > 4) {
+    runtimeError("httpPost() takes 2-4 arguments: url, body, [headers], [options]");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpPost() first argument must be a URL string.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[1])) {
+    runtimeError("httpPost() second argument must be a body string.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "POST";
+  req.url = AS_CSTRING(args[0]);
+  req.body = AS_CSTRING(args[1]);
+  req.headers = NULL;
+  req.queryParams = NULL;
+  req.timeout = 30;
+  req.followRedirects = true;
+  req.verifySSL = true;
+  req.userAgent = "Gem-HTTP-Client/1.0";
+  
+  // Parse optional headers (third argument)
+  if (argCount >= 3) {
+    if (IS_HASH(args[2])) {
+      req.headers = AS_HASH(args[2]);
+    } else if (!IS_NIL(args[2])) {
+      runtimeError("httpPost() third argument must be a hash of headers or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  // Parse optional options (fourth argument)
+  if (argCount >= 4) {
+    if (IS_HASH(args[3])) {
+      ObjHash* options = AS_HASH(args[3]);
+      
+      Value timeoutVal;
+      if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal)) {
+        if (IS_NUMBER(timeoutVal)) {
+          req.timeout = (int)AS_NUMBER(timeoutVal);
+        }
+      }
+      
+      Value followVal;
+      if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal)) {
+        if (IS_BOOL(followVal)) {
+          req.followRedirects = AS_BOOL(followVal);
+        }
+      }
+      
+      Value sslVal;
+      if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal)) {
+        if (IS_BOOL(sslVal)) {
+          req.verifySSL = AS_BOOL(sslVal);
+        }
+      }
+      
+      Value uaVal;
+      if (tableGet(&options->table, copyString("user_agent", 10), &uaVal)) {
+        if (IS_STRING(uaVal)) {
+          req.userAgent = AS_CSTRING(uaVal);
+        }
+      }
+    } else if (!IS_NIL(args[3])) {
+      runtimeError("httpPost() fourth argument must be a hash of options or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP POST request.");
+    return NIL_VAL;
+  }
+  
+  ObjString* result = copyString(response->body ? response->body : "", 
+                                response->body ? strlen(response->body) : 0);
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(result);
+}
+
+// Production-ready HTTP PUT with full options
+static Value httpPutNative(int argCount, Value* args) {
+  if (argCount < 2 || argCount > 4) {
+    runtimeError("httpPut() takes 2-4 arguments: url, body, [headers], [options]");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpPut() first argument must be a URL string.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[1])) {
+    runtimeError("httpPut() second argument must be a body string.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "PUT";
+  req.url = AS_CSTRING(args[0]);
+  req.body = AS_CSTRING(args[1]);
+  req.headers = NULL;
+  req.queryParams = NULL;
+  req.timeout = 30;
+  req.followRedirects = true;
+  req.verifySSL = true;
+  req.userAgent = "Gem-HTTP-Client/1.0";
+  
+  // Parse optional headers (third argument)
+  if (argCount >= 3) {
+    if (IS_HASH(args[2])) {
+      req.headers = AS_HASH(args[2]);
+    } else if (!IS_NIL(args[2])) {
+      runtimeError("httpPut() third argument must be a hash of headers or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  // Parse optional options (fourth argument)
+  if (argCount >= 4) {
+    if (IS_HASH(args[3])) {
+      ObjHash* options = AS_HASH(args[3]);
+      
+      Value timeoutVal;
+      if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal)) {
+        if (IS_NUMBER(timeoutVal)) {
+          req.timeout = (int)AS_NUMBER(timeoutVal);
+        }
+      }
+      
+      Value followVal;
+      if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal)) {
+        if (IS_BOOL(followVal)) {
+          req.followRedirects = AS_BOOL(followVal);
+        }
+      }
+      
+      Value sslVal;
+      if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal)) {
+        if (IS_BOOL(sslVal)) {
+          req.verifySSL = AS_BOOL(sslVal);
+        }
+      }
+      
+      Value uaVal;
+      if (tableGet(&options->table, copyString("user_agent", 10), &uaVal)) {
+        if (IS_STRING(uaVal)) {
+          req.userAgent = AS_CSTRING(uaVal);
+        }
+      }
+    } else if (!IS_NIL(args[3])) {
+      runtimeError("httpPut() fourth argument must be a hash of options or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP PUT request.");
+    return NIL_VAL;
+  }
+  
+  ObjString* result = copyString(response->body ? response->body : "", 
+                                response->body ? strlen(response->body) : 0);
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(result);
+}
+
+// Production-ready HTTP DELETE with full options
+static Value httpDeleteNative(int argCount, Value* args) {
+  if (argCount < 1 || argCount > 3) {
+    runtimeError("httpDelete() takes 1-3 arguments: url, [headers], [options]");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpDelete() first argument must be a URL string.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "DELETE";
+  req.url = AS_CSTRING(args[0]);
+  req.body = NULL;
+  req.headers = NULL;
+  req.queryParams = NULL;
+  req.timeout = 30;
+  req.followRedirects = true;
+  req.verifySSL = true;
+  req.userAgent = "Gem-HTTP-Client/1.0";
+  
+  // Parse optional headers (second argument)
+  if (argCount >= 2) {
+    if (IS_HASH(args[1])) {
+      req.headers = AS_HASH(args[1]);
+    } else if (!IS_NIL(args[1])) {
+      runtimeError("httpDelete() second argument must be a hash of headers or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  // Parse optional options (third argument)
+  if (argCount >= 3) {
+    if (IS_HASH(args[2])) {
+      ObjHash* options = AS_HASH(args[2]);
+      
+      Value timeoutVal;
+      if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal)) {
+        if (IS_NUMBER(timeoutVal)) {
+          req.timeout = (int)AS_NUMBER(timeoutVal);
+        }
+      }
+      
+      Value followVal;
+      if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal)) {
+        if (IS_BOOL(followVal)) {
+          req.followRedirects = AS_BOOL(followVal);
+        }
+      }
+      
+      Value sslVal;
+      if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal)) {
+        if (IS_BOOL(sslVal)) {
+          req.verifySSL = AS_BOOL(sslVal);
+        }
+      }
+      
+      Value uaVal;
+      if (tableGet(&options->table, copyString("user_agent", 10), &uaVal)) {
+        if (IS_STRING(uaVal)) {
+          req.userAgent = AS_CSTRING(uaVal);
+        }
+      }
+    } else if (!IS_NIL(args[2])) {
+      runtimeError("httpDelete() third argument must be a hash of options or nil.");
+      return NIL_VAL;
+    }
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP DELETE request.");
+    return NIL_VAL;
+  }
+  
+  ObjString* result = copyString(response->body ? response->body : "", 
+                                response->body ? strlen(response->body) : 0);
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(result);
+}
+
+// Advanced HTTP request function that returns detailed response information
+static Value httpRequestNative(int argCount, Value* args) {
+  if (argCount != 1) {
+    runtimeError("httpRequest() takes exactly 1 argument: options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[0])) {
+    runtimeError("httpRequest() argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  ObjHash* options = AS_HASH(args[0]);
+  HttpRequest req = {0};
+  
+  // Required: method
+  Value methodVal;
+  if (!tableGet(&options->table, copyString("method", 6), &methodVal) || !IS_STRING(methodVal)) {
+    runtimeError("httpRequest() requires 'method' option as string.");
+    return NIL_VAL;
+  }
+  req.method = AS_CSTRING(methodVal);
+  
+  // Required: url
+  Value urlVal;
+  if (!tableGet(&options->table, copyString("url", 3), &urlVal) || !IS_STRING(urlVal)) {
+    runtimeError("httpRequest() requires 'url' option as string.");
+    return NIL_VAL;
+  }
+  req.url = AS_CSTRING(urlVal);
+  
+  // Optional: body
+  Value bodyVal;
+  if (tableGet(&options->table, copyString("body", 4), &bodyVal) && IS_STRING(bodyVal)) {
+    req.body = AS_CSTRING(bodyVal);
+  }
+  
+  // Optional: headers
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Optional: query parameters
+  Value queryVal;
+  if (tableGet(&options->table, copyString("query", 5), &queryVal) && IS_HASH(queryVal)) {
+    req.queryParams = AS_HASH(queryVal);
+  }
+  
+  // Optional: timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  // Optional: follow_redirects (default true)
+  req.followRedirects = true;
+  Value followVal;
+  if (tableGet(&options->table, copyString("follow_redirects", 16), &followVal) && IS_BOOL(followVal)) {
+    req.followRedirects = AS_BOOL(followVal);
+  }
+  
+  // Optional: verify_ssl (default true)
+  req.verifySSL = true;
+  Value sslVal;
+  if (tableGet(&options->table, copyString("verify_ssl", 10), &sslVal) && IS_BOOL(sslVal)) {
+    req.verifySSL = AS_BOOL(sslVal);
+  }
+  
+  // Optional: user_agent
+  req.userAgent = "Gem-HTTP-Client/1.0";
+  Value uaVal;
+  if (tableGet(&options->table, copyString("user_agent", 10), &uaVal) && IS_STRING(uaVal)) {
+    req.userAgent = AS_CSTRING(uaVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP request.");
+    return NIL_VAL;
+  }
+  
+  // Return detailed response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+//< HTTP Native Functions
+
+// Enhanced HTTP functions that accept options hash and return structured response
+static Value httpGetWithOptionsNative(int argCount, Value* args) {
+  if (argCount != 2) {
+    runtimeError("httpGetWithOptions() takes exactly 2 arguments: url and options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpGetWithOptions() first argument must be a string URL.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[1])) {
+    runtimeError("httpGetWithOptions() second argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "GET";
+  req.url = AS_CSTRING(args[0]);
+  
+  ObjHash* options = AS_HASH(args[1]);
+  
+  // Extract headers if provided
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Extract timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP GET request.");
+    return NIL_VAL;
+  }
+  
+  // Return structured response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+
+static Value httpPostWithOptionsNative(int argCount, Value* args) {
+  if (argCount != 3) {
+    runtimeError("httpPostWithOptions() takes exactly 3 arguments: url, data, and options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpPostWithOptions() first argument must be a string URL.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[1])) {
+    runtimeError("httpPostWithOptions() second argument must be a string data.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[2])) {
+    runtimeError("httpPostWithOptions() third argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "POST";
+  req.url = AS_CSTRING(args[0]);
+  req.body = AS_CSTRING(args[1]);
+  
+  ObjHash* options = AS_HASH(args[2]);
+  
+  // Extract headers if provided
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Extract timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP POST request.");
+    return NIL_VAL;
+  }
+  
+  // Return structured response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+
+static Value httpPutWithOptionsNative(int argCount, Value* args) {
+  if (argCount != 3) {
+    runtimeError("httpPutWithOptions() takes exactly 3 arguments: url, data, and options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpPutWithOptions() first argument must be a string URL.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[1])) {
+    runtimeError("httpPutWithOptions() second argument must be a string data.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[2])) {
+    runtimeError("httpPutWithOptions() third argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "PUT";
+  req.url = AS_CSTRING(args[0]);
+  req.body = AS_CSTRING(args[1]);
+  
+  ObjHash* options = AS_HASH(args[2]);
+  
+  // Extract headers if provided
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Extract timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP PUT request.");
+    return NIL_VAL;
+  }
+  
+  // Return structured response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+
+static Value httpDeleteWithOptionsNative(int argCount, Value* args) {
+  if (argCount != 2) {
+    runtimeError("httpDeleteWithOptions() takes exactly 2 arguments: url and options hash");
+    return NIL_VAL;
+  }
+  
+  if (!IS_STRING(args[0])) {
+    runtimeError("httpDeleteWithOptions() first argument must be a string URL.");
+    return NIL_VAL;
+  }
+  
+  if (!IS_HASH(args[1])) {
+    runtimeError("httpDeleteWithOptions() second argument must be a hash of options.");
+    return NIL_VAL;
+  }
+  
+  HttpRequest req = {0};
+  req.method = "DELETE";
+  req.url = AS_CSTRING(args[0]);
+  
+  ObjHash* options = AS_HASH(args[1]);
+  
+  // Extract headers if provided
+  Value headersVal;
+  if (tableGet(&options->table, copyString("headers", 7), &headersVal) && IS_HASH(headersVal)) {
+    req.headers = AS_HASH(headersVal);
+  }
+  
+  // Extract timeout (default 30)
+  req.timeout = 30;
+  Value timeoutVal;
+  if (tableGet(&options->table, copyString("timeout", 7), &timeoutVal) && IS_NUMBER(timeoutVal)) {
+    req.timeout = (int)AS_NUMBER(timeoutVal);
+  }
+  
+  HttpResponse* response = executeHttpRequest(&req);
+  if (!response) {
+    runtimeError("Failed to execute HTTP DELETE request.");
+    return NIL_VAL;
+  }
+  
+  // Return structured response as hash
+  ObjHash* responseHash = newHash();
+  
+  // Add response body
+  ObjString* bodyKey = copyString("body", 4);
+  ObjString* bodyValue = copyString(response->body ? response->body : "", 
+                                   response->body ? strlen(response->body) : 0);
+  tableSet(&responseHash->table, bodyKey, OBJ_VAL(bodyValue));
+  
+  // Add status code
+  ObjString* statusKey = copyString("status", 6);
+  tableSet(&responseHash->table, statusKey, NUMBER_VAL(response->statusCode));
+  
+  // Add success flag
+  ObjString* successKey = copyString("success", 7);
+  tableSet(&responseHash->table, successKey, BOOL_VAL(response->success));
+  
+  // Add response time
+  ObjString* timeKey = copyString("response_time", 13);
+  tableSet(&responseHash->table, timeKey, NUMBER_VAL(response->responseTime));
+  
+  freeHttpResponse(response);
+  
+  return OBJ_VAL(responseHash);
+}
+
 void initVM() {
 #if FAST_STACK_ENABLED
   // Fast stack is pre-allocated, just reset the pointer
@@ -168,6 +1241,17 @@ void initVM() {
 
   defineNative("clock", clockNative);
 //< Calls and Functions define-native-clock
+//> HTTP Native Functions define
+  defineNative("httpGet", httpGetNative);
+  defineNative("httpPost", httpPostNative);
+  defineNative("httpPut", httpPutNative);
+  defineNative("httpDelete", httpDeleteNative);
+  defineNative("httpRequest", httpRequestNative);
+  defineNative("httpGetWithOptions", httpGetWithOptionsNative);
+  defineNative("httpPostWithOptions", httpPostWithOptionsNative);
+  defineNative("httpPutWithOptions", httpPutWithOptionsNative);
+  defineNative("httpDeleteWithOptions", httpDeleteWithOptionsNative);
+//< HTTP Native Functions define
 //> Initialize Compiler Tables
   initCompilerTables();
 //< Initialize Compiler Tables
@@ -710,6 +1794,9 @@ InterpretResult run() {
     [OP_SET_UPVALUE] = &&op_set_upvalue,
     [OP_GET_PROPERTY] = &&op_get_property,
     [OP_SET_PROPERTY] = &&op_set_property,
+    [OP_GET_INDEX] = &&op_get_index,
+    [OP_SET_INDEX] = &&op_set_index,
+    [OP_HASH_LITERAL] = &&op_hash_literal,
     [OP_GET_SUPER] = &&op_get_super,
     [OP_EQUAL] = &&op_equal,
     [OP_GREATER] = &&op_greater,
@@ -745,7 +1832,8 @@ InterpretResult run() {
     [OP_MODULE_METHOD] = &&op_module_method,
     [OP_MODULE_CALL] = &&op_module_call,
     [OP_INHERIT] = &&op_inherit,
-    [OP_METHOD] = &&op_method
+    [OP_METHOD] = &&op_method,
+    [OP_TYPE_CAST] = &&op_type_cast,
   };
 
 #define DISPATCH() \
@@ -1536,6 +2624,181 @@ op_interpolate: {
   DISPATCH();
 }
 
+op_hash_literal: {
+  TRACE();
+  int pairCount = READ_BYTE();
+  ObjHash* hash = newHash();
+  
+  // Pop key-value pairs from stack and add to hash
+  for (int i = 0; i < pairCount; i++) {
+    Value value = pop();
+    Value key = pop();
+    
+    // Convert key to string if it's not already
+    ObjString* keyString;
+    if (IS_STRING(key)) {
+      keyString = AS_STRING(key);
+    } else if (IS_NUMBER(key)) {
+      // Convert number to string
+      char buffer[32];
+      int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(key));
+      keyString = copyString(buffer, len);
+    } else {
+      runtimeError("Hash keys must be strings or numbers.");
+      return INTERPRET_RUNTIME_ERROR;
+    }
+    
+    tableSet(&hash->table, keyString, value);
+  }
+  
+  push(OBJ_VAL(hash));
+  DISPATCH();
+}
+
+op_get_index: {
+  TRACE();
+  Value index = pop();
+  Value hashValue = pop();
+  
+  if (!IS_HASH(hashValue)) {
+    runtimeError("Only hashes support indexing.");
+    return INTERPRET_RUNTIME_ERROR;
+  }
+  
+  ObjHash* hash = AS_HASH(hashValue);
+  
+  // Convert index to string if it's not already
+  ObjString* keyString;
+  if (IS_STRING(index)) {
+    keyString = AS_STRING(index);
+  } else if (IS_NUMBER(index)) {
+    // Convert number to string
+    char buffer[32];
+    int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+    keyString = copyString(buffer, len);
+  } else {
+    runtimeError("Hash keys must be strings or numbers.");
+    return INTERPRET_RUNTIME_ERROR;
+  }
+  
+  Value value;
+  if (tableGet(&hash->table, keyString, &value)) {
+    push(value);
+  } else {
+    push(NIL_VAL);
+  }
+  DISPATCH();
+}
+
+op_set_index: {
+  TRACE();
+  Value value = pop();
+  Value index = pop();
+  Value hashValue = pop();
+  
+  if (!IS_HASH(hashValue)) {
+    runtimeError("Only hashes support indexing.");
+    return INTERPRET_RUNTIME_ERROR;
+  }
+  
+  ObjHash* hash = AS_HASH(hashValue);
+  
+  // Convert index to string if it's not already
+  ObjString* keyString;
+  if (IS_STRING(index)) {
+    keyString = AS_STRING(index);
+  } else if (IS_NUMBER(index)) {
+    // Convert number to string
+    char buffer[32];
+    int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+    keyString = copyString(buffer, len);
+  } else {
+    runtimeError("Hash keys must be strings or numbers.");
+    return INTERPRET_RUNTIME_ERROR;
+  }
+  
+  tableSet(&hash->table, keyString, value);
+  push(value); // Assignment returns the assigned value
+  DISPATCH();
+}
+
+op_type_cast: {
+  TRACE();
+  TokenType targetType = (TokenType)READ_BYTE();
+  Value value = pop();
+  
+  switch (targetType) {
+    case TOKEN_RETURNTYPE_INT: {
+      if (IS_NUMBER(value)) {
+        // Already a number, just push it back
+        push(value);
+      } else if (IS_STRING(value)) {
+        // Try to parse string as number
+        char* endptr;
+        double num = strtod(AS_CSTRING(value), &endptr);
+        if (*endptr == '\0') {
+          push(NUMBER_VAL(num));
+        } else {
+          runtimeError("Cannot cast string '%s' to int.", AS_CSTRING(value));
+          return INTERPRET_RUNTIME_ERROR;
+        }
+      } else {
+        runtimeError("Cannot cast value to int.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      break;
+    }
+    case TOKEN_RETURNTYPE_STRING: {
+      if (IS_STRING(value)) {
+        // Already a string, just push it back
+        push(value);
+      } else if (IS_NUMBER(value)) {
+        // Convert number to string
+        char buffer[32];
+        int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(value));
+        ObjString* str = copyString(buffer, len);
+        push(OBJ_VAL(str));
+      } else if (IS_BOOL(value)) {
+        const char* boolStr = AS_BOOL(value) ? "true" : "false";
+        ObjString* str = copyString(boolStr, strlen(boolStr));
+        push(OBJ_VAL(str));
+      } else if (IS_NIL(value)) {
+        ObjString* str = copyString("nil", 3);
+        push(OBJ_VAL(str));
+      } else {
+        runtimeError("Cannot cast value to string.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      break;
+    }
+    case TOKEN_RETURNTYPE_BOOL: {
+      if (IS_BOOL(value)) {
+        // Already a bool, just push it back
+        push(value);
+      } else {
+        // In Ruby semantics, only false and nil are falsey
+        // All other values (including 0) are truthy
+        push(BOOL_VAL(!isFalsey(value)));
+      }
+      break;
+    }
+    case TOKEN_RETURNTYPE_HASH: {
+      if (IS_HASH(value)) {
+        // Already a hash, just push it back
+        push(value);
+      } else {
+        runtimeError("Cannot cast value to hash.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      break;
+    }
+    default:
+      runtimeError("Unknown target type for cast.");
+      return INTERPRET_RUNTIME_ERROR;
+  }
+  DISPATCH();
+}
+
 #else
   // Fallback to switch statement if computed goto is not available
   for (;;) {
@@ -2165,6 +3428,180 @@ op_interpolate: {
         tableAddAll(&AS_CLASS(superclass)->methods,
                     &subclass->methods);
         pop(); // Subclass.
+        break;
+      }
+      //< Classes and Instances interpret-set-property
+      //> Hash Objects interpret-get-index
+      case OP_GET_INDEX: {
+        Value index = pop();
+        Value hashValue = pop();
+        
+        if (!IS_HASH(hashValue)) {
+          runtimeError("Only hashes support indexing.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        ObjHash* hash = AS_HASH(hashValue);
+        
+        // Convert index to string if it's not already
+        ObjString* keyString;
+        if (IS_STRING(index)) {
+          keyString = AS_STRING(index);
+        } else if (IS_NUMBER(index)) {
+          // Convert number to string
+          char buffer[32];
+          int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+          keyString = copyString(buffer, len);
+        } else {
+          runtimeError("Hash keys must be strings or numbers.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        Value value;
+        if (tableGet(&hash->table, keyString, &value)) {
+          push(value);
+        } else {
+          push(NIL_VAL);
+        }
+        break;
+      }
+      //< Hash Objects interpret-get-index
+      //> Hash Objects interpret-set-index
+      case OP_SET_INDEX: {
+        Value value = pop();
+        Value index = pop();
+        Value hashValue = pop();
+        
+        if (!IS_HASH(hashValue)) {
+          runtimeError("Only hashes support indexing.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        ObjHash* hash = AS_HASH(hashValue);
+        
+        // Convert index to string if it's not already
+        ObjString* keyString;
+        if (IS_STRING(index)) {
+          keyString = AS_STRING(index);
+        } else if (IS_NUMBER(index)) {
+          // Convert number to string
+          char buffer[32];
+          int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(index));
+          keyString = copyString(buffer, len);
+        } else {
+          runtimeError("Hash keys must be strings or numbers.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        
+        tableSet(&hash->table, keyString, value);
+        push(value); // Assignment returns the assigned value
+        break;
+      }
+      //< Hash Objects interpret-set-index
+      //> Hash Objects interpret-hash-literal
+      case OP_HASH_LITERAL: {
+        int pairCount = READ_BYTE();
+        ObjHash* hash = newHash();
+        
+        // Pop key-value pairs from stack and add to hash
+        for (int i = 0; i < pairCount; i++) {
+          Value value = pop();
+          Value key = pop();
+          
+          // Convert key to string if it's not already
+          ObjString* keyString;
+          if (IS_STRING(key)) {
+            keyString = AS_STRING(key);
+          } else if (IS_NUMBER(key)) {
+            // Convert number to string
+            char buffer[32];
+            int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(key));
+            keyString = copyString(buffer, len);
+          } else {
+            runtimeError("Hash keys must be strings or numbers.");
+            return INTERPRET_RUNTIME_ERROR;
+          }
+          
+          tableSet(&hash->table, keyString, value);
+        }
+        
+        push(OBJ_VAL(hash));
+        break;
+      }
+      //< Hash Objects interpret-hash-literal
+      case OP_TYPE_CAST: {
+        TokenType targetType = (TokenType)READ_BYTE();
+        Value value = pop();
+        
+        switch (targetType) {
+          case TOKEN_RETURNTYPE_INT: {
+            if (IS_NUMBER(value)) {
+              // Already a number, just push it back
+              push(value);
+            } else if (IS_STRING(value)) {
+              // Try to parse string as number
+              char* endptr;
+              double num = strtod(AS_CSTRING(value), &endptr);
+              if (*endptr == '\0') {
+                push(NUMBER_VAL(num));
+              } else {
+                runtimeError("Cannot cast string '%s' to int.", AS_CSTRING(value));
+                return INTERPRET_RUNTIME_ERROR;
+              }
+            } else {
+              runtimeError("Cannot cast value to int.");
+              return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+          }
+          case TOKEN_RETURNTYPE_STRING: {
+            if (IS_STRING(value)) {
+              // Already a string, just push it back
+              push(value);
+            } else if (IS_NUMBER(value)) {
+              // Convert number to string
+              char buffer[32];
+              int len = snprintf(buffer, sizeof(buffer), "%.15g", AS_NUMBER(value));
+              ObjString* str = copyString(buffer, len);
+              push(OBJ_VAL(str));
+            } else if (IS_BOOL(value)) {
+              const char* boolStr = AS_BOOL(value) ? "true" : "false";
+              ObjString* str = copyString(boolStr, strlen(boolStr));
+              push(OBJ_VAL(str));
+            } else if (IS_NIL(value)) {
+              ObjString* str = copyString("nil", 3);
+              push(OBJ_VAL(str));
+            } else {
+              runtimeError("Cannot cast value to string.");
+              return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+          }
+          case TOKEN_RETURNTYPE_BOOL: {
+            if (IS_BOOL(value)) {
+              // Already a bool, just push it back
+              push(value);
+            } else {
+              // In Ruby semantics, only false and nil are falsey
+              // All other values (including 0) are truthy
+              push(BOOL_VAL(!isFalsey(value)));
+            }
+            break;
+          }
+          case TOKEN_RETURNTYPE_HASH: {
+            if (IS_HASH(value)) {
+              // Already a hash, just push it back
+              push(value);
+            } else {
+              runtimeError("Cannot cast value to hash.");
+              return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+          }
+          default:
+            runtimeError("Unknown target type for cast.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
         break;
       }
     }
