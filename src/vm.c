@@ -1844,7 +1844,7 @@ InterpretResult run() {
 #define TRACE() \
   do { \
     printf("          "); \
-    for (Value* slot = vm.stack; slot < vm.stackTop; slot++) { \
+    for (Value* slot = vm.fastStack; slot < vm.stackTop; slot++) { \
       printf("[ "); \
       printValue(*slot); \
       printf(" ]"); \

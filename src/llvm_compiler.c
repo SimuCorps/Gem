@@ -340,11 +340,20 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
             case OP_LOOP: {
                 if (i + 1 < chunk->count) {
                     uint16_t offset = (chunk->code[i] << 8) | chunk->code[i + 1];
-                    int target = (instruction == OP_LOOP) ? i - 1 - offset : i + 1 + offset;
+                    int target;
+                    if (instruction == OP_LOOP) {
+                        target = i - 1 - offset;
+                    } else {
+                        target = i + 2 + offset;
+                    }
                     if (target >= 0 && target < chunk->count && !jumpTargets[target]) {
                         char blockName[32];
                         snprintf(blockName, sizeof(blockName), "jump_target_%d", target);
                         jumpTargets[target] = LLVMAppendBasicBlockInContext(context, mainFunc, blockName);
+                        
+                        // Immediately add a temporary terminator to prevent empty blocks
+                        LLVMPositionBuilderAtEnd(builder, jumpTargets[target]);
+                        LLVMBuildUnreachable(builder);
                     }
                 }
                 i += 2;
@@ -375,6 +384,10 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
     
     // Process bytecode instructions
     LLVMBasicBlockRef currentBlock = entry;
+    
+    // Start executing from the entry block normally - don't jump to first target
+    LLVMPositionBuilderAtEnd(builder, entry);
+    
     for (int i = 0; i < chunk->count; ) {
         // Check if this instruction is a jump target
         if (jumpTargets[i]) {
@@ -384,6 +397,12 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
             }
             currentBlock = jumpTargets[i];
             LLVMPositionBuilderAtEnd(builder, currentBlock);
+            
+            // Clear any temporary unreachable terminator
+            LLVMValueRef terminator = LLVMGetBasicBlockTerminator(currentBlock);
+            if (terminator && LLVMGetInstructionOpcode(terminator) == LLVMUnreachable) {
+                LLVMInstructionEraseFromParent(terminator);
+            }
         }
         
         uint8_t instruction = chunk->code[i];
@@ -600,33 +619,40 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
                 i += 2;
                 int target = i + offset;
                 
-                // Peek top of stack for condition
+                // Peek at the top of the stack (don't pop - VM doesn't pop either)
                 LLVMValueRef currentTop = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), stackTop, "currentTop");
                 LLVMValueRef topIndex = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "topIndex");
                 LLVMValueRef stackPtr = LLVMBuildGEP2(builder, stackType, stack, 
                     (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), topIndex}, 2, "stackPtr");
                 LLVMValueRef condition = LLVMBuildLoad2(builder, valueType, stackPtr, "condition");
                 
-                // Check if condition is falsey (false or nil)
+                // Extract type and data fields
                 LLVMValueRef typeField = LLVMBuildExtractValue(builder, condition, 0, "type");
                 LLVMValueRef dataField = LLVMBuildExtractValue(builder, condition, 1, "data");
                 
+                // Check if it's a boolean type (type == 0)
                 LLVMValueRef isBool = LLVMBuildICmp(builder, LLVMIntEQ, typeField, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), "isBool");
+                // Check if it's nil type (type == 1)
                 LLVMValueRef isNil = LLVMBuildICmp(builder, LLVMIntEQ, typeField, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "isNil");
+                // Check if data is false (data == 0)
                 LLVMValueRef isFalse = LLVMBuildICmp(builder, LLVMIntEQ, dataField, LLVMConstInt(LLVMInt64TypeInContext(context), 0, 0), "isFalse");
                 
+                // Value is falsey if: (isBool && isFalse) || isNil
                 LLVMValueRef isFalseBool = LLVMBuildAnd(builder, isBool, isFalse, "isFalseBool");
                 LLVMValueRef isFalsey = LLVMBuildOr(builder, isFalseBool, isNil, "isFalsey");
                 
-                LLVMBasicBlockRef thenBlock = (target >= 0 && target < chunk->count && jumpTargets[target]) ? jumpTargets[target] : NULL;
-                LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlockInContext(context, mainFunc, "else_block");
+                // Create continue block for when condition is not falsey
+                LLVMBasicBlockRef continueBlock = LLVMAppendBasicBlockInContext(context, mainFunc, "continue_block");
                 
-                if (thenBlock) {
-                    LLVMBuildCondBr(builder, isFalsey, thenBlock, elseBlock);
+                // Branch: if falsey, jump to target; otherwise continue
+                if (target >= 0 && target < chunk->count && jumpTargets[target]) {
+                    LLVMBuildCondBr(builder, isFalsey, jumpTargets[target], continueBlock);
                 } else {
-                    LLVMBuildBr(builder, elseBlock);
+                    // If no valid target, just continue (this shouldn't happen in well-formed bytecode)
+                    LLVMBuildBr(builder, continueBlock);
                 }
-                currentBlock = elseBlock;
+                
+                currentBlock = continueBlock;
                 LLVMPositionBuilderAtEnd(builder, currentBlock);
                 break;
             }
@@ -1233,21 +1259,44 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
     
     // Ensure all jump target blocks have terminators
     for (int i = 0; i < chunk->count; i++) {
-        if (jumpTargets[i] && !LLVMGetBasicBlockTerminator(jumpTargets[i])) {
-            LLVMPositionBuilderAtEnd(builder, jumpTargets[i]);
+        if (jumpTargets[i]) {
+            // Check if this block has any predecessors
+            LLVMValueRef blockValue = LLVMBasicBlockAsValue(jumpTargets[i]);
+            LLVMUseRef firstUse = LLVMGetFirstUse(blockValue);
             
-            // Find the next instruction after this jump target
-            int nextInstr = i + 1;
-            while (nextInstr < chunk->count && jumpTargets[nextInstr] == NULL) {
-                nextInstr++;
+            // If the block has no predecessors, delete it
+            if (!firstUse) {
+                LLVMDeleteBasicBlock(jumpTargets[i]);
+                jumpTargets[i] = NULL;
+                continue;
             }
             
-            if (nextInstr < chunk->count && jumpTargets[nextInstr]) {
-                // Branch to the next jump target
-                LLVMBuildBr(builder, jumpTargets[nextInstr]);
-            } else {
-                // No next jump target, just return
-                LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+            // If the block has no terminator, add one
+            if (!LLVMGetBasicBlockTerminator(jumpTargets[i])) {
+                LLVMPositionBuilderAtEnd(builder, jumpTargets[i]);
+                
+                // Look for the next instruction that would naturally follow
+                bool foundTerminator = false;
+                for (int j = i + 1; j < chunk->count; j++) {
+                    if (jumpTargets[j] && jumpTargets[j] != jumpTargets[i]) {
+                        // Branch to the next jump target
+                        LLVMBuildBr(builder, jumpTargets[j]);
+                        foundTerminator = true;
+                        break;
+                    }
+                    
+                    // Check if we hit a return instruction
+                    if (j < chunk->count && chunk->code[j] == OP_RETURN) {
+                        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+                        foundTerminator = true;
+                        break;
+                    }
+                }
+                
+                // If no terminator found, just return
+                if (!foundTerminator) {
+                    LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+                }
             }
         }
     }
@@ -1255,14 +1304,71 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
     // Final pass: ensure ALL basic blocks in the function have terminators
     LLVMBasicBlockRef block = LLVMGetFirstBasicBlock(mainFunc);
     while (block) {
-        if (!LLVMGetBasicBlockTerminator(block)) {
+        LLVMBasicBlockRef nextBlock = LLVMGetNextBasicBlock(block);
+        
+        // Check if block has any predecessors
+        LLVMValueRef blockValue = LLVMBasicBlockAsValue(block);
+        LLVMUseRef firstUse = LLVMGetFirstUse(blockValue);
+        
+        // If block has no predecessors and is not the entry block, delete it
+        if (!firstUse && block != LLVMGetEntryBasicBlock(mainFunc)) {
+            LLVMDeleteBasicBlock(block);
+        } else if (!LLVMGetBasicBlockTerminator(block)) {
+            // If block has no terminator, add one
             LLVMPositionBuilderAtEnd(builder, block);
             LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
         }
-        block = LLVMGetNextBasicBlock(block);
+        
+        block = nextBlock;
+    }
+    
+    // Additional cleanup pass: remove any remaining unreachable blocks
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        block = LLVMGetFirstBasicBlock(mainFunc);
+        while (block) {
+            LLVMBasicBlockRef nextBlock = LLVMGetNextBasicBlock(block);
+            
+            // Skip entry block
+            if (block == LLVMGetEntryBasicBlock(mainFunc)) {
+                block = nextBlock;
+                continue;
+            }
+            
+            // Check if block has any predecessors
+            LLVMValueRef blockValue = LLVMBasicBlockAsValue(block);
+            LLVMUseRef firstUse = LLVMGetFirstUse(blockValue);
+            
+            if (!firstUse) {
+                LLVMDeleteBasicBlock(block);
+                changed = true;
+                // Update jump targets array to reflect deletion
+                for (int i = 0; i < chunk->count; i++) {
+                    if (jumpTargets[i] == block) {
+                        jumpTargets[i] = NULL;
+                    }
+                }
+            }
+            
+            block = nextBlock;
+        }
     }
     
     free(jumpTargets);
+    
+    // Ensure entry block has a terminator
+    LLVMPositionBuilderAtEnd(builder, entry);
+    if (!LLVMGetBasicBlockTerminator(entry)) {
+        if (jumpTargets[0]) {
+            // If first instruction is a jump target, branch to it
+            LLVMBuildBr(builder, jumpTargets[0]);
+        } else {
+            // Otherwise, fall through to the main processing
+            LLVMBuildBr(builder, currentBlock ? currentBlock : entry);
+        }
+    }
+    
     return mainFunc;
 }
 
@@ -1710,13 +1816,11 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
     
     // Write LLVM IR to file FIRST, before verification
     char* error = NULL;
-    printf("Writing LLVM IR to /tmp/debug_gem.ll...\n");
     if (LLVMPrintModuleToFile(module, "/tmp/debug_gem.ll", &error)) {
         fprintf(stderr, "Failed to write LLVM IR: %s\n", error);
         LLVMDisposeMessage(error);
         return LLVM_COMPILE_ERROR;
     }
-    printf("LLVM IR written successfully.\n");
     
     // Verify the module
     /*
@@ -1776,7 +1880,8 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
     int result = system(llcCmd);
     if (result != 0) {
         fprintf(stderr, "Failed to compile LLVM IR to object file\n");
-        unlink(llFile);
+        fprintf(stderr, "LLVM compilation failed\n");
+        // unlink(llFile);
         unlink(runtimeFile);
         return LLVM_COMPILE_ERROR;
     }
