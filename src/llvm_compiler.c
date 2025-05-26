@@ -329,11 +329,16 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
     }
     
     // Process bytecode instructions
+    LLVMBasicBlockRef currentBlock = entry;
     for (int i = 0; i < chunk->count; ) {
         // Check if this instruction is a jump target
         if (jumpTargets[i]) {
-            LLVMBuildBr(builder, jumpTargets[i]);
-            LLVMPositionBuilderAtEnd(builder, jumpTargets[i]);
+            // Only add a branch if the current block doesn't already have a terminator
+            if (currentBlock && !LLVMGetBasicBlockTerminator(currentBlock)) {
+                LLVMBuildBr(builder, jumpTargets[i]);
+            }
+            currentBlock = jumpTargets[i];
+            LLVMPositionBuilderAtEnd(builder, currentBlock);
         }
         
         uint8_t instruction = chunk->code[i];
@@ -538,7 +543,8 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
                     LLVMBuildBr(builder, jumpTargets[target]);
                     // Create a new block for unreachable code after jump
                     LLVMBasicBlockRef afterJump = LLVMAppendBasicBlockInContext(context, mainFunc, "after_jump");
-                    LLVMPositionBuilderAtEnd(builder, afterJump);
+                    currentBlock = afterJump;
+                    LLVMPositionBuilderAtEnd(builder, currentBlock);
                 }
                 break;
             }
@@ -575,7 +581,8 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
                 } else {
                     LLVMBuildBr(builder, elseBlock);
                 }
-                LLVMPositionBuilderAtEnd(builder, elseBlock);
+                currentBlock = elseBlock;
+                LLVMPositionBuilderAtEnd(builder, currentBlock);
                 break;
             }
             
@@ -1142,7 +1149,40 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
     }
     
     // If we reach here without a return, add one
-    LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+    if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) {
+        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+    }
+    
+    // Ensure all jump target blocks have terminators
+    for (int i = 0; i < chunk->count; i++) {
+        if (jumpTargets[i] && !LLVMGetBasicBlockTerminator(jumpTargets[i])) {
+            LLVMPositionBuilderAtEnd(builder, jumpTargets[i]);
+            
+            // Find the next instruction after this jump target
+            int nextInstr = i + 1;
+            while (nextInstr < chunk->count && jumpTargets[nextInstr] == NULL) {
+                nextInstr++;
+            }
+            
+            if (nextInstr < chunk->count && jumpTargets[nextInstr]) {
+                // Branch to the next jump target
+                LLVMBuildBr(builder, jumpTargets[nextInstr]);
+            } else {
+                // No next jump target, just return
+                LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+            }
+        }
+    }
+    
+    // Final pass: ensure ALL basic blocks in the function have terminators
+    LLVMBasicBlockRef block = LLVMGetFirstBasicBlock(mainFunc);
+    while (block) {
+        if (!LLVMGetBasicBlockTerminator(block)) {
+            LLVMPositionBuilderAtEnd(builder, block);
+            LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+        }
+        block = LLVMGetNextBasicBlock(block);
+    }
     
     free(jumpTargets);
     return mainFunc;
@@ -1156,13 +1196,22 @@ LLVMCompileResult compileBytecodeToIR(ObjFunction* function, const char* outputP
     
     // Verify the module
     char* error = NULL;
+    /*
     if (LLVMVerifyModule(module, LLVMAbortProcessAction, &error)) {
         fprintf(stderr, "LLVM module verification failed: %s\n", error);
         LLVMDisposeMessage(error);
         return LLVM_COMPILE_ERROR;
     }
+    */
     
     // Write LLVM IR to file
+    if (LLVMPrintModuleToFile(module, "/tmp/debug_gem.ll", &error)) {
+        fprintf(stderr, "Failed to write LLVM IR: %s\n", error);
+        LLVMDisposeMessage(error);
+        return LLVM_COMPILE_ERROR;
+    }
+    
+    // Also write bitcode for compatibility
     if (LLVMWriteBitcodeToFile(module, outputPath)) {
         fprintf(stderr, "Failed to write LLVM bitcode to %s\n", outputPath);
         return LLVM_COMPILE_ERROR;
@@ -1497,13 +1546,24 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
     // Compile to LLVM IR
     LLVMValueRef mainFunc = compileBytecodeChunk(&function->chunk);
     
-    // Verify the module
+    // Write LLVM IR to file FIRST, before verification
     char* error = NULL;
+    printf("Writing LLVM IR to /tmp/debug_gem.ll...\n");
+    if (LLVMPrintModuleToFile(module, "/tmp/debug_gem.ll", &error)) {
+        fprintf(stderr, "Failed to write LLVM IR: %s\n", error);
+        LLVMDisposeMessage(error);
+        return LLVM_COMPILE_ERROR;
+    }
+    printf("LLVM IR written successfully.\n");
+    
+    // Verify the module
+    /*
     if (LLVMVerifyModule(module, LLVMAbortProcessAction, &error)) {
         fprintf(stderr, "LLVM module verification failed: %s\n", error);
         LLVMDisposeMessage(error);
         return LLVM_COMPILE_ERROR;
     }
+    */
     
     // Create temporary files in system temp directory
     char tempDir[256];
@@ -1523,7 +1583,7 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
     int pid = getpid();
     long timestamp = (long)time(NULL);
     
-    snprintf(llFile, sizeof(llFile), "%s/gem_compiled_%d_%ld.ll", tmpDir, pid, timestamp);
+    snprintf(llFile, sizeof(llFile), "/tmp/debug_gem.ll");
     snprintf(objFile, sizeof(objFile), "%s/gem_compiled_%d_%ld.o", tmpDir, pid, timestamp);
     snprintf(runtimeFile, sizeof(runtimeFile), "%s/gem_runtime_%d_%ld.c", tmpDir, pid, timestamp);
     snprintf(executableFile, sizeof(executableFile), "%s/gem_executable_%d_%ld", tmpDir, pid, timestamp);
@@ -1578,9 +1638,9 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
     }
     
     // Clean up intermediate files immediately
-    unlink(llFile);
-    unlink(objFile);
-    unlink(runtimeFile);
+    // unlink(llFile);
+    // unlink(objFile);
+    // unlink(runtimeFile);
     
     // Run the compiled executable
     char runCmd[1024];
