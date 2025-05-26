@@ -36,7 +36,7 @@ static void printUsage() {
   fprintf(stderr, "Usage: gem [options] [path]\n");
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  --experimental-jit      Enable experimental JIT compilation\n");
-  fprintf(stderr, "  --experimental-compile  Compile to native executable using LLVM\n");
+  fprintf(stderr, "  --experimental-fastmode  Gotta go fast\n");
   fprintf(stderr, "  --jit-stats             Print JIT statistics at exit\n");
   fprintf(stderr, "  --jit-threshold N       Set function compilation threshold (default: 100)\n");
   fprintf(stderr, "  --jit-loop-threshold N  Set loop compilation threshold (default: 50)\n");
@@ -196,8 +196,6 @@ static void compileFile(const char* path) {
     snprintf(outputPath, sizeof(outputPath), "%s_compiled", baseName);
   }
   
-  printf("Compiling %s to native executable %s...\n", path, outputPath);
-  
   // Compile bytecode to native executable
   LLVMCompileResult result = compileAndRunBytecode(function, outputPath);
   
@@ -206,7 +204,6 @@ static void compileFile(const char* path) {
   
   switch (result) {
     case LLVM_COMPILE_OK:
-      printf("Compilation and execution successful!\n");
       break;
     case LLVM_COMPILE_ERROR:
       fprintf(stderr, "LLVM compilation failed\n");
@@ -228,7 +225,7 @@ int main(int argc, const char* argv[]) {
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--experimental-jit") == 0) {
       // Enable JIT - we'll do this after initVM()
-    } else if (strcmp(argv[i], "--experimental-compile") == 0) {
+    } else if (strcmp(argv[i], "--experimental-fastmode") == 0) {
       // Enable LLVM compilation
       enableLLVMCompilation = true;
     } else if (strcmp(argv[i], "--jit-stats") == 0) {
@@ -273,13 +270,13 @@ int main(int argc, const char* argv[]) {
 //> LLVM Compilation validation
   // Validate compilation mode
   if (enableLLVMCompilation && scriptPath == NULL) {
-    fprintf(stderr, "Error: --experimental-compile requires a script file\n");
+    fprintf(stderr, "Error: --experimental-fastmode requires a script file\n");
     printUsage();
     exit(64);
   }
   
   if (enableLLVMCompilation && enterReplAfterScript) {
-    fprintf(stderr, "Error: --experimental-compile cannot be used with --repl\n");
+    fprintf(stderr, "Error: --experimental-fastmode cannot be used with --repl\n");
     printUsage();
     exit(64);
   }
