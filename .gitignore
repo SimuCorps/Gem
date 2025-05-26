@@ -19,6 +19,7 @@ test_results.log
 # Development files
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
