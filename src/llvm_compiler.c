@@ -41,6 +41,11 @@ static LLVMValueRef moduloFunction;
 static LLVMValueRef notFunction;
 static LLVMValueRef concatenateFunction;
 
+// Hash table runtime functions
+static LLVMValueRef hashCreateFunction;
+static LLVMValueRef hashSetFunction;
+static LLVMValueRef hashGetFunction;
+
 // Global variable runtime functions
 static LLVMValueRef getGlobalFunction;
 static LLVMValueRef setGlobalFunction;
@@ -56,6 +61,7 @@ static LLVMTypeRef unaryOpType;
 static LLVMTypeRef comparisonType;
 static LLVMTypeRef globalOpType;
 static LLVMTypeRef callFuncType;
+static LLVMTypeRef hashOpType;
 
 // Value type in LLVM (represents our Value struct)
 static LLVMTypeRef valueType;
@@ -139,6 +145,25 @@ void initLLVMCompiler() {
     moduloFunction = LLVMAddFunction(module, "gem_modulo", binaryOpType);
     notFunction = LLVMAddFunction(module, "gem_not", unaryOpType);
     concatenateFunction = LLVMAddFunction(module, "gem_concatenate", binaryOpType);
+    
+    // Hash table operations
+    hashOpType = LLVMFunctionType(
+        valueType,
+        (LLVMTypeRef[]){LLVMInt32TypeInContext(context)}, 1, 0
+    );
+    hashCreateFunction = LLVMAddFunction(module, "gem_hash_create", hashOpType);
+    
+    LLVMTypeRef hashSetType = LLVMFunctionType(
+        LLVMVoidTypeInContext(context),
+        (LLVMTypeRef[]){valueType, valueType, valueType}, 3, 0
+    );
+    hashSetFunction = LLVMAddFunction(module, "gem_hash_set", hashSetType);
+    
+    LLVMTypeRef hashGetType = LLVMFunctionType(
+        valueType,
+        (LLVMTypeRef[]){valueType, valueType}, 2, 0
+    );
+    hashGetFunction = LLVMAddFunction(module, "gem_hash_get", hashGetType);
     
     // Global variable operations
     globalOpType = LLVMFunctionType(
@@ -988,6 +1013,121 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
                 break;
             }
             
+            case OP_HASH_LITERAL: {
+                if (i >= chunk->count) break;
+                uint8_t pairCount = chunk->code[i++];
+                
+                // Create hash using runtime function
+                LLVMValueRef pairCountValue = LLVMConstInt(LLVMInt32TypeInContext(context), pairCount, 0);
+                LLVMValueRef hash = LLVMBuildCall2(builder, hashOpType, hashCreateFunction, &pairCountValue, 1, "hash");
+                
+                LLVMValueRef currentTop = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), stackTop, "currentTop");
+                
+                // Pop key-value pairs and add to hash (pairs are pushed in reverse order)
+                for (int p = 0; p < pairCount; p++) {
+                    LLVMValueRef valueIndex = LLVMBuildSub(builder, currentTop, 
+                        LLVMConstInt(LLVMInt32TypeInContext(context), 1 + p * 2, 0), "valueIndex");
+                    LLVMValueRef keyIndex = LLVMBuildSub(builder, currentTop, 
+                        LLVMConstInt(LLVMInt32TypeInContext(context), 2 + p * 2, 0), "keyIndex");
+                    
+                    LLVMValueRef valuePtr = LLVMBuildGEP2(builder, stackType, stack, 
+                        (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), valueIndex}, 2, "valuePtr");
+                    LLVMValueRef keyPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                        (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), keyIndex}, 2, "keyPtr");
+                    
+                    LLVMValueRef value = LLVMBuildLoad2(builder, valueType, valuePtr, "value");
+                    LLVMValueRef key = LLVMBuildLoad2(builder, valueType, keyPtr, "key");
+                    
+                    // Call hash set function
+                    LLVMValueRef setArgs[] = {hash, key, value};
+                    LLVMTypeRef hashSetType = LLVMFunctionType(
+                        LLVMVoidTypeInContext(context),
+                        (LLVMTypeRef[]){valueType, valueType, valueType}, 3, 0
+                    );
+                    LLVMBuildCall2(builder, hashSetType, hashSetFunction, setArgs, 3, "");
+                }
+                
+                // Pop all pairs from stack and push hash
+                LLVMValueRef newTop = LLVMBuildSub(builder, currentTop, 
+                    LLVMConstInt(LLVMInt32TypeInContext(context), pairCount * 2, 0), "newTop");
+                
+                LLVMValueRef hashPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), newTop}, 2, "hashPtr");
+                LLVMBuildStore(builder, hash, hashPtr);
+                
+                LLVMValueRef finalTop = LLVMBuildAdd(builder, newTop, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "finalTop");
+                LLVMBuildStore(builder, finalTop, stackTop);
+                break;
+            }
+            
+            case OP_GET_INDEX: {
+                // Pop index and hash, push value
+                LLVMValueRef currentTop = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), stackTop, "currentTop");
+                LLVMValueRef indexIndex = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "indexIndex");
+                LLVMValueRef hashIndex = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 2, 0), "hashIndex");
+                
+                LLVMValueRef indexPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), indexIndex}, 2, "indexPtr");
+                LLVMValueRef hashPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), hashIndex}, 2, "hashPtr");
+                
+                LLVMValueRef index = LLVMBuildLoad2(builder, valueType, indexPtr, "index");
+                LLVMValueRef hash = LLVMBuildLoad2(builder, valueType, hashPtr, "hash");
+                
+                // Call hash get function
+                LLVMValueRef getArgs[] = {hash, index};
+                LLVMTypeRef hashGetType = LLVMFunctionType(
+                    valueType,
+                    (LLVMTypeRef[]){valueType, valueType}, 2, 0
+                );
+                LLVMValueRef result = LLVMBuildCall2(builder, hashGetType, hashGetFunction, getArgs, 2, "result");
+                
+                // Pop both values and push result
+                LLVMValueRef newTop = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "newTop");
+                LLVMValueRef resultPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), hashIndex}, 2, "resultPtr");
+                LLVMBuildStore(builder, result, resultPtr);
+                
+                LLVMBuildStore(builder, newTop, stackTop);
+                break;
+            }
+            
+            case OP_SET_INDEX: {
+                // Pop value, index, and hash; set hash[index] = value; push value
+                LLVMValueRef currentTop = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), stackTop, "currentTop");
+                LLVMValueRef valueIndex = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "valueIndex");
+                LLVMValueRef indexIndex = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 2, 0), "indexIndex");
+                LLVMValueRef hashIndex = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 3, 0), "hashIndex");
+                
+                LLVMValueRef valuePtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), valueIndex}, 2, "valuePtr");
+                LLVMValueRef indexPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), indexIndex}, 2, "indexPtr");
+                LLVMValueRef hashPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), hashIndex}, 2, "hashPtr");
+                
+                LLVMValueRef value = LLVMBuildLoad2(builder, valueType, valuePtr, "value");
+                LLVMValueRef index = LLVMBuildLoad2(builder, valueType, indexPtr, "index");
+                LLVMValueRef hash = LLVMBuildLoad2(builder, valueType, hashPtr, "hash");
+                
+                // Call hash set function
+                LLVMValueRef setArgs[] = {hash, index, value};
+                LLVMTypeRef hashSetType = LLVMFunctionType(
+                    LLVMVoidTypeInContext(context),
+                    (LLVMTypeRef[]){valueType, valueType, valueType}, 3, 0
+                );
+                LLVMBuildCall2(builder, hashSetType, hashSetFunction, setArgs, 3, "");
+                
+                // Pop hash and index, keep value on stack
+                LLVMValueRef newTop = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 2, 0), "newTop");
+                LLVMValueRef resultPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), hashIndex}, 2, "resultPtr");
+                LLVMBuildStore(builder, value, resultPtr);
+                
+                LLVMBuildStore(builder, newTop, stackTop);
+                break;
+            }
+            
             case OP_RETURN: {
                 // Return 0 from main
                 LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
@@ -1219,7 +1359,111 @@ static void createRuntimeLibrary(const char* runtimePath) {
     fprintf(file, "    return (Value){VAL_OBJ, 0}; // fallback\n");
     fprintf(file, "}\n");
     fprintf(file, "\n");
-    fprintf(file, "// Global variable operations (unused in this implementation)\n");
+    
+    // Hash table functions
+    fprintf(file, "// Simple hash table implementation for compiled code\n");
+    fprintf(file, "typedef struct HashEntry {\n");
+    fprintf(file, "    Value key;\n");
+    fprintf(file, "    Value value;\n");
+    fprintf(file, "    bool used;\n");
+    fprintf(file, "} HashEntry;\n");
+    fprintf(file, "\n");
+    fprintf(file, "typedef struct Hash {\n");
+    fprintf(file, "    HashEntry* entries;\n");
+    fprintf(file, "    int capacity;\n");
+    fprintf(file, "    int count;\n");
+    fprintf(file, "} Hash;\n");
+    fprintf(file, "\n");
+    fprintf(file, "static Hash* globalHashes[1024];\n");
+    fprintf(file, "static int hashCount = 0;\n");
+    fprintf(file, "\n");
+    fprintf(file, "static uint32_t hashValue(Value val) {\n");
+    fprintf(file, "    if (val.type == VAL_NUMBER) {\n");
+    fprintf(file, "        union { double d; uint64_t i; } u;\n");
+    fprintf(file, "        u.d = *(double*)&val.data;\n");
+    fprintf(file, "        return (uint32_t)(u.i ^ (u.i >> 32));\n");
+    fprintf(file, "    } else if (val.type == VAL_OBJ && val.data != 0) {\n");
+    fprintf(file, "        // Simple string hash\n");
+    fprintf(file, "        char* str = (char*)val.data;\n");
+    fprintf(file, "        uint32_t hash = 2166136261u;\n");
+    fprintf(file, "        for (int i = 0; str[i]; i++) {\n");
+    fprintf(file, "            hash ^= (uint8_t)str[i];\n");
+    fprintf(file, "            hash *= 16777619;\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        return hash;\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    return (uint32_t)val.data;\n");
+    fprintf(file, "}\n");
+    fprintf(file, "\n");
+    fprintf(file, "static bool valuesEqual(Value a, Value b) {\n");
+    fprintf(file, "    if (a.type != b.type) return false;\n");
+    fprintf(file, "    if (a.type == VAL_NUMBER) {\n");
+    fprintf(file, "        union { double d; long long i; } ca, cb;\n");
+    fprintf(file, "        ca.i = a.data; cb.i = b.data;\n");
+    fprintf(file, "        return ca.d == cb.d;\n");
+    fprintf(file, "    } else if (a.type == VAL_OBJ && a.data != 0 && b.data != 0) {\n");
+    fprintf(file, "        return strcmp((char*)a.data, (char*)b.data) == 0;\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    return a.data == b.data;\n");
+    fprintf(file, "}\n");
+    fprintf(file, "\n");
+    fprintf(file, "Value gem_hash_create(int pairCount) {\n");
+    fprintf(file, "    Hash* hash = malloc(sizeof(Hash));\n");
+    fprintf(file, "    hash->capacity = pairCount > 0 ? pairCount * 2 : 8;\n");
+    fprintf(file, "    hash->entries = calloc(hash->capacity, sizeof(HashEntry));\n");
+    fprintf(file, "    hash->count = 0;\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    if (hashCount < 1024) {\n");
+    fprintf(file, "        globalHashes[hashCount] = hash;\n");
+    fprintf(file, "        return (Value){VAL_OBJ, (long long)hash};\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    return (Value){VAL_NIL, 0};\n");
+    fprintf(file, "}\n");
+    fprintf(file, "\n");
+    fprintf(file, "void gem_hash_set(Value hashVal, Value key, Value value) {\n");
+    fprintf(file, "    if (hashVal.type != VAL_OBJ || hashVal.data == 0) return;\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    Hash* hash = (Hash*)hashVal.data;\n");
+    fprintf(file, "    uint32_t keyHash = hashValue(key);\n");
+    fprintf(file, "    int index = keyHash %% hash->capacity;\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    // Linear probing\n");
+    fprintf(file, "    while (hash->entries[index].used) {\n");
+    fprintf(file, "        if (valuesEqual(hash->entries[index].key, key)) {\n");
+    fprintf(file, "            hash->entries[index].value = value;\n");
+    fprintf(file, "            return;\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        index = (index + 1) %% hash->capacity;\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    hash->entries[index].key = key;\n");
+    fprintf(file, "    hash->entries[index].value = value;\n");
+    fprintf(file, "    hash->entries[index].used = true;\n");
+    fprintf(file, "    hash->count++;\n");
+    fprintf(file, "}\n");
+    fprintf(file, "\n");
+    fprintf(file, "Value gem_hash_get(Value hashVal, Value key) {\n");
+    fprintf(file, "    if (hashVal.type != VAL_OBJ || hashVal.data == 0) {\n");
+    fprintf(file, "        return (Value){VAL_NIL, 0};\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    Hash* hash = (Hash*)hashVal.data;\n");
+    fprintf(file, "    uint32_t keyHash = hashValue(key);\n");
+    fprintf(file, "    int index = keyHash %% hash->capacity;\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    // Linear probing\n");
+    fprintf(file, "    while (hash->entries[index].used) {\n");
+    fprintf(file, "        if (valuesEqual(hash->entries[index].key, key)) {\n");
+    fprintf(file, "            return hash->entries[index].value;\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        index = (index + 1) %% hash->capacity;\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    return (Value){VAL_NIL, 0};\n");
+    fprintf(file, "}\n");
+    fprintf(file, "\n");
+    
+    fprintf(file, "// Global variable operations\n");
     fprintf(file, "Value gem_get_global(int index) {\n");
     fprintf(file, "    return globals[index];\n");
     fprintf(file, "}\n");
@@ -1232,11 +1476,10 @@ static void createRuntimeLibrary(const char* runtimePath) {
     fprintf(file, "    globals[index] = value;\n");
     fprintf(file, "}\n");
     fprintf(file, "\n");
-    fprintf(file, "// Function call support (unused in this implementation)\n");
+    fprintf(file, "// Function call support\n");
     fprintf(file, "Value gem_call(int functionIndex, int argCount, Value* stack) {\n");
     fprintf(file, "    return (Value){VAL_NIL, 0};\n");
     fprintf(file, "}\n");
-    fprintf(file, "\n");
     
     fclose(file);
 }
