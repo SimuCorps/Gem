@@ -1253,6 +1253,13 @@ static void createRuntimeLibrary(const char* runtimePath) {
     fprintf(file, "\n");
     fprintf(file, "Value gem_equal(Value a, Value b) {\n");
     fprintf(file, "    if (a.type != b.type) return (Value){VAL_BOOL, 0};\n");
+    fprintf(file, "    if (a.type == VAL_NUMBER) {\n");
+    fprintf(file, "        union { double d; long long i; } ca, cb;\n");
+    fprintf(file, "        ca.i = a.data; cb.i = b.data;\n");
+    fprintf(file, "        return (Value){VAL_BOOL, ca.d == cb.d ? 1 : 0};\n");
+    fprintf(file, "    } else if (a.type == VAL_OBJ && a.data != 0 && b.data != 0) {\n");
+    fprintf(file, "        return (Value){VAL_BOOL, strcmp((char*)a.data, (char*)b.data) == 0 ? 1 : 0};\n");
+    fprintf(file, "    }\n");
     fprintf(file, "    return (Value){VAL_BOOL, a.data == b.data ? 1 : 0};\n");
     fprintf(file, "}\n");
     fprintf(file, "\n");
