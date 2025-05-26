@@ -40,6 +40,7 @@ static LLVMValueRef lessFunction;
 static LLVMValueRef moduloFunction;
 static LLVMValueRef notFunction;
 static LLVMValueRef concatenateFunction;
+static LLVMValueRef interpolateFunction;
 
 // Hash table runtime functions
 static LLVMValueRef hashCreateFunction;
@@ -146,6 +147,13 @@ void initLLVMCompiler() {
     notFunction = LLVMAddFunction(module, "gem_not", unaryOpType);
     concatenateFunction = LLVMAddFunction(module, "gem_concatenate", binaryOpType);
     
+    // String interpolation function
+    LLVMTypeRef interpolateType = LLVMFunctionType(
+        valueType,
+        (LLVMTypeRef[]){LLVMInt32TypeInContext(context), valuePtrType}, 2, 0
+    );
+    interpolateFunction = LLVMAddFunction(module, "gem_interpolate", interpolateType);
+    
     // Hash table operations
     hashOpType = LLVMFunctionType(
         valueType,
@@ -196,42 +204,76 @@ void freeLLVMCompiler() {
 
 // Helper function to create a constant Value
 static LLVMValueRef createConstantValue(Value value) {
-    LLVMValueRef typeTag, data, result;
-    
     if (IS_BOOL(value)) {
-        typeTag = LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0); // BOOL type
-        data = LLVMConstInt(LLVMInt64TypeInContext(context), AS_BOOL(value) ? 1 : 0, 0);
+        return LLVMConstStruct((LLVMValueRef[]){
+            LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), // VAL_BOOL = 0
+            LLVMConstInt(LLVMInt64TypeInContext(context), AS_BOOL(value) ? 1 : 0, 0)
+        }, 2, 0);
     } else if (IS_NIL(value)) {
-        typeTag = LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0); // NIL type
-        data = LLVMConstInt(LLVMInt64TypeInContext(context), 0, 0);
+        return LLVMConstStruct((LLVMValueRef[]){
+            LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), // VAL_NIL = 1
+            LLVMConstInt(LLVMInt64TypeInContext(context), 0, 0)
+        }, 2, 0);
     } else if (IS_NUMBER(value)) {
-        typeTag = LLVMConstInt(LLVMInt32TypeInContext(context), 2, 0); // NUMBER type
-        // Convert double to int64 representation
         union { double d; int64_t i; } converter;
         converter.d = AS_NUMBER(value);
-        data = LLVMConstInt(LLVMInt64TypeInContext(context), converter.i, 0);
+        return LLVMConstStruct((LLVMValueRef[]){
+            LLVMConstInt(LLVMInt32TypeInContext(context), 2, 0), // VAL_NUMBER = 2
+            LLVMConstInt(LLVMInt64TypeInContext(context), converter.i, 0)
+        }, 2, 0);
     } else if (IS_OBJ(value)) {
-        typeTag = LLVMConstInt(LLVMInt32TypeInContext(context), 3, 0); // OBJ type
         if (IS_STRING(value)) {
-            // For strings, we'll store a pointer to the string data
             ObjString* string = AS_STRING(value);
-            LLVMValueRef stringConstant = LLVMConstStringInContext(context, string->chars, string->length, 0);
-            LLVMValueRef globalString = LLVMAddGlobal(module, LLVMTypeOf(stringConstant), "string_const");
-            LLVMSetInitializer(globalString, stringConstant);
-            LLVMSetGlobalConstant(globalString, 1);
-            data = LLVMConstPtrToInt(globalString, LLVMInt64TypeInContext(context));
-        } else {
-            // For other objects, use placeholder
-            data = LLVMConstInt(LLVMInt64TypeInContext(context), 0, 0);
+            
+            // Validate string data - check if it's a valid pointer and has reasonable content
+            if (string && string->chars && string->length >= 0 && string->length < 10000) {
+                // Check if the string contains mostly printable characters or is empty
+                bool isValid = true;
+                for (int i = 0; i < string->length && isValid; i++) {
+                    char c = string->chars[i];
+                    // Allow printable ASCII, whitespace, and common characters
+                    if (!(c >= 32 && c <= 126) && c != '\t' && c != '\n' && c != '\r' && c != '\0') {
+                        isValid = false;
+                    }
+                }
+                
+                if (isValid) {
+                    // Create a global string constant with proper null termination
+                    LLVMValueRef stringConstant = LLVMConstStringInContext(context, string->chars, string->length, 0);
+                    LLVMValueRef globalString = LLVMAddGlobal(module, LLVMTypeOf(stringConstant), "string_const");
+                    LLVMSetInitializer(globalString, stringConstant);
+                    LLVMSetGlobalConstant(globalString, 1);
+                    
+                    return LLVMConstStruct((LLVMValueRef[]){
+                        LLVMConstInt(LLVMInt32TypeInContext(context), 3, 0), // VAL_OBJ = 3
+                        LLVMConstPtrToInt(globalString, LLVMInt64TypeInContext(context))
+                    }, 2, 0);
+                }
+            }
+            
+            // If string is invalid, create an empty string constant
+            LLVMValueRef emptyStringConstant = LLVMConstStringInContext(context, "", 0, 0);
+            LLVMValueRef globalEmptyString = LLVMAddGlobal(module, LLVMTypeOf(emptyStringConstant), "string_const");
+            LLVMSetInitializer(globalEmptyString, emptyStringConstant);
+            LLVMSetGlobalConstant(globalEmptyString, 1);
+            
+            return LLVMConstStruct((LLVMValueRef[]){
+                LLVMConstInt(LLVMInt32TypeInContext(context), 3, 0), // VAL_OBJ = 3
+                LLVMConstPtrToInt(globalEmptyString, LLVMInt64TypeInContext(context))
+            }, 2, 0);
         }
+        // For other object types, just store the pointer
+        return LLVMConstStruct((LLVMValueRef[]){
+            LLVMConstInt(LLVMInt32TypeInContext(context), 3, 0), // VAL_OBJ = 3
+            LLVMConstInt(LLVMInt64TypeInContext(context), (intptr_t)AS_OBJ(value), 0)
+        }, 2, 0);
     } else {
         // Default case
-        typeTag = LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0); // NIL type
-        data = LLVMConstInt(LLVMInt64TypeInContext(context), 0, 0);
+        return LLVMConstStruct((LLVMValueRef[]){
+            LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), // VAL_NIL = 1
+            LLVMConstInt(LLVMInt64TypeInContext(context), 0, 0)
+        }, 2, 0);
     }
-    
-    result = LLVMConstStruct((LLVMValueRef[]){typeTag, data}, 2, 0);
-    return result;
 }
 
 // Global variable mapping - simple approach using indices
@@ -315,6 +357,9 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
             case OP_GET_LOCAL:
             case OP_SET_LOCAL:
             case OP_CALL:
+                i += 1;
+                break;
+            case OP_INTERPOLATE:
                 i += 1;
                 break;
             case OP_GET_GLOBAL:
@@ -1020,6 +1065,39 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
                 break;
             }
             
+            case OP_INTERPOLATE: {
+                if (i >= chunk->count) break;
+                uint8_t partCount = chunk->code[i++];
+                
+                LLVMValueRef currentTop = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), stackTop, "currentTop");
+                
+                // Calculate pointer to the parts array (stack top - partCount)
+                LLVMValueRef partsIndex = LLVMBuildSub(builder, currentTop, 
+                    LLVMConstInt(LLVMInt32TypeInContext(context), partCount, 0), "partsIndex");
+                LLVMValueRef partsPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), partsIndex}, 2, "partsPtr");
+                
+                // Call interpolation function
+                LLVMValueRef partCountValue = LLVMConstInt(LLVMInt32TypeInContext(context), partCount, 0);
+                LLVMTypeRef interpolateType = LLVMFunctionType(
+                    valueType,
+                    (LLVMTypeRef[]){LLVMInt32TypeInContext(context), valuePtrType}, 2, 0
+                );
+                LLVMValueRef result = LLVMBuildCall2(builder, interpolateType, interpolateFunction, 
+                    (LLVMValueRef[]){partCountValue, partsPtr}, 2, "interpolateResult");
+                
+                // Pop all parts from stack and push result
+                LLVMValueRef newTop = LLVMBuildSub(builder, currentTop, 
+                    LLVMConstInt(LLVMInt32TypeInContext(context), partCount, 0), "newTop");
+                LLVMValueRef resultPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), newTop}, 2, "resultPtr");
+                LLVMBuildStore(builder, result, resultPtr);
+                
+                LLVMValueRef finalTop = LLVMBuildAdd(builder, newTop, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "finalTop");
+                LLVMBuildStore(builder, finalTop, stackTop);
+                break;
+            }
+            
             case OP_HASH_LITERAL: {
                 if (i >= chunk->count) break;
                 uint8_t pairCount = chunk->code[i++];
@@ -1539,6 +1617,87 @@ static void createRuntimeLibrary(const char* runtimePath) {
     fprintf(file, "Value gem_call(int functionIndex, int argCount, Value* stack) {\n");
     fprintf(file, "    return (Value){VAL_NIL, 0};\n");
     fprintf(file, "}\n");
+    
+    // String interpolation function
+    fprintf(file, "Value gem_interpolate(int partCount, Value* parts) {\n");
+    fprintf(file, "    // Calculate total length needed\n");
+    fprintf(file, "    int totalLength = 0;\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    for (int i = 0; i < partCount; i++) {\n");
+    fprintf(file, "        Value part = parts[i];\n");
+    fprintf(file, "        if (part.type == VAL_OBJ && part.data != 0) {\n");
+    fprintf(file, "            // String\n");
+    fprintf(file, "            char* str = (char*)part.data;\n");
+    fprintf(file, "            totalLength += strlen(str);\n");
+    fprintf(file, "        } else if (part.type == VAL_NUMBER) {\n");
+    fprintf(file, "            // Number - estimate length\n");
+    fprintf(file, "            totalLength += 32; // Conservative estimate\n");
+    fprintf(file, "        } else if (part.type == VAL_BOOL) {\n");
+    fprintf(file, "            totalLength += part.data ? 4 : 5; // \"true\" or \"false\"\n");
+    fprintf(file, "        } else if (part.type == VAL_NIL) {\n");
+    fprintf(file, "            totalLength += 3; // \"nil\"\n");
+    fprintf(file, "        } else {\n");
+    fprintf(file, "            totalLength += 8; // \"[object]\"\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    // Use static buffer for simplicity\n");
+    fprintf(file, "    static char resultBuffer[4096];\n");
+    fprintf(file, "    if (totalLength >= 4095) totalLength = 4095;\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    resultBuffer[0] = '\\0';\n");
+    fprintf(file, "    int pos = 0;\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    // Concatenate all parts\n");
+    fprintf(file, "    for (int i = 0; i < partCount; i++) {\n");
+    fprintf(file, "        Value part = parts[i];\n");
+    fprintf(file, "        if (part.type == VAL_OBJ && part.data != 0) {\n");
+    fprintf(file, "            // String\n");
+    fprintf(file, "            char* str = (char*)part.data;\n");
+    fprintf(file, "            int len = strlen(str);\n");
+    fprintf(file, "            if (pos + len < 4095) {\n");
+    fprintf(file, "                memcpy(resultBuffer + pos, str, len);\n");
+    fprintf(file, "                pos += len;\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "        } else if (part.type == VAL_NUMBER) {\n");
+    fprintf(file, "            // Number\n");
+    fprintf(file, "            union { double d; long long i; } converter;\n");
+    fprintf(file, "            converter.i = part.data;\n");
+    fprintf(file, "            char numBuffer[32];\n");
+    fprintf(file, "            int len;\n");
+    fprintf(file, "            if (converter.d == (long long)converter.d) {\n");
+    fprintf(file, "                len = snprintf(numBuffer, sizeof(numBuffer), \"%%lld\", (long long)converter.d);\n");
+    fprintf(file, "            } else {\n");
+    fprintf(file, "                len = snprintf(numBuffer, sizeof(numBuffer), \"%%g\", converter.d);\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "            if (pos + len < 4095) {\n");
+    fprintf(file, "                memcpy(resultBuffer + pos, numBuffer, len);\n");
+    fprintf(file, "                pos += len;\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "        } else if (part.type == VAL_BOOL) {\n");
+    fprintf(file, "            const char* boolStr = part.data ? \"true\" : \"false\";\n");
+    fprintf(file, "            int len = strlen(boolStr);\n");
+    fprintf(file, "            if (pos + len < 4095) {\n");
+    fprintf(file, "                memcpy(resultBuffer + pos, boolStr, len);\n");
+    fprintf(file, "                pos += len;\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "        } else if (part.type == VAL_NIL) {\n");
+    fprintf(file, "            if (pos + 3 < 4095) {\n");
+    fprintf(file, "                memcpy(resultBuffer + pos, \"nil\", 3);\n");
+    fprintf(file, "                pos += 3;\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "        } else {\n");
+    fprintf(file, "            if (pos + 8 < 4095) {\n");
+    fprintf(file, "                memcpy(resultBuffer + pos, \"[object]\", 8);\n");
+    fprintf(file, "                pos += 8;\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    resultBuffer[pos] = '\\0';\n");
+    fprintf(file, "    return (Value){VAL_OBJ, (long long)resultBuffer};\n");
+    fprintf(file, "}\n");
+    fprintf(file, "\n");
     
     fclose(file);
 }

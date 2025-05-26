@@ -180,9 +180,15 @@ static void compileFile(const char* path) {
     exit(65);
   }
   
+  // Keep the function on the VM stack to prevent its constants from being freed
+  push(OBJ_VAL(function));
+  
   // Compile bytecode to native executable and run it
   // The outputPath parameter is no longer used since we use temporary files
   LLVMCompileResult result = compileAndRunBytecode(function, NULL);
+  
+  // Pop the function from the stack
+  pop();
   
   // Cleanup
   freeLLVMCompiler();
@@ -218,6 +224,9 @@ static void compileFileOnly(const char* path) {
     exit(65);
   }
   
+  // Keep the function on the VM stack to prevent its constants from being freed
+  push(OBJ_VAL(function));
+  
   // Generate output filename based on input filename
   const char* baseName = strrchr(path, '/');
   if (baseName) {
@@ -243,6 +252,9 @@ static void compileFileOnly(const char* path) {
   
   // Compile bytecode to native executable without running it
   LLVMCompileResult result = compileBytecodeToExecutable(function, outputPath);
+  
+  // Pop the function from the stack
+  pop();
   
   // Cleanup
   freeLLVMCompiler();

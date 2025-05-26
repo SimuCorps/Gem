@@ -1132,7 +1132,7 @@ static void interpolatedString(bool canAssign) {
     // Empty string part - don't emit anything
   } else {
     // Remove the leading quote from the string part
-    emitConstant(OBJ_VAL(constantString(parser.previous.start + 1, parser.previous.length - 1)));
+    emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 1)));
     partCount++;
   }
   
@@ -1149,14 +1149,14 @@ static void interpolatedString(bool canAssign) {
       if (check(TOKEN_STRING_PART)) {
         advance(); // consume the string part
         // STRING_PART tokens don't have quotes, so copy as-is
-        emitConstant(OBJ_VAL(constantString(parser.previous.start, parser.previous.length)));
+        emitConstant(OBJ_VAL(copyString(parser.previous.start, parser.previous.length)));
         partCount++;
       } else if (check(TOKEN_STRING)) {
         advance(); // consume the final string
         // Final STRING token: remove only the trailing quote
         int finalLength = parser.previous.length - 1;
         const char* finalStart = parser.previous.start;
-        emitConstant(OBJ_VAL(constantString(finalStart, finalLength)));
+        emitConstant(OBJ_VAL(copyString(finalStart, finalLength)));
         partCount++;
         break; // End of interpolated string
       } else {
