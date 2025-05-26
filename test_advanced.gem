@@ -1,0 +1,22 @@
+# Advanced test for LLVM compilation
+puts "Testing LLVM compilation:";
+
+# Basic arithmetic
+puts 2 + 3 * 4;  # Should be 14
+puts (2 + 3) * 4; # Should be 20
+puts 100 / 4;     # Should be 25
+puts 17 - 5;      # Should be 12
+
+# Negative numbers
+puts -10;
+puts -3.14;
+
+# Boolean values
+puts true;
+puts false;
+puts nil;
+
+# More complex expressions
+puts 1 + 2 + 3 + 4 + 5;  # Should be 15
+puts 10 * 2 / 4;         # Should be 5
+puts 2 * 3 + 4 * 5;      # Should be 26 

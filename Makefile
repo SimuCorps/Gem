@@ -5,6 +5,18 @@ CC = gcc
 CFLAGS = -O3 -flto -DNDEBUG
 LDFLAGS = -lm
 
+# LLVM settings (check if LLVM is available)
+LLVM_CONFIG := $(shell which llvm-config 2>/dev/null)
+ifdef LLVM_CONFIG
+    LLVM_CFLAGS := $(shell $(LLVM_CONFIG) --cflags)
+    LLVM_LDFLAGS := $(shell $(LLVM_CONFIG) --ldflags --libs core executionengine mcjit native)
+    CFLAGS += $(LLVM_CFLAGS) -DWITH_LLVM
+    LDFLAGS += $(LLVM_LDFLAGS)
+    LLVM_AVAILABLE = 1
+else
+    LLVM_AVAILABLE = 0
+endif
+
 # Directories
 SRC_DIR = src
 STL_DIR = stl
@@ -138,15 +150,29 @@ $(EMBEDDED_STL_HEADER): $(STL_FILES)
 $(BIN_DIR)/gemc: $(SRC_FILES) $(EMBEDDED_STL_HEADER) $(VERSION_HEADER)
 	@mkdir -p $(BIN_DIR)
 	@echo "Building Gem interpreter with standard library..."
+ifeq ($(LLVM_AVAILABLE),1)
+	@echo "LLVM support: ENABLED"
 	$(CC) $(SRC_FILES) -o $(BIN_DIR)/gemc $(CFLAGS) $(LDFLAGS) -DWITH_STL -DSTL_PATH='"$(STL_DIR)"'
-	@echo "Built: $(BIN_DIR)/gemc (with standard library) - version $(VERSION_STRING)"
+	@echo "Built: $(BIN_DIR)/gemc (with standard library and LLVM) - version $(VERSION_STRING)"
+else
+	@echo "LLVM support: DISABLED (llvm-config not found)"
+	$(CC) $(filter-out src/llvm_compiler.c, $(SRC_FILES)) -o $(BIN_DIR)/gemc $(CFLAGS) $(LDFLAGS) -DWITH_STL -DSTL_PATH='"$(STL_DIR)"'
+	@echo "Built: $(BIN_DIR)/gemc (with standard library, no LLVM) - version $(VERSION_STRING)"
+endif
 
 # Compile without standard library
 $(BIN_DIR)/gemch: $(SRC_FILES) $(VERSION_HEADER)
 	@mkdir -p $(BIN_DIR)
 	@echo "Building Gem interpreter without standard library..."
+ifeq ($(LLVM_AVAILABLE),1)
+	@echo "LLVM support: ENABLED"
 	$(CC) $(SRC_FILES) -o $(BIN_DIR)/gemch $(CFLAGS) $(LDFLAGS)
-	@echo "Built: $(BIN_DIR)/gemch (without standard library) - version $(VERSION_STRING)"
+	@echo "Built: $(BIN_DIR)/gemch (without standard library, with LLVM) - version $(VERSION_STRING)"
+else
+	@echo "LLVM support: DISABLED (llvm-config not found)"
+	$(CC) $(filter-out src/llvm_compiler.c, $(SRC_FILES)) -o $(BIN_DIR)/gemch $(CFLAGS) $(LDFLAGS)
+	@echo "Built: $(BIN_DIR)/gemch (without standard library, no LLVM) - version $(VERSION_STRING)"
+endif
 
 # Convenience targets
 gemc: $(BIN_DIR)/gemc

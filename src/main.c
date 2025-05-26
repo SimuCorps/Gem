@@ -15,9 +15,15 @@
 //> A Virtual Machine main-include-vm
 #include "vm.h"
 //< A Virtual Machine main-include-vm
+//> Compiler main-include-compiler
+#include "compiler.h"
+//< Compiler main-include-compiler
 //> JIT Integration main-include-jit
 #include "jit.h"
 //< JIT Integration main-include-jit
+//> LLVM Compilation main-include-llvm
+#include "llvm_compiler.h"
+//< LLVM Compilation main-include-llvm
 //> Line editing support
 #include "lineedit.h"
 //< Line editing support
@@ -29,13 +35,14 @@
 static void printUsage() {
   fprintf(stderr, "Usage: gem [options] [path]\n");
   fprintf(stderr, "Options:\n");
-  fprintf(stderr, "  --experimental-jit  Enable experimental JIT compilation\n");
-  fprintf(stderr, "  --jit-stats         Print JIT statistics at exit\n");
-  fprintf(stderr, "  --jit-threshold N   Set function compilation threshold (default: 100)\n");
-  fprintf(stderr, "  --jit-loop-threshold N Set loop compilation threshold (default: 50)\n");
-  fprintf(stderr, "  --repl              Enter REPL after executing script\n");
-  fprintf(stderr, "  --version           Show version information\n");
-  fprintf(stderr, "  --help              Show this help message\n");
+  fprintf(stderr, "  --experimental-jit      Enable experimental JIT compilation\n");
+  fprintf(stderr, "  --experimental-compile  Compile to native executable using LLVM\n");
+  fprintf(stderr, "  --jit-stats             Print JIT statistics at exit\n");
+  fprintf(stderr, "  --jit-threshold N       Set function compilation threshold (default: 100)\n");
+  fprintf(stderr, "  --jit-loop-threshold N  Set loop compilation threshold (default: 50)\n");
+  fprintf(stderr, "  --repl                  Enter REPL after executing script\n");
+  fprintf(stderr, "  --version               Show version information\n");
+  fprintf(stderr, "  --help                  Show this help message\n");
 }
 
 static void printVersion() {
@@ -51,6 +58,9 @@ static void printVersion() {
 // Global flags for JIT control
 static bool showJitStats = false;
 static bool enterReplAfterScript = false;
+//> LLVM Compilation global flags
+static bool enableLLVMCompilation = false;
+//< LLVM Compilation global flags
 //< JIT Integration command line parsing
 
 //> Scanning on Demand repl
@@ -151,6 +161,65 @@ static void runFile(const char* path) {
 }
 //< Scanning on Demand run-file
 
+//> LLVM Compilation compile-file
+static void compileFile(const char* path) {
+  char* source = readFile(path);
+  
+  // Initialize LLVM compiler
+  initLLVMCompiler();
+  
+  // Compile source to bytecode first
+  ObjFunction* function = compile(source);
+  free(source);
+  
+  if (function == NULL) {
+    fprintf(stderr, "Failed to compile source to bytecode\n");
+    freeLLVMCompiler();
+    exit(65);
+  }
+  
+  // Generate output executable name
+  char outputPath[256];
+  const char* baseName = strrchr(path, '/');
+  if (baseName) {
+    baseName++; // Skip the '/'
+  } else {
+    baseName = path;
+  }
+  
+  // Remove .gem extension if present and add no extension (executable)
+  const char* dot = strrchr(baseName, '.');
+  if (dot && strcmp(dot, ".gem") == 0) {
+    size_t nameLen = dot - baseName;
+    snprintf(outputPath, sizeof(outputPath), "%.*s", (int)nameLen, baseName);
+  } else {
+    snprintf(outputPath, sizeof(outputPath), "%s_compiled", baseName);
+  }
+  
+  printf("Compiling %s to native executable %s...\n", path, outputPath);
+  
+  // Compile bytecode to native executable
+  LLVMCompileResult result = compileAndRunBytecode(function, outputPath);
+  
+  // Cleanup
+  freeLLVMCompiler();
+  
+  switch (result) {
+    case LLVM_COMPILE_OK:
+      printf("Compilation and execution successful!\n");
+      break;
+    case LLVM_COMPILE_ERROR:
+      fprintf(stderr, "LLVM compilation failed\n");
+      exit(65);
+      break;
+    case LLVM_COMPILE_LINK_ERROR:
+      fprintf(stderr, "Linking failed\n");
+      exit(65);
+      break;
+  }
+}
+//< LLVM Compilation compile-file
+
 int main(int argc, const char* argv[]) {
 //> JIT Integration argument parsing
   // Parse command line arguments
@@ -159,6 +228,9 @@ int main(int argc, const char* argv[]) {
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--experimental-jit") == 0) {
       // Enable JIT - we'll do this after initVM()
+    } else if (strcmp(argv[i], "--experimental-compile") == 0) {
+      // Enable LLVM compilation
+      enableLLVMCompilation = true;
     } else if (strcmp(argv[i], "--jit-stats") == 0) {
       showJitStats = true;
     } else if (strcmp(argv[i], "--repl") == 0) {
@@ -198,6 +270,21 @@ int main(int argc, const char* argv[]) {
   }
 //< JIT Integration argument parsing
 
+//> LLVM Compilation validation
+  // Validate compilation mode
+  if (enableLLVMCompilation && scriptPath == NULL) {
+    fprintf(stderr, "Error: --experimental-compile requires a script file\n");
+    printUsage();
+    exit(64);
+  }
+  
+  if (enableLLVMCompilation && enterReplAfterScript) {
+    fprintf(stderr, "Error: --experimental-compile cannot be used with --repl\n");
+    printUsage();
+    exit(64);
+  }
+//< LLVM Compilation validation
+
 //> A Virtual Machine main-init-vm
   initVM();
 
@@ -218,11 +305,17 @@ int main(int argc, const char* argv[]) {
   if (scriptPath == NULL) {
     repl();
   } else {
-    runFile(scriptPath);
-    if (enterReplAfterScript) {
-      printf("Script executed. Entering interactive mode...\n");
-      repl();
+    //> LLVM Compilation execution
+    if (enableLLVMCompilation) {
+      compileFile(scriptPath);
+    } else {
+      runFile(scriptPath);
+      if (enterReplAfterScript) {
+        printf("Script executed. Entering interactive mode...\n");
+        repl();
+      }
     }
+    //< LLVM Compilation execution
   }
   
 //> JIT Integration print stats
