@@ -1,0 +1,1332 @@
+# Comprehensive Test for GEM Language - All Features
+puts "=== COMPREHENSIVE GEM LANGUAGE TEST ===";
+
+# ============================================================================
+# BASIC DATA TYPES AND LITERALS
+# ============================================================================
+puts "--- Testing Basic Data Types ---";
+
+# Integer literals
+puts 42;
+puts -123;
+puts 0;
+puts 999999;
+
+# Floating point numbers
+puts 3.14159;
+puts -2.5;
+puts 0.0;
+puts 123.456;
+
+# Boolean literals
+puts true;
+puts false;
+
+# Nil literal
+puts nil;
+
+# String literals
+puts "Hello, World!";
+puts "Empty string: ";
+puts "String with spaces";
+puts "String with numbers: 123";
+puts "String with symbols: !@#$%^&*()";
+
+# ============================================================================
+# VARIABLE DECLARATIONS AND MUTABILITY
+# ============================================================================
+puts "--- Testing Variables and Mutability ---";
+
+# Immutable variables (default)
+int age = 25;
+string name = "Alice";
+bool isActive = true;
+
+puts age;
+puts name;
+puts isActive;
+
+# Mutable variables (with ! suffix)
+int! counter = 0;
+string! message = "Hello";
+bool! flag = false;
+
+puts counter;
+puts message;
+puts flag;
+
+# Reassignment of mutable variables
+counter = 100;
+message = "Updated message";
+flag = true;
+
+puts counter;
+puts message;
+puts flag;
+
+# Multiple assignments
+counter = counter + 50;
+message = message + " - appended";
+
+puts counter;
+puts message;
+
+# Test mut keyword syntax
+mut int mutCounter = 42;
+mut string mutMessage = "Hello";
+mut bool mutFlag = true;
+
+puts mutCounter;
+puts mutMessage;
+puts mutFlag;
+
+mutCounter = 100;
+mutMessage = "Updated";
+mutFlag = false;
+
+puts mutCounter;
+puts mutMessage;
+puts mutFlag;
+
+# ============================================================================
+# NULLABLE TYPES
+# ============================================================================
+puts "--- Testing Nullable Types ---";
+
+# Nullable variables (with ? suffix)
+string? optionalName = "Bob";
+int? optionalAge = nil;
+bool? optionalFlag = nil;
+
+puts optionalName;
+puts optionalAge;
+puts optionalFlag;
+
+# Mutable and nullable (with ?! suffix)
+string?! mutableOptional = nil;
+int?! mutableOptionalCount = 50;
+
+puts mutableOptional;
+puts mutableOptionalCount;
+
+# Assigning values to nullable variables
+mutableOptional = "Now has value";
+mutableOptionalCount = nil;
+
+puts mutableOptional;
+puts mutableOptionalCount;
+
+# Nil checking
+if (optionalName != nil)
+    puts "optionalName has a value";
+else
+    puts "optionalName is nil";
+end
+
+if (optionalAge == nil)
+    puts "optionalAge is nil";
+else
+    puts "optionalAge has a value";
+end
+
+# Test mut with nullable types
+mut int? nullable_counter = nil;
+mut string? nullable_message = nil;
+
+puts nullable_counter;
+puts nullable_message;
+
+nullable_counter = 50;
+nullable_message = "Not nil anymore";
+
+puts nullable_counter;
+puts nullable_message;
+
+# ============================================================================
+# ARITHMETIC OPERATIONS
+# ============================================================================
+puts "--- Testing Arithmetic ---";
+
+# Basic arithmetic
+puts 5 + 3;        # Addition
+puts 10 - 4;       # Subtraction
+puts 6 * 7;        # Multiplication
+puts 15 / 3;       # Division
+puts 17 % 5;       # Modulo
+
+# Order of operations
+puts 2 + 3 * 4;    # Should be 14 (3*4 first, then +2)
+puts (2 + 3) * 4;  # Should be 20 (parentheses first)
+
+# Negative numbers
+puts -5 + 3;       # Should be -2
+puts -(-5);        # Should be 5
+
+# Floating point arithmetic
+puts 3.14 + 2.86;  # Should be 6.0
+puts 10.5 / 2.0;   # Should be 5.25
+
+# With variables
+int x = 10;
+int y = 5;
+puts x + y;        # 15
+puts x - y;        # 5
+puts x * y;        # 50
+puts x / y;        # 2
+puts x % y;        # 0
+
+# Complex expressions
+int a = 2;
+int b = 3;
+int c = 4;
+puts a + b * c;    # Should be 14
+puts (a + b) * c;  # Should be 20
+puts a * b + c;    # Should be 10
+
+# Mutable variable arithmetic
+int! result = 0;
+result = result + 10;
+result = result * 2;
+result = result - 5;
+puts result;       # Should be 15
+
+# ============================================================================
+# MODULO OPERATOR COMPREHENSIVE TESTS
+# ============================================================================
+puts "--- Testing Modulo Operator ---";
+
+# Basic modulo operations
+puts 10 % 3;    # 1
+puts 15 % 4;    # 3
+puts 20 % 5;    # 0
+puts 7 % 2;     # 1
+puts 8 % 2;     # 0
+
+# Modulo with variables
+int dividend = 17;
+int divisor = 5;
+int remainder = dividend % divisor;
+puts remainder;  # 2
+
+# Modulo in expressions
+puts (10 + 5) % 4;    # 15 % 4 = 3
+puts 20 % (3 + 2);    # 20 % 5 = 0
+puts (7 * 3) % 8;     # 21 % 8 = 5
+
+# Even/odd detection using modulo
+def isEven(int num) bool
+    return num % 2 == 0;
+end
+
+puts isEven(4);   # true
+puts isEven(7);   # false
+
+# ============================================================================
+# COMPARISON OPERATORS
+# ============================================================================
+puts "--- Testing Comparisons ---";
+
+# Equality comparisons
+puts 5 == 5;       # true
+puts 5 == 3;       # false
+puts 5 != 3;       # true
+puts 5 != 5;       # false
+
+# Numeric comparisons
+puts 7 > 3;        # true
+puts 3 > 7;        # false
+puts 2 < 8;        # true
+puts 8 < 2;        # false
+puts 5 >= 5;       # true
+puts 5 >= 3;       # true
+puts 3 >= 5;       # false
+puts 3 <= 7;       # true
+puts 7 <= 3;       # false
+puts 5 <= 5;       # true
+
+# String comparisons
+puts "hello" == "hello";  # true
+puts "hello" == "world";  # false
+puts "hello" != "world";  # true
+
+# Boolean comparisons
+puts true == true;        # true
+puts false == false;      # true
+puts true == false;       # false
+puts true != false;       # true
+
+# Nil comparisons
+puts nil == nil;          # true
+puts nil != nil;          # false
+
+# Variable comparisons
+int compA = 10;
+int compB = 20;
+int compC = 10;
+
+puts compA < compB;        # true
+puts compA > compB;        # false
+puts compA == compC;       # true
+puts compA != compB;       # true
+
+# Floating point comparisons
+puts 3.14 > 3.0;   # true
+puts 2.5 == 2.5;   # true
+puts 1.0 < 1.1;    # true
+
+# Complex expressions in comparisons
+puts (5 + 3) == (2 * 4);  # true (both equal 8)
+puts (10 - 2) > (3 * 2);  # true (8 > 6)
+
+# ============================================================================
+# LOGICAL OPERATORS
+# ============================================================================
+puts "--- Testing Logical Operators ---";
+
+# Basic logical AND
+puts true and true;    # true
+puts true and false;   # false
+puts false and true;   # false
+puts false and false;  # false
+
+# Basic logical OR
+puts true or true;     # true
+puts true or false;    # true
+puts false or true;    # true
+puts false or false;   # false
+
+# Logical NOT
+puts !true;            # false
+puts !false;           # true
+puts !nil;             # true (nil is falsy)
+
+# Logical operations with variables
+bool flag1 = true;
+bool flag2 = false;
+bool flag3 = true;
+
+puts flag1 and flag2;  # false
+puts flag1 or flag2;   # true
+puts !flag2;           # true
+
+# Complex logical expressions
+puts flag1 and flag3;  # true
+puts flag2 or flag3;   # true
+puts !flag1 and flag2; # false
+puts flag1 or !flag2;  # true
+
+# Logical operations with comparisons
+int logX = 10;
+int logY = 5;
+int logZ = 15;
+
+puts logX > logY and logY < logZ;  # true and true = true
+puts logX < logY or logY < logZ;   # false or true = true
+puts !(logX == logY);              # !(false) = true
+
+# Nested logical expressions
+puts (logX > logY) and (logZ > logX) and (logY > 0);  # true and true and true = true
+puts (logX < logY) or (logZ < logX) or (logY == 5);   # false or false or true = true
+
+# ============================================================================
+# TERNARY OPERATOR
+# ============================================================================
+puts "--- Testing Ternary Operator ---";
+
+# Basic ternary operations
+puts true ? "yes" : "no";     # Should print "yes"
+puts false ? "yes" : "no";    # Should print "no"
+
+# Ternary with numbers
+puts true ? 42 : 0;           # Should print 42
+puts false ? 42 : 0;          # Should print 0
+
+# Ternary with expressions
+int ternX = 10;
+int ternY = 5;
+puts ternX > ternY ? "x is greater" : "y is greater or equal";
+puts ternX < ternY ? "x is less" : "y is less or equal";
+
+# Ternary with variables
+bool! condition = true;
+string! ternResult = condition ? "true branch" : "false branch";
+puts ternResult;
+
+condition = false;
+ternResult = condition ? "true branch" : "false branch";
+puts ternResult;
+
+# Nested ternary (right associative)
+int! score = 85;
+string! grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : "F";
+puts grade;  # Should print "B"
+
+# Ternary in expressions
+int ternA = 10;
+int ternB = 20;
+int max = ternA > ternB ? ternA : ternB;
+puts max;  # Should print 20
+
+# Ternary with nullable types
+string?! optionalText = nil;
+string! displayText = optionalText != nil ? "found text" : "default text";
+puts displayText;  # Should print "default text"
+
+optionalText = "actual text";
+displayText = optionalText != nil ? "found text" : "default text";
+puts displayText;  # Should print "found text"
+
+# ============================================================================
+# STRING OPERATIONS
+# ============================================================================
+puts "--- Testing Strings ---";
+
+# String concatenation
+string firstName = "John";
+string lastName = "Doe";
+string fullName = firstName + " " + lastName;
+puts fullName;
+
+# Direct string concatenation
+puts "Hello, " + "World!";
+
+# String concatenation with mutable variables
+string! greeting = "Hi";
+greeting = greeting + ", there!";
+puts greeting;
+
+# Multiple concatenations
+string part1 = "This";
+string part2 = "is";
+string part3 = "a";
+string part4 = "test";
+string combined = part1 + " " + part2 + " " + part3 + " " + part4;
+puts combined;
+
+# Empty string handling
+string empty = "";
+string withEmpty = "Start" + empty + "End";
+puts withEmpty;
+
+# String with special characters
+string special = "String with quotes and apostrophes";
+puts special;
+
+# Mutable string operations
+string! dynamic = "Base";
+dynamic = dynamic + " + Addition1";
+dynamic = dynamic + " + Addition2";
+puts dynamic;
+
+# String comparison
+string str1 = "hello";
+string str2 = "hello";
+string str3 = "world";
+
+puts str1 == str2;  # Should be true
+puts str1 == str3;  # Should be false
+
+# ============================================================================
+# STRING INTERPOLATION
+# ============================================================================
+puts "--- Testing String Interpolation ---";
+
+# Basic interpolation with variables
+string interpName = "Alice";
+int interpAge = 25;
+puts "Hello, #{interpName}! You are #{interpAge} years old.";
+
+# Interpolation with expressions
+int interpX = 10;
+int interpY = 5;
+puts "The sum of #{interpX} and #{interpY} is #{interpX + interpY}";
+
+# Interpolation with boolean values
+bool interpIsActive = true;
+puts "Status: #{interpIsActive}";
+
+# Multiple interpolations in one string
+string interpFirstName = "John";
+string interpLastName = "Doe";
+int interpScore = 95;
+puts "Student: #{interpFirstName} #{interpLastName}, Score: #{interpScore}%";
+
+# Interpolation with simple expressions
+int interpA = 3;
+int interpB = 4;
+puts "The sum of #{interpA} and #{interpB} is #{interpA + interpB}";
+
+# Interpolation at start and end of string
+puts "#{interpName} says hello";
+puts "Hello there, #{interpName}";
+
+# ============================================================================
+# CONDITIONAL STATEMENTS
+# ============================================================================
+puts "--- Testing Conditionals ---";
+
+# Basic if statement
+int testNum = 15;
+
+if (testNum > 10)
+    puts "Greater than 10";
+end
+
+# If-else statement
+if (testNum < 0)
+    puts "Negative";
+else
+    puts "Non-negative";
+end
+
+# If-elsif-else statement
+if (testNum < 0)
+    puts "Negative";
+elsif (testNum == 0)
+    puts "Zero";
+else
+    puts "Positive";
+end
+
+# Simple grade check
+int gradeTest = 85;
+
+if (gradeTest >= 80)
+    puts "Grade B or better";
+else
+    puts "Grade C or lower";
+end
+
+# If with complex conditions
+bool condIsActive = true;
+int condCount = 25;
+
+if (condIsActive and condCount > 20)
+    puts "Active and count is high";
+else
+    puts "Other case";
+end
+
+# If with nullable variables
+string?! condOptionalValue = nil;
+
+if (condOptionalValue == nil)
+    puts "Value is nil";
+else
+    puts "Value is not nil";
+end
+
+condOptionalValue = "Hello";
+
+if (condOptionalValue != nil)
+    puts "Value is now set";
+else
+    puts "Value is still nil";
+end
+
+# ============================================================================
+# LOOP CONSTRUCTS
+# ============================================================================
+puts "--- Testing Loops ---";
+
+# Basic while loop
+puts "While loop test:";
+int! i = 0;
+while (i < 5)
+    puts i;
+    i = i + 1;
+end
+
+# While loop with complex condition
+puts "While loop with complex condition:";
+int! loopCounter = 0;
+bool! keepGoing = true;
+while (loopCounter < 10 and keepGoing)
+    puts loopCounter;
+    loopCounter = loopCounter + 1;
+    if (loopCounter == 3)
+        keepGoing = false;
+    end
+end
+
+# Basic for loop
+puts "For loop test:";
+for (int! j = 0; j < 5; j = j + 1)
+    puts j;
+end
+
+# For loop with different increment
+puts "For loop with step 2:";
+for (int! k = 0; k < 10; k = k + 2)
+    puts k;
+end
+
+# For loop counting down
+puts "For loop counting down:";
+for (int! m = 5; m > 0; m = m - 1)
+    puts m;
+end
+
+# Nested loops
+puts "Nested loops:";
+for (int! outer = 1; outer <= 3; outer = outer + 1)
+    puts "Outer: #{outer}";
+    for (int! inner = 1; inner <= 2; inner = inner + 1)
+        puts "  Inner: #{inner}";
+    end
+end
+
+# Loop with early termination
+puts "Loop with early termination:";
+int! n = 0;
+while (n < 10)
+    if (n == 5)
+        n = 10;  # Force loop to end
+    else
+        puts n;
+        n = n + 1;
+    end
+end
+
+# Loop with mutable variables
+puts "Loop modifying multiple variables:";
+int! sum = 0;
+int! product = 1;
+for (int! val = 1; val <= 4; val = val + 1)
+    sum = sum + val;
+    product = product * val;
+    puts "val: #{val}, sum: #{sum}, product: #{product}";
+end
+
+# While loop with string manipulation
+puts "String building in loop:";
+string! loopResult = "";
+int! loopCount = 1;
+while (loopCount <= 3)
+    loopResult = loopResult + "Item" + "#{loopCount}" + " ";
+    loopCount = loopCount + 1;
+end
+puts loopResult;
+
+# ============================================================================
+# FUNCTION DEFINITIONS AND CALLS
+# ============================================================================
+puts "--- Testing Functions ---";
+
+# Simple function
+def greet(string name) string
+    return "Hello, " + name;
+end
+
+puts greet("Alice");
+
+# Function with multiple parameters
+def add(int a, int b) int
+    return a + b;
+end
+
+puts add(5, 3);
+
+# Function with nullable parameter
+def greetOptional(string? name) string
+    if (name == nil)
+        return "Hello, stranger!";
+    else
+        return "Hello, " + name;
+    end
+end
+
+puts greetOptional("Bob");
+puts greetOptional(nil);
+
+# Function with mixed parameter types
+def formatMessage(string msg, int num, bool urgent) string
+    string! prefix = "";
+    if (urgent) 
+        prefix = "URGENT: ";
+    else
+        prefix = "INFO: ";
+    end
+    return prefix + msg + " (" + "#{num}" + ")";
+end
+
+puts formatMessage("System update", 42, true);
+puts formatMessage("Regular message", 10, false);
+
+# Recursive function
+def factorial(int n) int
+    if (n <= 1)
+        return 1;
+    else
+        return n * factorial(n - 1);
+    end
+end
+
+puts factorial(5);  # 120
+
+# Boolean returning function
+def isEvenFunc(int num) bool
+    int half = num / 2;
+    return (half * 2) == num;
+end
+
+puts isEvenFunc(4);   # true
+puts isEvenFunc(7);   # false
+
+# Void function
+def printInfo(string name, int age) void
+    puts "Name: " + name;
+    puts "Age: " + "#{age}";
+end
+
+printInfo("Charlie", 30);
+
+# Function with complex logic
+def getGrade(int score) string
+    if (score >= 90)
+        return "A";
+    elsif (score >= 80)
+        return "B";
+    elsif (score >= 70)
+        return "C";
+    elsif (score >= 60)
+        return "D";
+    else
+        return "F";
+    end
+end
+
+puts getGrade(95);
+puts getGrade(75);
+puts getGrade(55);
+
+# ============================================================================
+# CLOSURES AND FIRST-CLASS FUNCTIONS
+# ============================================================================
+puts "--- Testing Closures ---";
+
+# Basic closure
+def makeCounter() func
+    int! count = 0;
+    
+    def increment() int
+        count = count + 1;
+        return count;
+    end
+    
+    return increment;
+end
+
+func counter = makeCounter();
+puts counter();  # 1
+puts counter();  # 2
+puts counter();  # 3
+
+# Function returning function with parameters
+def makeMultiplier(int factor) func
+    def multiply(int x) int
+        return x * factor;
+    end
+    return multiply;
+end
+
+func double = makeMultiplier(2);
+func triple = makeMultiplier(3);
+
+puts double(5);   # 10
+puts triple(5);   # 15
+puts double(10);  # 20
+
+# ============================================================================
+# SCOPE MANAGEMENT
+# ============================================================================
+puts "--- Testing Scopes ---";
+
+# Global scope
+string scopeGlobal = "global";
+string! scopeMutableGlobal = "mutable global";
+
+puts scopeGlobal;
+puts scopeMutableGlobal;
+
+# Basic begin/end block
+begin
+    string scopeLocal = "local";
+    string! scopeMutableLocal = "mutable local";
+    puts scopeGlobal;  # Access global from local scope
+    puts scopeMutableGlobal;
+    puts scopeLocal;
+    puts scopeMutableLocal;
+    
+    # Modify mutable variable
+    scopeMutableLocal = "modified local";
+    puts scopeMutableLocal;
+end
+
+# Variables from block are not accessible here
+puts scopeGlobal;
+scopeMutableGlobal = "modified global";
+puts scopeMutableGlobal;
+
+# Nested scopes
+begin
+    string outerLocal = "outer";
+    int outerNum = 42;
+    puts outerLocal;
+    puts outerNum;
+    
+    begin
+        string innerLocal = "inner";
+        int innerNum = 24;
+        puts scopeGlobal;      # Access global
+        puts outerLocal;  # Access outer scope
+        puts innerLocal;  # Access current scope
+        puts outerNum;
+        puts innerNum;
+        
+        # Modify global from nested scope
+        scopeMutableGlobal = "modified from nested";
+        
+        begin
+            string deepLocal = "deep";
+            puts scopeGlobal;
+            puts outerLocal;
+            puts innerLocal;
+            puts deepLocal;
+            puts outerNum;
+            puts innerNum;
+        end
+    end
+    
+    puts outerLocal;  # Still accessible
+    puts outerNum;
+end
+
+puts scopeMutableGlobal;  # Should show modification from nested scope
+
+# Scope with functions
+def testScopeFunction() void
+    string functionLocal = "function local";
+    puts functionLocal;
+    puts scopeGlobal;  # Access global from function
+    
+    begin
+        string blockInFunction = "block in function";
+        puts functionLocal;     # Access function scope
+        puts blockInFunction;   # Access block scope
+        puts scopeGlobal;           # Access global scope
+    end
+end
+
+testScopeFunction();
+
+# Variable shadowing
+string shadowTest = "global shadow";
+puts shadowTest;
+
+begin
+    string shadowTest = "local shadow";  # Shadows global
+    puts shadowTest;  # Should print local version
+    
+    begin
+        string shadowTest = "nested shadow";  # Shadows local
+        puts shadowTest;  # Should print nested version
+    end
+    
+    puts shadowTest;  # Should print local version again
+end
+
+puts shadowTest;  # Should print global version
+
+# ============================================================================
+# CLASSES AND OBJECTS
+# ============================================================================
+puts "--- Testing Classes ---";
+
+# Basic class definition
+class Person
+    def init(string name, int age) void
+        this.name = name;
+        this.age = age;
+        this.nickname = nil; # nullable field
+    end
+    
+    def introduce() string
+        return "Hi, I'm " + this.name;
+    end
+    
+    def haveBirthday() int
+        this.age = this.age + 1;
+        return this.age;
+    end
+    
+    def isAdult() bool
+        return this.age >= 18;
+    end
+    
+    def setNickname(string? nick) void
+        this.nickname = nick;
+    end
+    
+    def getNickname() string
+        if (this.nickname == nil)
+            return "No nickname";
+        else
+            return "" + this.nickname;
+        end
+    end
+end
+
+# Create and use objects
+obj person1 = Person("Alice", 25);
+puts person1.introduce();
+puts person1.haveBirthday();
+puts person1.isAdult();
+
+# Test nullable fields
+puts person1.getNickname();
+person1.setNickname("Ace");
+puts person1.getNickname();
+
+# Multiple objects
+obj person2 = Person("Bob", 17);
+puts person2.introduce();
+puts person2.isAdult();
+
+# Class with more complex methods
+class Calculator
+    def init() void
+        this.result = 0;
+    end
+    
+    def add(int value) int
+        this.result = this.result + value;
+        return this.result;
+    end
+    
+    def multiply(int value) int
+        this.result = this.result * value;
+        return this.result;
+    end
+    
+    def getResult() int
+        return this.result;
+    end
+    
+    def reset() void
+        this.result = 0;
+    end
+end
+
+obj calc = Calculator();
+puts calc.add(10);      # 10
+puts calc.multiply(3);  # 30
+puts calc.add(5);       # 35
+puts calc.getResult();  # 35
+calc.reset();
+puts calc.getResult();  # 0
+
+# ============================================================================
+# INHERITANCE AND SUPER KEYWORD
+# ============================================================================
+puts "--- Testing Inheritance ---";
+
+# Base class
+class Animal
+    def init(string name) void
+        this.name = name;
+        this.owner = nil; # nullable field
+    end
+    
+    def speak() string
+        return this.name + " makes a sound";
+    end
+    
+    def getType() string
+        return "animal";
+    end
+    
+    def setOwner(string? ownerName) void
+        this.owner = ownerName;
+    end
+    
+    def getOwner() string
+        if (this.owner == nil)
+            return "No owner";
+        else
+            return "" + this.owner;
+        end
+    end
+    
+    def introduce() string
+        return "This is " + this.name + ", a " + this.getType();
+    end
+end
+
+# Derived class
+class Dog < Animal
+    def init(string name, string breed) void
+        super.init(name);
+        this.breed = breed;
+    end
+    
+    def speak() string
+        return this.name + " barks";
+    end
+    
+    def getType() string
+        return "dog";
+    end
+    
+    def isGoodBoy() bool
+        return true;
+    end
+    
+    def getBreed() string
+        return this.breed;
+    end
+    
+    def fullIntroduction() string
+        return super.introduce() + " of breed " + this.breed;
+    end
+end
+
+# Another derived class
+class Cat < Animal
+    def init(string name, bool isIndoor) void
+        super.init(name);
+        this.isIndoor = isIndoor;
+    end
+    
+    def speak() string
+        return this.name + " meows";
+    end
+    
+    def getType() string
+        return "cat";
+    end
+    
+    def isIndoorCat() bool
+        return this.isIndoor;
+    end
+    
+    def hunt() string
+        if (this.isIndoor)
+            return this.name + " hunts toy mice";
+        else
+            return this.name + " hunts real mice";
+        end
+    end
+end
+
+# Test base class
+obj animal = Animal("Fluffy");
+puts animal.speak();
+puts animal.getType();
+puts animal.introduce();
+puts animal.getOwner();
+animal.setOwner("John");
+puts animal.getOwner();
+
+# Test derived classes
+obj dog = Dog("Rex", "Golden Retriever");
+puts dog.speak();      # Overridden method
+puts dog.getType();    # Overridden method
+puts dog.getBreed();
+puts dog.isGoodBoy();
+puts dog.introduce();  # Uses inherited method
+puts dog.fullIntroduction(); # Uses super
+
+obj cat = Cat("Whiskers", true);
+puts cat.speak();
+puts cat.getType();
+puts cat.isIndoorCat();
+puts cat.hunt();
+puts cat.introduce();
+
+# Test polymorphism
+obj pet1 = Dog("Buddy", "Labrador");
+obj pet2 = Cat("Mittens", false);
+
+puts pet1.speak();  # Dog's speak method
+puts pet2.speak();  # Cat's speak method
+puts pet1.getType(); # Dog's getType method
+puts pet2.getType(); # Cat's getType method
+
+# ============================================================================
+# HASH/DICTIONARY OPERATIONS
+# ============================================================================
+puts "--- Testing Hashes ---";
+
+# Basic hash creation and access
+string hashkey = "zaphod";
+hash my_hash = { "key": "value", 42: "another value", "zaphod": 69 };
+puts my_hash["key"]; # should return value
+puts my_hash[42]; # should return another value
+puts my_hash[hashkey]; # should return 69
+
+# Hash lookup returns a generic value, so we need type coercion
+int somevalue = my_hash["zaphod"] as int;
+puts somevalue;
+
+# ============================================================================
+# TYPE COERCION WITH 'AS' SYNTAX
+# ============================================================================
+puts "--- Testing Type Coercion ---";
+
+# Test number to string conversion
+int coerceNum = 42;
+string coerceNumStr = coerceNum as string;
+puts "Number to string: " + coerceNumStr;
+
+# Test string to number conversion
+string coerceStrNum = "123";
+int coerceParsedNum = coerceStrNum as int;
+puts "String to number: " + (coerceParsedNum as string);
+
+# Test decimal string to number
+string coerceDecimalStr = "3.14159";
+int coerceDecimalNum = coerceDecimalStr as int;
+puts "Decimal string to number: " + (coerceDecimalNum as string);
+
+# Test boolean to string conversion
+bool coerceTrueVal = true;
+bool coerceFalseVal = false;
+string coerceTrueStr = coerceTrueVal as string;
+string coerceFalseStr = coerceFalseVal as string;
+puts "Boolean to string: " + coerceTrueStr + ", " + coerceFalseStr;
+
+# Test nil to string conversion
+string coerceNilStr = nil as string;
+puts "Nil to string: " + coerceNilStr;
+
+# Test Ruby-style truthiness (only false and nil are falsey)
+puts "=== Testing Ruby-style Truthiness ===";
+
+# Numbers are truthy (including 0)
+int zero = 0;
+int negative = -5;
+int positive = 42;
+bool zeroTruthy = zero as bool;
+bool negativeTruthy = negative as bool;
+bool positiveTruthy = positive as bool;
+puts "0 as bool: " + (zeroTruthy as string);
+puts "-5 as bool: " + (negativeTruthy as string);
+puts "42 as bool: " + (positiveTruthy as string);
+
+# Strings are truthy (including empty strings)
+string emptyStr = "";
+string nonEmptyStr = "hello";
+bool emptyStringTruthy = emptyStr as bool;
+bool nonEmptyStringTruthy = nonEmptyStr as bool;
+puts "Empty string as bool: " + (emptyStringTruthy as string);
+puts "Non-empty string as bool: " + (nonEmptyStringTruthy as string);
+
+# Only false and nil are falsey
+bool falseFalsey = false as bool;
+bool nilFalsey = nil as bool;
+puts "false as bool: " + (falseFalsey as string);
+puts "nil as bool: " + (nilFalsey as string);
+
+# Test hash type coercion
+hash! testHash = {"name": "Alice", "age": 25, "active": true, "score": 0};
+
+# Extract and cast hash values
+string hashName = testHash["name"] as string;
+int hashAge = testHash["age"] as int;
+bool hashActive = testHash["active"] as bool;
+bool hashScoreActive = testHash["score"] as bool; # 0 should be truthy in Ruby
+
+puts "Name: " + hashName;
+puts "Age: " + (hashAge as string);
+puts "Active: " + (hashActive as string);
+puts "Score (0) as bool: " + (hashScoreActive as string);
+
+# Test casting non-existent hash key (should be nil)
+string missing = testHash["missing"] as string;
+puts "Missing key as string: " + missing;
+
+# ============================================================================
+# MODULES AND REQUIRE STATEMENT
+# ============================================================================
+puts "--- Testing Modules ---";
+
+# Define a module
+module MathUtils
+    def add(int x, int y) int
+        return x + y;
+    end
+    
+    def subtract(int x, int y) int
+        return x - y;
+    end
+    
+    def multiply(int x, int y) int
+        return x * y;
+    end
+    
+    def divide(int x, int y) int
+        if (y == 0)
+            puts "Error: Division by zero";
+            return 0;
+        else
+            return x / y;
+        end
+    end
+    
+    def power(int base, int exponent) int
+        int! result = 1;
+        for (int! i = 0; i < exponent; i = i + 1)
+            result = result * base;
+        end
+        return result;
+    end
+end
+
+# Use module functions
+puts MathUtils.add(10, 5);      # 15
+puts MathUtils.subtract(10, 5); # 5
+puts MathUtils.multiply(10, 5); # 50
+puts MathUtils.divide(10, 5);   # 2
+puts MathUtils.power(2, 3);     # 8
+
+# Another module
+module StringUtils
+    def reverse(string text) string
+        # Simple reverse implementation (conceptual)
+        return text; # Would need actual reverse logic
+    end
+    
+    def uppercase(string text) string
+        # Conceptual uppercase (would need actual implementation)
+        return text;
+    end
+    
+    def length(string text) int
+        # Conceptual length function
+        return 10; # Placeholder
+    end
+    
+    def contains(string text, string substring) bool
+        # Conceptual contains check
+        return true; # Placeholder
+    end
+end
+
+# Use string utilities
+puts StringUtils.reverse("hello");
+puts StringUtils.uppercase("world");
+puts StringUtils.length("test");
+puts StringUtils.contains("hello world", "world");
+
+# ============================================================================
+# JIT COMPILATION FEATURES (PERFORMANCE TESTING)
+# ============================================================================
+puts "--- Testing JIT Compilation ---";
+
+# Hot function that should trigger JIT compilation
+def hotFunction(int n) int
+    int! result = 0;
+    for (int! i = 0; i < n; i = i + 1)
+        result = result + i;
+    end
+    return result;
+end
+
+# Call the function many times to trigger JIT
+puts "Calling hot function to trigger JIT:";
+for (int! call = 0; call < 5; call = call + 1)
+    int jitResult = hotFunction(10);
+    puts "Call #{call}: #{jitResult}";
+end
+
+# Recursive function that should benefit from JIT
+def fibonacci(int n) int
+    if (n <= 1)
+        return n;
+    else
+        return fibonacci(n - 1) + fibonacci(n - 2);
+    end
+end
+
+puts "Fibonacci calculations (should trigger JIT):";
+for (int! i = 1; i <= 5; i = i + 1)
+    int fib = fibonacci(i);
+    puts "fib(#{i}) = #{fib}";
+end
+
+# Loop-heavy function for JIT optimization
+def matrixMultiply(int size) int
+    int! total = 0;
+    for (int! i = 0; i < size; i = i + 1)
+        for (int! j = 0; j < size; j = j + 1)
+            total = total + (i * j);
+        end
+    end
+    return total;
+end
+
+puts "Matrix-like calculations (nested loops):";
+for (int! size = 1; size <= 3; size = size + 1)
+    int matrixResult = matrixMultiply(size);
+    puts "Matrix #{size}x#{size}: #{matrixResult}";
+end
+
+# ============================================================================
+# OPTIONAL SEMICOLONS SYNTAX
+# ============================================================================
+puts "--- Testing Optional Semicolons ---"
+
+# Test without semicolons (newlines as terminators)
+puts "Test: No semicolons"
+int optX = 10
+int optY = 20
+puts optX + optY
+
+# Test with semicolons (traditional style)
+puts "Test: With semicolons";
+int optA = 5;
+int optB = 15;
+puts optA * optB;
+
+# Test mixed style
+puts "Test: Mixed style"
+int optP = 3;
+int optQ = 7
+puts optP + optQ;
+
+# Variable declarations without semicolons
+puts "Test: Variable declarations"
+string optName = "Gem"
+bool optIsAwesome = true
+puts optName
+puts optIsAwesome
+
+# Function calls without semicolons
+puts "Test: Function calls"
+puts "Hello"
+puts "World"
+
+# Arithmetic expressions without semicolons
+puts "Test: Arithmetic"
+int optResult = 5 + 3 * 2
+puts optResult
+
+# Complex expressions without semicolons
+puts "Test: Complex expressions"
+int optVal1 = 10
+int optVal2 = 20
+int optVal3 = 30
+int optTotal = optVal1 + optVal2 + optVal3
+puts optTotal
+
+# Return statements in functions
+def testOptionalSemicolonFunction() int
+  int value = 42
+  return value
+end
+
+puts "Test: Function with optional semicolons"
+puts testOptionalSemicolonFunction()
+
+puts "=== COMPREHENSIVE TEST COMPLETE ===";

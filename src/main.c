@@ -24,6 +24,9 @@
 //> LLVM Compilation main-include-llvm
 #include "llvm_compiler.h"
 //< LLVM Compilation main-include-llvm
+//> GCC Compilation main-include-gcc
+#include "gcc_compiler.h"
+//< GCC Compilation main-include-gcc
 //> Line editing support
 #include "lineedit.h"
 //< Line editing support
@@ -63,6 +66,10 @@ static bool enterReplAfterScript = false;
 static bool enableLLVMCompilation = false;
 static bool enableLLVMCompileOnly = false;
 //< LLVM Compilation global flags
+//> GCC Compilation global flags
+static bool enableGCCCompilation = false;
+static bool enableGCCCompileOnly = false;
+//< GCC Compilation global flags
 //< JIT Integration command line parsing
 
 //> Scanning on Demand repl
@@ -167,8 +174,8 @@ static void runFile(const char* path) {
 static void compileFile(const char* path) {
   char* source = readFile(path);
   
-  // Initialize LLVM compiler
-  initLLVMCompiler();
+  // Initialize GCC compiler
+  initGCCCompiler();
   
   // Compile source to bytecode first
   ObjFunction* function = compile(source);
@@ -176,7 +183,7 @@ static void compileFile(const char* path) {
   
   if (function == NULL) {
     fprintf(stderr, "Failed to compile source to bytecode\n");
-    freeLLVMCompiler();
+    freeGCCCompiler();
     exit(65);
   }
   
@@ -185,22 +192,22 @@ static void compileFile(const char* path) {
   
   // Compile bytecode to native executable and run it
   // The outputPath parameter is no longer used since we use temporary files
-  LLVMCompileResult result = compileAndRunBytecode(function, NULL);
+  GCCCompileResult result = gccCompileAndRunBytecode(function, NULL);
   
   // Pop the function from the stack
   pop();
   
   // Cleanup
-  freeLLVMCompiler();
+  freeGCCCompiler();
   
   switch (result) {
-    case LLVM_COMPILE_OK:
+    case GCC_COMPILE_OK:
       break;
-    case LLVM_COMPILE_ERROR:
-      fprintf(stderr, "LLVM compilation failed\n");
+    case GCC_COMPILE_ERROR:
+      fprintf(stderr, "GCC compilation failed\n");
       exit(65);
       break;
-    case LLVM_COMPILE_LINK_ERROR:
+    case GCC_COMPILE_LINK_ERROR:
       fprintf(stderr, "Linking failed\n");
       exit(65);
       break;
@@ -211,8 +218,8 @@ static void compileFile(const char* path) {
 static void compileFileOnly(const char* path) {
   char* source = readFile(path);
   
-  // Initialize LLVM compiler
-  initLLVMCompiler();
+  // Initialize GCC compiler
+  initGCCCompiler();
   
   // Compile source to bytecode first
   ObjFunction* function = compile(source);
@@ -220,7 +227,7 @@ static void compileFileOnly(const char* path) {
   
   if (function == NULL) {
     fprintf(stderr, "Failed to compile source to bytecode\n");
-    freeLLVMCompiler();
+    freeGCCCompiler();
     exit(65);
   }
   
@@ -251,23 +258,23 @@ static void compileFileOnly(const char* path) {
 #endif
   
   // Compile bytecode to native executable without running it
-  LLVMCompileResult result = compileBytecodeToExecutable(function, outputPath);
+  GCCCompileResult result = gccCompileBytecodeToExecutable(function, outputPath);
   
   // Pop the function from the stack
   pop();
   
   // Cleanup
-  freeLLVMCompiler();
+  freeGCCCompiler();
   
   switch (result) {
-    case LLVM_COMPILE_OK:
+    case GCC_COMPILE_OK:
       printf("Successfully compiled '%s' to '%s'\n", path, outputPath);
       break;
-    case LLVM_COMPILE_ERROR:
-      fprintf(stderr, "LLVM compilation failed\n");
+    case GCC_COMPILE_ERROR:
+      fprintf(stderr, "GCC compilation failed\n");
       exit(65);
       break;
-    case LLVM_COMPILE_LINK_ERROR:
+    case GCC_COMPILE_LINK_ERROR:
       fprintf(stderr, "Linking failed\n");
       exit(65);
       break;
@@ -285,10 +292,10 @@ int main(int argc, const char* argv[]) {
     if (strcmp(argv[i], "--experimental-jit") == 0) {
       // Enable JIT - we'll do this after initVM()
     } else if (strcmp(argv[i], "--experimental-fastmode") == 0) {
-      // Enable LLVM compilation
-      enableLLVMCompilation = true;
+      // Enable GCC compilation
+      enableGCCCompilation = true;
     } else if (strcmp(argv[i], "--experimental-compile") == 0) {
-      enableLLVMCompileOnly = true;
+      enableGCCCompileOnly = true;
     } else if (strcmp(argv[i], "--jit-stats") == 0) {
       showJitStats = true;
     } else if (strcmp(argv[i], "--repl") == 0) {
@@ -330,31 +337,31 @@ int main(int argc, const char* argv[]) {
 
 //> LLVM Compilation validation
   // Validate compilation mode
-  if (enableLLVMCompilation && scriptPath == NULL) {
+  if (enableGCCCompilation && scriptPath == NULL) {
     fprintf(stderr, "Error: --experimental-fastmode requires a script file\n");
     printUsage();
     exit(64);
   }
   
-  if (enableLLVMCompileOnly && scriptPath == NULL) {
+  if (enableGCCCompileOnly && scriptPath == NULL) {
     fprintf(stderr, "Error: --experimental-compile requires a script file\n");
     printUsage();
     exit(64);
   }
   
-  if (enableLLVMCompilation && enableLLVMCompileOnly) {
+  if (enableGCCCompilation && enableGCCCompileOnly) {
     fprintf(stderr, "Error: --experimental-fastmode and --experimental-compile cannot be used together\n");
     printUsage();
     exit(64);
   }
   
-  if (enableLLVMCompilation && enterReplAfterScript) {
+  if (enableGCCCompilation && enterReplAfterScript) {
     fprintf(stderr, "Error: --experimental-fastmode cannot be used with --repl\n");
     printUsage();
     exit(64);
   }
   
-  if (enableLLVMCompileOnly && enterReplAfterScript) {
+  if (enableGCCCompileOnly && enterReplAfterScript) {
     fprintf(stderr, "Error: --experimental-compile cannot be used with --repl\n");
     printUsage();
     exit(64);
@@ -382,9 +389,9 @@ int main(int argc, const char* argv[]) {
     repl();
   } else {
     //> LLVM Compilation execution
-    if (enableLLVMCompilation) {
+    if (enableGCCCompilation) {
       compileFile(scriptPath);
-    } else if (enableLLVMCompileOnly) {
+    } else if (enableGCCCompileOnly) {
       compileFileOnly(scriptPath);
     } else {
       runFile(scriptPath);
