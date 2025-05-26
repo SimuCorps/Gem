@@ -1,0 +1,28 @@
+module TIME
+  def now() int
+    return epochClock();
+  end
+
+  def elapsed(int since) int?
+    int current = TIME.now();
+    # should raise an error instead of returning int?
+    if (since > current)
+        return nil;
+    end
+    return current - since;
+  end
+
+  def sleep(int seconds) void
+    sleepMs(seconds);
+  end
+
+  def measure(func f) int?
+    int start = TIME.now();
+    f();
+    return TIME.elapsed(start);
+  end
+
+  def timeout(func f, int maxSeconds) bool
+    return TIME.measure(f) <= maxSeconds;
+  end
+end
