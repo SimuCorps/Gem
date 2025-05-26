@@ -7,6 +7,15 @@ LDFLAGS = -lm
 
 # LLVM settings (check if LLVM is available)
 LLVM_CONFIG := $(shell which llvm-config 2>/dev/null)
+ifeq ($(LLVM_CONFIG),)
+    # Try common Homebrew paths
+    ifneq ($(wildcard /usr/local/opt/llvm/bin/llvm-config),)
+        LLVM_CONFIG := /usr/local/opt/llvm/bin/llvm-config
+    else ifneq ($(wildcard /opt/homebrew/bin/llvm-config),)
+        LLVM_CONFIG := /opt/homebrew/bin/llvm-config
+    endif
+endif
+
 ifdef LLVM_CONFIG
     LLVM_CFLAGS := $(shell $(LLVM_CONFIG) --cflags)
     LLVM_LDFLAGS := $(shell $(LLVM_CONFIG) --ldflags --libs core executionengine mcjit native)
