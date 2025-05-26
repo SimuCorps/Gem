@@ -1356,8 +1356,11 @@ static void createRuntimeLibrary(const char* runtimePath) {
     fprintf(file, "                char* str = (char*)value.data;\n");
     fprintf(file, "                if (str && str[0] != '\\0') {\n");
     fprintf(file, "                    printf(\"%%s\\n\", str);\n");
+    fprintf(file, "                } else if (str && str[0] == '\\0') {\n");
+    fprintf(file, "                    // Empty string - print nothing or just newline\n");
+    fprintf(file, "                    printf(\"\\n\");\n");
     fprintf(file, "                } else {\n");
-    fprintf(file, "                    printf(\"<empty string>\\n\");\n");
+    fprintf(file, "                    printf(\"<object>\\n\");\n");
     fprintf(file, "                }\n");
     fprintf(file, "            } else {\n");
     fprintf(file, "                printf(\"<object>\\n\");\n");
