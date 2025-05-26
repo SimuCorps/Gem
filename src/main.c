@@ -37,6 +37,7 @@ static void printUsage() {
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  --experimental-jit      Enable experimental JIT compilation\n");
   fprintf(stderr, "  --experimental-fastmode  Gotta go fast\n");
+  fprintf(stderr, "  --experimental-compile   Compile to binary without executing\n");
   fprintf(stderr, "  --jit-stats             Print JIT statistics at exit\n");
   fprintf(stderr, "  --jit-threshold N       Set function compilation threshold (default: 100)\n");
   fprintf(stderr, "  --jit-loop-threshold N  Set loop compilation threshold (default: 50)\n");
@@ -60,6 +61,7 @@ static bool showJitStats = false;
 static bool enterReplAfterScript = false;
 //> LLVM Compilation global flags
 static bool enableLLVMCompilation = false;
+static bool enableLLVMCompileOnly = false;
 //< LLVM Compilation global flags
 //< JIT Integration command line parsing
 
@@ -198,6 +200,68 @@ static void compileFile(const char* path) {
       break;
   }
 }
+
+//> LLVM Compilation compile-file-only
+static void compileFileOnly(const char* path) {
+  char* source = readFile(path);
+  
+  // Initialize LLVM compiler
+  initLLVMCompiler();
+  
+  // Compile source to bytecode first
+  ObjFunction* function = compile(source);
+  free(source);
+  
+  if (function == NULL) {
+    fprintf(stderr, "Failed to compile source to bytecode\n");
+    freeLLVMCompiler();
+    exit(65);
+  }
+  
+  // Generate output filename based on input filename
+  const char* baseName = strrchr(path, '/');
+  if (baseName) {
+    baseName++; // Skip the '/'
+  } else {
+    baseName = path;
+  }
+  
+  // Remove .gem extension if present and add executable extension
+  char outputPath[512];
+  const char* ext = strrchr(baseName, '.');
+  if (ext && strcmp(ext, ".gem") == 0) {
+    size_t nameLen = ext - baseName;
+    strncpy(outputPath, baseName, nameLen);
+    outputPath[nameLen] = '\0';
+  } else {
+    strcpy(outputPath, baseName);
+  }
+  
+#ifdef _WIN32
+  strcat(outputPath, ".exe");
+#endif
+  
+  // Compile bytecode to native executable without running it
+  LLVMCompileResult result = compileBytecodeToExecutable(function, outputPath);
+  
+  // Cleanup
+  freeLLVMCompiler();
+  
+  switch (result) {
+    case LLVM_COMPILE_OK:
+      printf("Successfully compiled '%s' to '%s'\n", path, outputPath);
+      break;
+    case LLVM_COMPILE_ERROR:
+      fprintf(stderr, "LLVM compilation failed\n");
+      exit(65);
+      break;
+    case LLVM_COMPILE_LINK_ERROR:
+      fprintf(stderr, "Linking failed\n");
+      exit(65);
+      break;
+  }
+}
+//< LLVM Compilation compile-file-only
 //< LLVM Compilation compile-file
 
 int main(int argc, const char* argv[]) {
@@ -211,6 +275,8 @@ int main(int argc, const char* argv[]) {
     } else if (strcmp(argv[i], "--experimental-fastmode") == 0) {
       // Enable LLVM compilation
       enableLLVMCompilation = true;
+    } else if (strcmp(argv[i], "--experimental-compile") == 0) {
+      enableLLVMCompileOnly = true;
     } else if (strcmp(argv[i], "--jit-stats") == 0) {
       showJitStats = true;
     } else if (strcmp(argv[i], "--repl") == 0) {
@@ -258,8 +324,26 @@ int main(int argc, const char* argv[]) {
     exit(64);
   }
   
+  if (enableLLVMCompileOnly && scriptPath == NULL) {
+    fprintf(stderr, "Error: --experimental-compile requires a script file\n");
+    printUsage();
+    exit(64);
+  }
+  
+  if (enableLLVMCompilation && enableLLVMCompileOnly) {
+    fprintf(stderr, "Error: --experimental-fastmode and --experimental-compile cannot be used together\n");
+    printUsage();
+    exit(64);
+  }
+  
   if (enableLLVMCompilation && enterReplAfterScript) {
     fprintf(stderr, "Error: --experimental-fastmode cannot be used with --repl\n");
+    printUsage();
+    exit(64);
+  }
+  
+  if (enableLLVMCompileOnly && enterReplAfterScript) {
+    fprintf(stderr, "Error: --experimental-compile cannot be used with --repl\n");
     printUsage();
     exit(64);
   }
@@ -288,6 +372,8 @@ int main(int argc, const char* argv[]) {
     //> LLVM Compilation execution
     if (enableLLVMCompilation) {
       compileFile(scriptPath);
+    } else if (enableLLVMCompileOnly) {
+      compileFileOnly(scriptPath);
     } else {
       runFile(scriptPath);
       if (enterReplAfterScript) {

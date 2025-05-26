@@ -1324,4 +1324,97 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
     return LLVM_COMPILE_OK;
 }
 
+LLVMCompileResult compileBytecodeToExecutable(ObjFunction* function, const char* outputPath) {
+    if (!function) return LLVM_COMPILE_ERROR;
+    
+    // Compile to LLVM IR
+    LLVMValueRef mainFunc = compileBytecodeChunk(&function->chunk);
+    
+    // Verify the module
+    char* error = NULL;
+    if (LLVMVerifyModule(module, LLVMAbortProcessAction, &error)) {
+        fprintf(stderr, "LLVM module verification failed: %s\n", error);
+        LLVMDisposeMessage(error);
+        return LLVM_COMPILE_ERROR;
+    }
+    
+    // Create temporary files in system temp directory
+    char tempDir[256];
+    char llFile[512], objFile[512], runtimeFile[512];
+    
+    // Get system temp directory
+#ifdef _WIN32
+    const char* tmpDir = getenv("TEMP");
+    if (!tmpDir) tmpDir = getenv("TMP");
+    if (!tmpDir) tmpDir = "C:\\temp";
+#else
+    const char* tmpDir = getenv("TMPDIR");
+    if (!tmpDir) tmpDir = "/tmp";
+#endif
+    
+    // Generate unique temporary file names using process ID and timestamp
+    int pid = getpid();
+    long timestamp = (long)time(NULL);
+    
+    snprintf(llFile, sizeof(llFile), "%s/gem_compiled_%d_%ld.ll", tmpDir, pid, timestamp);
+    snprintf(objFile, sizeof(objFile), "%s/gem_compiled_%d_%ld.o", tmpDir, pid, timestamp);
+    snprintf(runtimeFile, sizeof(runtimeFile), "%s/gem_runtime_%d_%ld.c", tmpDir, pid, timestamp);
+    
+    // Write LLVM IR to file
+    if (LLVMPrintModuleToFile(module, llFile, &error)) {
+        fprintf(stderr, "Failed to write LLVM IR: %s\n", error);
+        LLVMDisposeMessage(error);
+        return LLVM_COMPILE_ERROR;
+    }
+    
+    // Create runtime library
+    createRuntimeLibrary(runtimeFile);
+    
+    // Compile LLVM IR to object file using llc
+    char llcCmd[1024];
+    // Try the common Homebrew path first, then fall back to PATH
+    if (access("/usr/local/opt/llvm/bin/llc", X_OK) == 0) {
+        snprintf(llcCmd, sizeof(llcCmd), "/usr/local/opt/llvm/bin/llc -filetype=obj %s -o %s", llFile, objFile);
+    } else if (access("/opt/homebrew/bin/llc", X_OK) == 0) {
+        // Apple Silicon Homebrew path
+        snprintf(llcCmd, sizeof(llcCmd), "/opt/homebrew/bin/llc -filetype=obj %s -o %s", llFile, objFile);
+    } else {
+        // Fall back to PATH
+        snprintf(llcCmd, sizeof(llcCmd), "llc -filetype=obj %s -o %s", llFile, objFile);
+    }
+    
+    int result = system(llcCmd);
+    if (result != 0) {
+        fprintf(stderr, "Failed to compile LLVM IR to object file\n");
+        unlink(llFile);
+        unlink(runtimeFile);
+        return LLVM_COMPILE_ERROR;
+    }
+    
+    // Link with runtime and create executable
+    char linkCmd[1024];
+#ifdef _WIN32
+    snprintf(linkCmd, sizeof(linkCmd), "gcc %s %s -o %s", runtimeFile, objFile, outputPath);
+#else
+    snprintf(linkCmd, sizeof(linkCmd), "gcc %s %s -o %s", runtimeFile, objFile, outputPath);
+#endif
+    
+    result = system(linkCmd);
+    if (result != 0) {
+        fprintf(stderr, "Failed to link executable\n");
+        unlink(llFile);
+        unlink(objFile);
+        unlink(runtimeFile);
+        return LLVM_COMPILE_LINK_ERROR;
+    }
+    
+    // Clean up intermediate files
+    unlink(llFile);
+    unlink(objFile);
+    unlink(runtimeFile);
+    
+    // Don't run the executable - just leave it for the user
+    return LLVM_COMPILE_OK;
+}
+
 #endif // WITH_LLVM

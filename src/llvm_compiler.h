@@ -23,6 +23,9 @@ void freeLLVMCompiler();
 // Compile bytecode to native executable and run it
 LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outputPath);
 
+// Compile bytecode to native executable without running it
+LLVMCompileResult compileBytecodeToExecutable(ObjFunction* function, const char* outputPath);
+
 // Compile bytecode to LLVM IR (for debugging)
 LLVMCompileResult compileBytecodeToIR(ObjFunction* function, const char* outputPath);
 
@@ -44,6 +47,12 @@ static inline void freeLLVMCompiler() {
 }
 
 static inline LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outputPath) {
+    (void)function; (void)outputPath;
+    fprintf(stderr, "LLVM compilation not available - interpreter was built without LLVM\n");
+    return LLVM_COMPILE_ERROR;
+}
+
+static inline LLVMCompileResult compileBytecodeToExecutable(ObjFunction* function, const char* outputPath) {
     (void)function; (void)outputPath;
     fprintf(stderr, "LLVM compilation not available - interpreter was built without LLVM\n");
     return LLVM_COMPILE_ERROR;
