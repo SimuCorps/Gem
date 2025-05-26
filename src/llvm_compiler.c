@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <time.h>
 
 // LLVM C API headers
 #include <llvm-c/Core.h>
@@ -1231,11 +1232,28 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
         return LLVM_COMPILE_ERROR;
     }
     
-    // Create temporary files
-    char llFile[256], objFile[256], runtimeFile[256];
-    snprintf(llFile, sizeof(llFile), "/tmp/gem_compiled_%d.ll", getpid());
-    snprintf(objFile, sizeof(objFile), "/tmp/gem_compiled_%d.o", getpid());
-    snprintf(runtimeFile, sizeof(runtimeFile), "/tmp/gem_runtime_%d.c", getpid());
+    // Create temporary files in system temp directory
+    char tempDir[256];
+    char llFile[512], objFile[512], runtimeFile[512], executableFile[512];
+    
+    // Get system temp directory
+#ifdef _WIN32
+    const char* tmpDir = getenv("TEMP");
+    if (!tmpDir) tmpDir = getenv("TMP");
+    if (!tmpDir) tmpDir = "C:\\temp";
+#else
+    const char* tmpDir = getenv("TMPDIR");
+    if (!tmpDir) tmpDir = "/tmp";
+#endif
+    
+    // Generate unique temporary file names using process ID and timestamp
+    int pid = getpid();
+    long timestamp = (long)time(NULL);
+    
+    snprintf(llFile, sizeof(llFile), "%s/gem_compiled_%d_%ld.ll", tmpDir, pid, timestamp);
+    snprintf(objFile, sizeof(objFile), "%s/gem_compiled_%d_%ld.o", tmpDir, pid, timestamp);
+    snprintf(runtimeFile, sizeof(runtimeFile), "%s/gem_runtime_%d_%ld.c", tmpDir, pid, timestamp);
+    snprintf(executableFile, sizeof(executableFile), "%s/gem_executable_%d_%ld", tmpDir, pid, timestamp);
     
     // Write LLVM IR to file
     if (LLVMPrintModuleToFile(module, llFile, &error)) {
@@ -1248,7 +1266,7 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
     createRuntimeLibrary(runtimeFile);
     
     // Compile LLVM IR to object file using llc
-    char llcCmd[512];
+    char llcCmd[1024];
     // Try the common Homebrew path first, then fall back to PATH
     if (access("/usr/local/opt/llvm/bin/llc", X_OK) == 0) {
         snprintf(llcCmd, sizeof(llcCmd), "/usr/local/opt/llvm/bin/llc -filetype=obj %s -o %s", llFile, objFile);
@@ -1269,8 +1287,13 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
     }
     
     // Link with runtime and create executable
-    char linkCmd[512];
-    snprintf(linkCmd, sizeof(linkCmd), "gcc %s %s -o %s", runtimeFile, objFile, outputPath);
+    char linkCmd[1024];
+#ifdef _WIN32
+    snprintf(linkCmd, sizeof(linkCmd), "gcc %s %s -o %s.exe", runtimeFile, objFile, executableFile);
+    strcat(executableFile, ".exe");
+#else
+    snprintf(linkCmd, sizeof(linkCmd), "gcc %s %s -o %s", runtimeFile, objFile, executableFile);
+#endif
     
     result = system(linkCmd);
     if (result != 0) {
@@ -1281,15 +1304,22 @@ LLVMCompileResult compileAndRunBytecode(ObjFunction* function, const char* outpu
         return LLVM_COMPILE_LINK_ERROR;
     }
     
-    // Clean up temporary files
+    // Clean up intermediate files immediately
     unlink(llFile);
     unlink(objFile);
     unlink(runtimeFile);
     
     // Run the compiled executable
-    char runCmd[512];
-    snprintf(runCmd, sizeof(runCmd), "./%s", outputPath);
+    char runCmd[1024];
+#ifdef _WIN32
+    snprintf(runCmd, sizeof(runCmd), "%s", executableFile);
+#else
+    snprintf(runCmd, sizeof(runCmd), "%s", executableFile);
+#endif
     result = system(runCmd);
+    
+    // Clean up the executable after running
+    unlink(executableFile);
     
     return LLVM_COMPILE_OK;
 }

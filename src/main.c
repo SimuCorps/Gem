@@ -178,26 +178,9 @@ static void compileFile(const char* path) {
     exit(65);
   }
   
-  // Generate output executable name
-  char outputPath[256];
-  const char* baseName = strrchr(path, '/');
-  if (baseName) {
-    baseName++; // Skip the '/'
-  } else {
-    baseName = path;
-  }
-  
-  // Remove .gem extension if present and add no extension (executable)
-  const char* dot = strrchr(baseName, '.');
-  if (dot && strcmp(dot, ".gem") == 0) {
-    size_t nameLen = dot - baseName;
-    snprintf(outputPath, sizeof(outputPath), "%.*s", (int)nameLen, baseName);
-  } else {
-    snprintf(outputPath, sizeof(outputPath), "%s_compiled", baseName);
-  }
-  
-  // Compile bytecode to native executable
-  LLVMCompileResult result = compileAndRunBytecode(function, outputPath);
+  // Compile bytecode to native executable and run it
+  // The outputPath parameter is no longer used since we use temporary files
+  LLVMCompileResult result = compileAndRunBytecode(function, NULL);
   
   // Cleanup
   freeLLVMCompiler();
