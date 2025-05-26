@@ -55,6 +55,9 @@ static LLVMValueRef defineGlobalFunction;
 // Function call runtime functions
 static LLVMValueRef callFunction;
 
+// Type casting runtime function
+static LLVMValueRef typeCastFunction;
+
 // Function types for LLVM calls
 static LLVMTypeRef printFuncType;
 static LLVMTypeRef binaryOpType;
@@ -193,6 +196,13 @@ void initLLVMCompiler() {
         (LLVMTypeRef[]){LLVMInt32TypeInContext(context), LLVMInt32TypeInContext(context), valuePtrType}, 3, 0
     );
     callFunction = LLVMAddFunction(module, "gem_call", callFuncType);
+    
+    // Type casting function
+    LLVMTypeRef typeCastType = LLVMFunctionType(
+        valueType,
+        (LLVMTypeRef[]){valueType, LLVMInt32TypeInContext(context)}, 2, 0
+    );
+    typeCastFunction = LLVMAddFunction(module, "gem_type_cast", typeCastType);
 }
 
 void freeLLVMCompiler() {
@@ -1239,6 +1249,33 @@ static LLVMValueRef compileBytecodeChunk(Chunk* chunk) {
                 break;
             }
             
+            case OP_TYPE_CAST: {
+                if (i >= chunk->count) break;
+                uint8_t targetType = chunk->code[i++];
+                
+                // Pop value from stack
+                LLVMValueRef currentTop = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), stackTop, "currentTop");
+                LLVMValueRef newTop = LLVMBuildSub(builder, currentTop, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "newTop");
+                LLVMValueRef stackPtr = LLVMBuildGEP2(builder, stackType, stack, 
+                    (LLVMValueRef[]){LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), newTop}, 2, "stackPtr");
+                LLVMValueRef value = LLVMBuildLoad2(builder, valueType, stackPtr, "value");
+                
+                // Call type cast function
+                LLVMValueRef targetTypeValue = LLVMConstInt(LLVMInt32TypeInContext(context), targetType, 0);
+                LLVMTypeRef typeCastType = LLVMFunctionType(
+                    valueType,
+                    (LLVMTypeRef[]){valueType, LLVMInt32TypeInContext(context)}, 2, 0
+                );
+                LLVMValueRef result = LLVMBuildCall2(builder, typeCastType, typeCastFunction, 
+                    (LLVMValueRef[]){value, targetTypeValue}, 2, "castResult");
+                
+                // Push result back to stack
+                LLVMBuildStore(builder, result, stackPtr);
+                LLVMValueRef finalTop = LLVMBuildAdd(builder, newTop, LLVMConstInt(LLVMInt32TypeInContext(context), 1, 0), "finalTop");
+                LLVMBuildStore(builder, finalTop, stackTop);
+                break;
+            }
+            
             case OP_RETURN: {
                 // Return 0 from main
                 LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
@@ -1802,6 +1839,68 @@ static void createRuntimeLibrary(const char* runtimePath) {
     fprintf(file, "    \n");
     fprintf(file, "    resultBuffer[pos] = '\\0';\n");
     fprintf(file, "    return (Value){VAL_OBJ, (long long)resultBuffer};\n");
+    fprintf(file, "}\n");
+    fprintf(file, "\n");
+    
+    // Type casting function
+    fprintf(file, "Value gem_type_cast(Value value, int targetType) {\n");
+    fprintf(file, "    switch (targetType) {\n");
+    fprintf(file, "        case 55: { // TOKEN_RETURNTYPE_INT\n");
+    fprintf(file, "            if (value.type == VAL_NUMBER) {\n");
+    fprintf(file, "                return value; // Already a number\n");
+    fprintf(file, "            } else if (value.type == VAL_OBJ && value.data != 0) {\n");
+    fprintf(file, "                // Try to parse string as number\n");
+    fprintf(file, "                char* str = (char*)value.data;\n");
+    fprintf(file, "                char* endptr;\n");
+    fprintf(file, "                double num = strtod(str, &endptr);\n");
+    fprintf(file, "                if (*endptr == '\\0') {\n");
+    fprintf(file, "                    union { double d; long long i; } converter;\n");
+    fprintf(file, "                    converter.d = num;\n");
+    fprintf(file, "                    return (Value){VAL_NUMBER, converter.i};\n");
+    fprintf(file, "                }\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "            return (Value){VAL_NIL, 0}; // Cannot convert\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        case 56: { // TOKEN_RETURNTYPE_STRING\n");
+    fprintf(file, "            if (value.type == VAL_OBJ) {\n");
+    fprintf(file, "                return value; // Already a string\n");
+    fprintf(file, "            } else if (value.type == VAL_NUMBER) {\n");
+    fprintf(file, "                // Convert number to string\n");
+    fprintf(file, "                static char numberBuffer[64];\n");
+    fprintf(file, "                union { double d; long long i; } converter;\n");
+    fprintf(file, "                converter.i = value.data;\n");
+    fprintf(file, "                if (converter.d == (long long)converter.d) {\n");
+    fprintf(file, "                    snprintf(numberBuffer, sizeof(numberBuffer), \"%%lld\", (long long)converter.d);\n");
+    fprintf(file, "                } else {\n");
+    fprintf(file, "                    snprintf(numberBuffer, sizeof(numberBuffer), \"%%g\", converter.d);\n");
+    fprintf(file, "                }\n");
+    fprintf(file, "                return (Value){VAL_OBJ, (long long)numberBuffer};\n");
+    fprintf(file, "            } else if (value.type == VAL_BOOL) {\n");
+    fprintf(file, "                const char* boolStr = value.data ? \"true\" : \"false\";\n");
+    fprintf(file, "                return (Value){VAL_OBJ, (long long)boolStr};\n");
+    fprintf(file, "            } else if (value.type == VAL_NIL) {\n");
+    fprintf(file, "                return (Value){VAL_OBJ, (long long)\"nil\"};\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "            return (Value){VAL_OBJ, (long long)\"<object>\"};\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        case 57: { // TOKEN_RETURNTYPE_BOOL\n");
+    fprintf(file, "            if (value.type == VAL_BOOL) {\n");
+    fprintf(file, "                return value; // Already a bool\n");
+    fprintf(file, "            } else {\n");
+    fprintf(file, "                // Ruby semantics: only false and nil are falsey\n");
+    fprintf(file, "                bool isFalsey = (value.type == VAL_BOOL && value.data == 0) || (value.type == VAL_NIL);\n");
+    fprintf(file, "                return (Value){VAL_BOOL, isFalsey ? 0 : 1};\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        case 61: { // TOKEN_RETURNTYPE_HASH\n");
+    fprintf(file, "            if (value.type == VAL_OBJ) {\n");
+    fprintf(file, "                return value; // Assume it's already a hash\n");
+    fprintf(file, "            }\n");
+    fprintf(file, "            return (Value){VAL_NIL, 0}; // Cannot convert to hash\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        default:\n");
+    fprintf(file, "            return (Value){VAL_NIL, 0}; // Unknown target type\n");
+    fprintf(file, "    }\n");
     fprintf(file, "}\n");
     fprintf(file, "\n");
     
