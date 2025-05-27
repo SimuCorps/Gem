@@ -53,7 +53,7 @@ class Duration
     end
 
     # OPERATIONS
-    # add a way to implement operators +,-,/,* between same class instances
+    # add a way to implement arithmetic and comparaison operators between same class instances
 
     def add(obj other) obj
         # need a true way to check wether obj is instanceof(Duraiton)
@@ -83,5 +83,23 @@ class Duration
     def div(int divisor) obj
         return Duration(this.milliseconds / divisor);
     end
+
+    # Comparisons
+    def gt(obj other) bool
+        return this.milliseconds > other.milliseconds;
+    end
+
+    def lt(obj other) bool
+        return this.milliseconds < other.milliseconds;
+    end
+
+    def eq(obj other) bool
+        return this.milliseconds == other.milliseconds;
+    end
+
+    def to_string() string
+        return this.as_seconds().to_string() + "s";
+    end
 end
+
 
