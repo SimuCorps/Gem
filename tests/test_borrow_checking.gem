@@ -1,0 +1,35 @@
+class SomeData 
+  def init(string v) void
+    this.v = v
+  end
+
+  def process() string
+    return this.v
+  end
+end
+
+
+def borrowExample() void
+  obj data = SomeData("value");
+    
+  begin
+    string testdata = data.process()
+
+    # commented out for testing
+    # puts data.process();  # ✅ Valid: data is in scope
+
+    # this SHOULD be valid
+    puts testdata
+  end
+
+  # this shoudl NOT be valid, since the scope dropped
+  puts testdata
+    
+  # ✅ still valid: data is still scope, commented out for testing
+  # puts data.process();
+end
+
+# commented this line out, because it should be invalid. uncomment to test.
+# ❌ data.process(); now obviously invalid
+
+borrowExample()
