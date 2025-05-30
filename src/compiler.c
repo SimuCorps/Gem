@@ -548,6 +548,7 @@ static void expression();
 static void statement();
 static void declaration();
 static void gemBlock();
+static void scopedBlock();
 static void printStatement();
 static void requireStatement();
 static void returnStatement();
@@ -1933,10 +1934,14 @@ static void forStatement() {
     patchJump(bodyJump);
   }
 
+  beginScope();
+
   // Parse multiple statements until 'end'
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
     declaration();
   }
+
+  endScope();
   
   emitLoop(loopStart);
 
@@ -2743,6 +2748,14 @@ static void gemBlock() {
 }
 //< Local Variables gem-block
 
+//> Local Variables scoped-block
+static void scopedBlock() {
+  beginScope();
+  gemBlock();
+  endScope();
+}
+//< Local Variables scoped-block
+
 //> Control Flow Statements
 static void ifStatement() {
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
@@ -2792,7 +2805,7 @@ static void whileStatement() {
 }
 
 static void beginStatement() {
-  gemBlock();
+  scopedBlock();
 }
 
 static void defDeclaration() {

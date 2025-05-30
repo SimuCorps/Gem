@@ -698,14 +698,16 @@ end</code></pre>
                         <div class="code-block">
                             <pre><code># Gem prevents use-after-drop at compile time
 def borrowExample() void
-    obj data = SomeData("value");
+    obj resource = SomeResource("data");
     
     begin
-        data.process();  # ✅ Valid: data is in scope
+        # resource is borrowed here
+        string some_variable = resource.process()
     end
     
-    # data.process();  # ❌ Compile error: potential use after drop
-end</code></pre>
+    puts some_variable;  # ❌ Compile error: use after potential drop
+end
+</code></pre>
                         </div>
 
                         <h3>Memory Safety Rules</h3>

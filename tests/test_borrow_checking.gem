@@ -1,0 +1,58 @@
+class SomeData 
+  def init(string v) void
+    this.v = v
+  end
+
+  def process() string
+    return this.v
+  end
+end
+
+
+def borrowExample() void
+  obj data = SomeData("value");
+    
+  begin
+    string testdata = data.process()
+
+    # This should be valid - data is in scope
+    puts data.process();
+
+    # This should be valid - testdata is in scope
+    puts testdata
+  end
+
+  # This should NOT be valid - testdata is out of scope. commented out so the test will pass.
+  # puts testdata
+    
+  # This should still be valid - data is still in scope
+  puts data.process();
+end
+
+def nestedScopeExample() void
+  obj data = SomeData("outer");
+  
+  begin
+    string outerVar = data.process()
+    
+    begin
+      string innerVar = data.process()
+      puts innerVar  # Valid - innerVar is in scope
+      puts outerVar  # Valid - outerVar is still in scope
+    end
+    
+    puts outerVar   # Valid - outerVar is still in scope
+    # puts innerVar   # Invalid - innerVar is out of scope. commented out o test will pass
+  end
+  
+  # puts outerVar     # Invalid - outerVar is out of scope. commented out so test will pass
+  puts data.process()  # Valid - data is still in scope
+end
+
+def borrowCheckingExample() void
+  puts "=== Testing Borrow Checking ==="
+  borrowExample()
+  nestedScopeExample()
+end
+
+borrowCheckingExample()
