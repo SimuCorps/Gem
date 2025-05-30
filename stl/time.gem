@@ -1,105 +1,103 @@
-module TIME
-    def now() int
-      return epochClock();
-    end
+module Time
+  def now() int
+    return epochClock();
+  end
 
-    def elapsed(int since) int?
-      int current = TIME.now();
-      # should raise an error instead of returning int?
-      if (since > current)
-          return nil;
-      end
-      return current - since;
+  def elapsed(int since) int?
+    int current = Time.now();
+    # should raise an error instead of returning int?
+    if (since > current)
+        return nil;
     end
+    return current - since;
+  end
 
-    def sleep(int seconds) void
-      sleepMs(seconds);
-    end
+  def sleep(int seconds) void
+    sleepMs(seconds);
+  end
 
-    def measure(func f) int?
-      int start = TIME.now();
-      f();
-      return TIME.elapsed(start);
-    end
+  def measure(func f) int?
+    int start = Time.now();
+    f();
+    return Time.elapsed(start);
+  end
 
-    def timeout(func f, int maxSeconds) bool
-      return TIME.measure(f) <= maxSeconds;
-    end
+  def timeout(func f, int maxSeconds) bool
+    return Time.measure(f) <= maxSeconds;
+  end
 end
 
 class Duration
-    # Would be nice to support static methods
-    # to have a: from_nano, from_seconds ?
+  # Would be nice to support static methods
+  # to have a: from_nano, from_seconds ?
 
-    def init(int milliseconds) void
-        if (milliseconds < 0)
-          this.milliseconds = 0;
-          return;
-        end
-        this.milliseconds = milliseconds;
-    end
+  def init(int milliseconds) void
+      if (milliseconds < 0)
+        this.milliseconds = 0;
+        return;
+      end
+      this.milliseconds = milliseconds;
+  end
 
-    # accessors
-    def as_millis() int
-        return this.milliseconds;
-    end
+  # accessors
+  def as_millis() int
+      return this.milliseconds;
+  end
 
-    def as_seconds() int
-        return this.milliseconds / 1000;
-    end
+  def as_seconds() int
+      return this.milliseconds / 1000;
+  end
 
-    def as_minutes() int
-        return this.as_seconds() / 60;
-    end
+  def as_minutes() int
+      return this.as_seconds() / 60;
+  end
 
-    # OPERATIONS
-    # add a way to implement arithmetic and comparaison operators between same class instances
+  # OPERATIONS
+  # add a way to implement arithmetic and comparaison operators between same class instances
 
-    def add(obj other) obj
-        # need a true way to check wether obj is instanceof(Duraiton)
-        if (other.milliseconds)
-          return Duration(this.milliseconds + other.milliseconds);
+  def add(obj other) obj
+      # need a true way to check wether obj is instanceof(Duraiton)
+      if (other.milliseconds)
+        return Duration(this.milliseconds + other.milliseconds);
+      else
+        return this;
+      end
+  end
+
+  def sub(obj other) obj
+      if (other.milliseconds)
+        if (this.milliseconds - other.milliseconds < 0)
+          return Duration(0)
         else
-          return this;
+          return Duration(this.milliseconds - other.milliseconds);
         end
-    end
+      else
+        return this;
+      end
+  end
 
-    def sub(obj other) obj
-        if (other.milliseconds)
-          if (this.milliseconds - other.milliseconds < 0)
-            return Duration(0)
-          else
-            return Duration(this.milliseconds - other.milliseconds);
-          end
-        else
-          return this;
-        end
-    end
+  def mul(int factor) obj
+      return Duration(this.milliseconds * factor);
+  end
 
-    def mul(int factor) obj
-        return Duration(this.milliseconds * factor);
-    end
+  def div(int divisor) obj
+      return Duration(this.milliseconds / divisor);
+  end
 
-    def div(int divisor) obj
-        return Duration(this.milliseconds / divisor);
-    end
+  # Comparisons
+  def gt(obj other) bool
+      return this.milliseconds > other.milliseconds;
+  end
 
-    # Comparisons
-    def gt(obj other) bool
-        return this.milliseconds > other.milliseconds;
-    end
+  def lt(obj other) bool
+      return this.milliseconds < other.milliseconds;
+  end
 
-    def lt(obj other) bool
-        return this.milliseconds < other.milliseconds;
-    end
+  def eq(obj other) bool
+      return this.milliseconds == other.milliseconds;
+  end
 
-    def eq(obj other) bool
-        return this.milliseconds == other.milliseconds;
-    end
-
-    def to_string() string
-        return this.as_seconds().to_string() + "s";
-    end
+  def to_string() string
+      return this.as_seconds().to_string() + "s";
+  end
 end
-
-
