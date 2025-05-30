@@ -1220,6 +1220,18 @@ static Value epochClockNative(int argCount, Value* args) {
   return NUMBER_VAL(now);
 }
 
+//< For using sleep functions
+#if _WIN32
+#include <windows.h>
+// Windows Sleep takes milliseconds
+#define sleep_ms(ms) Sleep((DWORD)(ms));
+#else
+#include <unistd.h>
+// Unix usleep takes nanoseconds
+#define sleep_ms(ms) usleep((useconds_t)ms * 1e3);
+#endif
+//>
+
 // Set execution to sleep for a specified number of milliseconds.
 static Value sleepNative(int argCount, Value* args) {
   if (argCount != 1) {
@@ -1232,27 +1244,19 @@ static Value sleepNative(int argCount, Value* args) {
     return NIL_VAL;
   }
 
-  const double seconds = AS_NUMBER(args[0]);
+  const double milliseconds = AS_NUMBER(args[0]);
 
-  if (seconds < 0) {
+  if (milliseconds < 0) {
     runtimeError("sleep() first argument must be a positive number");
     return NIL_VAL;
   }
 
-  if (seconds > UINT_MAX) {
+  if (milliseconds > UINT_MAX) {
     runtimeError("sleep() first argument must not be bigger than 4294967295U");
     return NIL_VAL;
   }
 
-#if _WIN32
-  #include <windows.h>
-  // Windows Sleep takes milliseconds
-  Sleep((DWORD)(seconds));
-#else
-  #include <unistd.h>
-  // Unix usleep takes nanoseconds
-  usleep((useconds_t)seconds * 1e3);
-#endif
+  sleep_ms(milliseconds);
 
   return NIL_VAL;
 }
