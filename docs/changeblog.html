@@ -35,6 +35,7 @@
                     <nav class="docs-nav">
                         <h3>Changeblog</h3>
                         <ul>
+                            <li><a href="#v1-3-0">Version 1.3.0</a></li>
                             <li><a href="#v1-2-0">Version 1.2.0</a></li>
                             <li><a href="#v1-1-0">Version 1.1.0</a></li>
                             <li><a href="#v1-0-0">Version 1.0.0</a></li>
@@ -47,6 +48,133 @@
                         <h1>Gem Changeblog</h1>
                         <p class="docs-subtitle">The story behind Gem's evolution and design decisions</p>
                     </header>
+
+                    <section id="v1-3-0" class="docs-section">
+                        <h2>Version 1.3.0 - Time and Precision</h2>
+                        <p class="version-date"><em>Released: May 30th 2025</em></p>
+
+                        <h3>Mastering Time and Fixing the Fundamentals</h3>
+                        <p>Version 1.3.0 brings essential time-handling capabilities to Gem while addressing critical scoping issues that were affecting variable resolution. This release focuses on two key areas: providing developers with robust time operations and ensuring the language's core scoping mechanisms work reliably.</p>
+                        
+                        <p>The new Time module enables everything from simple delays to sophisticated performance monitoring, while our scoping fixes ensure that variables behave predictably across all contexts. Together, these improvements make Gem more reliable and capable for real-world applications.</p>
+
+                        <p>We'd like to give a special thanks to <a href="https://github.com/DevYatsu" target="_blank">@DevYatsu</a> for their excellent work on the Time module!</p>
+
+                        <h3>What Changed</h3>
+                        
+                        <h4>Time Module - Comprehensive Time Operations</h4>
+                        <p>The new Time standard library module provides essential time-related functionality for modern applications:</p>
+
+                        <div class="code-block">
+                            <pre><code>require "time";
+
+# Get current timestamp
+puts "Current time: #{Time.now()}";
+
+# Sleep operations with millisecond precision
+puts "Starting operation...";
+Time.sleep(2000);  # Sleep for 2 seconds
+puts "Operation completed";
+
+# Function timing for performance monitoring
+def heavyWork() void
+    Time.sleep(1500);  # Simulate 1.5 seconds of work
+    puts "Heavy work completed";
+end
+
+# Measure execution time
+Time.measure(heavyWork);
+
+# Timeout operations for reliability
+def quickTask() void
+    puts "Quick task executed";
+end
+
+def slowTask() void
+    Time.sleep(5000);  # 5 second operation
+    puts "Slow task completed";
+end
+
+# Run with timeout protection
+Time.timeout(quickTask, 2);  # Should complete
+Time.timeout(slowTask, 2);   # May timeout</code></pre>
+                        </div>
+
+                        <h4>Critical Scoping Bug Fixes</h4>
+                        <p>We've resolved several important scoping issues that were causing variable resolution problems:</p>
+
+                        <div class="code-block">
+                            <pre><code># Variable scoping now works correctly in all contexts
+def outerFunction() void
+    string message = "Hello from outer";
+    
+    def innerFunction() void
+        # Can now properly access outer scope variables
+        puts message;  # Works correctly
+        
+        string localMessage = "Hello from inner";
+        puts localMessage;  # Local scope works too
+    end
+    
+    innerFunction();
+end
+
+# Class method scoping improvements
+class Calculator
+    def init() void
+        this.value = 0;
+    end
+    
+    def calculate() void
+        # Method-local variables now scope correctly
+        int localResult = this.value * 2;
+        this.value = localResult;  # 'this' resolution fixed
+    end
+end</code></pre>
+                        </div>
+
+                        <h3>Technical Implementation</h3>
+                        
+                        <h4>Time Module Architecture</h4>
+                        <p>The Time module is implemented using system-level time functions for accuracy and reliability:</p>
+                        <ul>
+                            <li><strong>High-precision timestamps</strong> - Floating-point timestamps provide microsecond accuracy</li>
+                            <li><strong>Cross-platform sleep</strong> - Millisecond-precision sleep works on all supported platforms</li>
+                            <li><strong>Function timing</strong> - Accurate measurement of function execution duration</li>
+                            <li><strong>Timeout handling</strong> - Attempt to limit function execution time (implementation-dependent)</li>
+                        </ul>
+
+                        <h4>Scoping System Improvements</h4>
+                        <p>The scoping fixes address fundamental issues in variable resolution:</p>
+                        <ul>
+                            <li><strong>Lexical scoping</strong> - Variables are now correctly resolved based on lexical scope</li>
+                            <li><strong>Closure capture</strong> - Inner functions properly capture outer scope variables</li>
+                            <li><strong>Method resolution</strong> - Class method variable lookup works reliably</li>
+                            <li><strong>Scope chain traversal</strong> - Proper traversal of nested scopes during variable lookup</li>
+                        </ul>
+
+                        <h3>Design Philosophy</h3>
+                        <p>Version 1.3.0 reflects our commitment to both expanding Gem's capabilities and ensuring rock-solid fundamentals:</p>
+                        
+                        <ul>
+                            <li><strong>Essential Functionality</strong> - Time operations are fundamental to modern applications</li>
+                            <li><strong>Reliability First</strong> - Scoping bugs undermine developer confidence and must be fixed</li>
+                            <li><strong>Practical Utility</strong> - Time module enables performance monitoring and timeout handling</li>
+                            <li><strong>Consistent Behavior</strong> - Variable scoping should be predictable and intuitive</li>
+                        </ul>
+
+                        <h3>Known Limitations</h3>
+                        <p>While the Time module provides essential functionality, there are some current limitations:</p>
+                        <ul>
+                            <li><strong>Duration Class</strong> - Advanced duration arithmetic is not yet available</li>
+                            <li><strong>Time.elapsed()</strong> - Has type compatibility issues and is not recommended</li>
+                            <li><strong>Timeout Reliability</strong> - Timeout interruption may not work in all scenarios</li>
+                            <li><strong>Return Value Handling</strong> - Some functions return values that are difficult to access</li>
+                        </ul>
+
+                        <h3>Looking Forward</h3>
+                        <p>The Time module foundation opens possibilities for future enhancements like date/time parsing, timezone handling, and more sophisticated timing utilities. It also lays the groundwork for more advanced features like async/await, cryptography, random number generation, and more. The scoping fixes ensure that Gem's core language mechanics are solid as we continue to build more advanced features.</p>
+                    </section>
 
                     <section id="v1-2-0" class="docs-section">
                         <h2>Version 1.2.0 - The Connectivity Update</h2>
@@ -270,7 +398,7 @@ string greeting = "Hello"
             <div class="footer-content">
                 <div class="footer-brand">
                     <span class="gem-icon">💎</span>
-                    <span>Gem Programming Language v1.2.2</span>
+                    <span>Gem Programming Language v1.3.0</span>
                 </div>
                 <div class="footer-links">
                     <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>
