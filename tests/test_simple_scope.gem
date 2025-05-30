@@ -1,0 +1,35 @@
+class Resource
+    def init(string name) void
+        this.name = name;
+        puts "Resource created: " + this.name;
+    end
+    
+    def setData(string? newData) void
+        this.data = newData;
+    end
+    
+    def process() void
+        puts "Processing resource: " + this.name;
+    end
+end
+
+puts "=== For Loop Test ==="
+
+# Test with loops
+puts "Testing cleanup in loops:";
+for (int! i = 0; i < 3; i = i + 1)
+    obj loopResource = Resource("loop_resource");
+    loopResource.setData("loop data");
+    loopResource.process();
+end
+
+puts "Loop completed";
+
+# Test simple begin block after loop
+begin
+    obj obj1 = Resource("object_1");
+    obj1.setData("data 1");
+    obj1.process();
+end
+
+puts "=== Test Complete ===" 

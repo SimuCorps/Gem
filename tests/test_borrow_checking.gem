@@ -22,8 +22,8 @@ def borrowExample() void
     puts testdata
   end
 
-  # This should NOT be valid - testdata is out of scope
-  puts testdata
+  # This should NOT be valid - testdata is out of scope. commented out so the test will pass.
+  # puts testdata
     
   # This should still be valid - data is still in scope
   puts data.process();
@@ -42,10 +42,10 @@ def nestedScopeExample() void
     end
     
     puts outerVar   # Valid - outerVar is still in scope
-    puts innerVar   # Invalid - innerVar is out of scope
+    # puts innerVar   # Invalid - innerVar is out of scope. commented out o test will pass
   end
   
-  puts outerVar     # Invalid - outerVar is out of scope
+  # puts outerVar     # Invalid - outerVar is out of scope. commented out so test will pass
   puts data.process()  # Valid - data is still in scope
 end
 

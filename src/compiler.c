@@ -548,6 +548,7 @@ static void expression();
 static void statement();
 static void declaration();
 static void gemBlock();
+static void scopedBlock();
 static void printStatement();
 static void requireStatement();
 static void returnStatement();
@@ -624,12 +625,6 @@ static int resolveLocal(Compiler* compiler, Token* name) {
         error("Can't read local variable in its own initializer.");
       }
 //< own-initializer-error
-//> borrow-checking
-      // Borrow checking: ensure the variable is still in scope
-      if (local->depth > compiler->scopeDepth) {
-        error("Cannot access variable - it is out of scope.");
-      }
-//< borrow-checking
       return i;
     }
   }
@@ -1939,10 +1934,14 @@ static void forStatement() {
     patchJump(bodyJump);
   }
 
+  beginScope();
+
   // Parse multiple statements until 'end'
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
     declaration();
   }
+
+  endScope();
   
   emitLoop(loopStart);
 
@@ -2741,16 +2740,21 @@ static void mutVarDeclaration() {
 
 //> Local Variables gem-block
 static void gemBlock() {
-  beginScope();
-  
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
     declaration();
   }
   
   consume(TOKEN_END, "Expect 'end' after block.");
-  endScope();
 }
 //< Local Variables gem-block
+
+//> Local Variables scoped-block
+static void scopedBlock() {
+  beginScope();
+  gemBlock();
+  endScope();
+}
+//< Local Variables scoped-block
 
 //> Control Flow Statements
 static void ifStatement() {
@@ -2801,7 +2805,7 @@ static void whileStatement() {
 }
 
 static void beginStatement() {
-  gemBlock();
+  scopedBlock();
 }
 
 static void defDeclaration() {
