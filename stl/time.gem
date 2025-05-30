@@ -1,10 +1,10 @@
-module TIME
+module Time
     def now() int
       return epochClock();
     end
 
     def elapsed(int since) int?
-      int current = TIME.now();
+      int current = Time.now();
       # should raise an error instead of returning int?
       if (since > current)
           return nil;
@@ -17,13 +17,13 @@ module TIME
     end
 
     def measure(func f) int?
-      int start = TIME.now();
+      int start = Time.now();
       f();
-      return TIME.elapsed(start);
+      return Time.elapsed(start);
     end
 
     def timeout(func f, int maxSeconds) bool
-      return TIME.measure(f) <= maxSeconds;
+      return Time.measure(f) <= maxSeconds;
     end
 end
 
@@ -101,5 +101,3 @@ class Duration
         return this.as_seconds().to_string() + "s";
     end
 end
-
-

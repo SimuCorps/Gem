@@ -1209,7 +1209,7 @@ static Value httpDeleteWithOptionsNative(int argCount, Value* args) {
   return OBJ_VAL(responseHash);
 }
 
-//> TIME Native Functions
+//> Time Native Functions
 
 // Returns the current Unix epoch time (seconds since 1970-01-01T00:00:00 UTC).
 // Includes microsecond precision.
@@ -1256,7 +1256,7 @@ static Value sleepNative(int argCount, Value* args) {
 
   return NIL_VAL;
 }
-//< TIME Native Functions
+//< Time Native Functions
 
 void initVM() {
 #if FAST_STACK_ENABLED
