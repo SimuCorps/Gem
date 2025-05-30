@@ -15,21 +15,44 @@ def borrowExample() void
   begin
     string testdata = data.process()
 
-    # commented out for testing
-    # puts data.process();  # ✅ Valid: data is in scope
+    # This should be valid - data is in scope
+    puts data.process();
 
-    # this SHOULD be valid
+    # This should be valid - testdata is in scope
     puts testdata
   end
 
-  # this shoudl NOT be valid, since the scope dropped
+  # This should NOT be valid - testdata is out of scope
   puts testdata
     
-  # ✅ still valid: data is still scope, commented out for testing
-  # puts data.process();
+  # This should still be valid - data is still in scope
+  puts data.process();
 end
 
-# commented this line out, because it should be invalid. uncomment to test.
-# ❌ data.process(); now obviously invalid
+def nestedScopeExample() void
+  obj data = SomeData("outer");
+  
+  begin
+    string outerVar = data.process()
+    
+    begin
+      string innerVar = data.process()
+      puts innerVar  # Valid - innerVar is in scope
+      puts outerVar  # Valid - outerVar is still in scope
+    end
+    
+    puts outerVar   # Valid - outerVar is still in scope
+    puts innerVar   # Invalid - innerVar is out of scope
+  end
+  
+  puts outerVar     # Invalid - outerVar is out of scope
+  puts data.process()  # Valid - data is still in scope
+end
 
-borrowExample()
+def borrowCheckingExample() void
+  puts "=== Testing Borrow Checking ==="
+  borrowExample()
+  nestedScopeExample()
+end
+
+borrowCheckingExample()

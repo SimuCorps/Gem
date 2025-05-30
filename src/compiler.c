@@ -624,6 +624,12 @@ static int resolveLocal(Compiler* compiler, Token* name) {
         error("Can't read local variable in its own initializer.");
       }
 //< own-initializer-error
+//> borrow-checking
+      // Borrow checking: ensure the variable is still in scope
+      if (local->depth > compiler->scopeDepth) {
+        error("Cannot access variable - it is out of scope.");
+      }
+//< borrow-checking
       return i;
     }
   }
@@ -2735,11 +2741,14 @@ static void mutVarDeclaration() {
 
 //> Local Variables gem-block
 static void gemBlock() {
+  beginScope();
+  
   while (!check(TOKEN_END) && !check(TOKEN_EOF)) {
     declaration();
   }
   
   consume(TOKEN_END, "Expect 'end' after block.");
+  endScope();
 }
 //< Local Variables gem-block
 
