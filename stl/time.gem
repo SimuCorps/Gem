@@ -28,9 +28,6 @@ module Time
 end
 
 class Duration
-  # Would be nice to support static methods
-  # to have a: from_nano, from_seconds ?
-
   def init(int milliseconds) void
       if (milliseconds < 0)
         this.milliseconds = 0;
@@ -39,7 +36,7 @@ class Duration
       this.milliseconds = milliseconds;
   end
 
-  # accessors
+  # ACCESSORS
   def as_millis() int
       return this.milliseconds;
   end
@@ -53,10 +50,7 @@ class Duration
   end
 
   # OPERATIONS
-  # add a way to implement arithmetic and comparaison operators between same class instances
-
   def add(obj other) obj
-      # need a true way to check wether obj is instanceof(Duraiton)
       if (other.milliseconds)
         return Duration(this.milliseconds + other.milliseconds);
       else
