@@ -9,6 +9,7 @@
 //< Strings vm-include-string
 //> Calls and Functions vm-include-time
 #include <time.h>
+#include <sys/time.h>
 //< Calls and Functions vm-include-time
 #include <math.h>
 #include <stdlib.h>
@@ -1208,6 +1209,59 @@ static Value httpDeleteWithOptionsNative(int argCount, Value* args) {
   return OBJ_VAL(responseHash);
 }
 
+//> TIME Native Functions
+
+// Returns the current Unix epoch time (seconds since 1970-01-01T00:00:00 UTC).
+// Includes microsecond precision.
+static Value epochClockNative(int argCount, Value* args) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  const double now = (double)tv.tv_sec + (double)tv.tv_usec / CLOCKS_PER_SEC;
+  return NUMBER_VAL(now);
+}
+
+//< For using sleep functions
+#if _WIN32
+#include <windows.h>
+// Windows Sleep takes milliseconds
+#define sleep_ms(ms) Sleep((DWORD)(ms));
+#else
+#include <unistd.h>
+// Unix usleep takes nanoseconds
+#define sleep_ms(ms) usleep((useconds_t)ms * 1e3);
+#endif
+//>
+
+// Set execution to sleep for a specified number of milliseconds.
+static Value sleepNative(int argCount, Value* args) {
+  if (argCount != 1) {
+    runtimeError("sleep() takes 1 argument: time (in milliseconds)");
+    return NIL_VAL;
+  }
+
+  if (!IS_NUMBER(args[0])) {
+    runtimeError("sleep() first argument must be a positive time int");
+    return NIL_VAL;
+  }
+
+  const double milliseconds = AS_NUMBER(args[0]);
+
+  if (milliseconds < 0) {
+    runtimeError("sleep() first argument must be a positive number");
+    return NIL_VAL;
+  }
+
+  if (milliseconds > UINT_MAX) {
+    runtimeError("sleep() first argument must not be bigger than 4294967295U");
+    return NIL_VAL;
+  }
+
+  sleep_ms(milliseconds);
+
+  return NIL_VAL;
+}
+//< TIME Native Functions
+
 void initVM() {
 #if FAST_STACK_ENABLED
   // Fast stack is pre-allocated, just reset the pointer
@@ -1253,6 +1307,11 @@ void initVM() {
   defineNative("httpPutWithOptions", httpPutWithOptionsNative);
   defineNative("httpDeleteWithOptions", httpDeleteWithOptionsNative);
 //< HTTP Native Functions define
+  //> TIME Native Functions define
+  defineNative("epochClock", epochClockNative);
+  defineNative("sleepMs", sleepNative);
+  //< TIME Native Functions define
+
 //> Initialize Compiler Tables
   initCompilerTables();
 //< Initialize Compiler Tables

@@ -36,11 +36,10 @@
                         <h3>Standard Library</h3>
                         <ul>
                             <li><a href="#overview">Overview</a></li>
+                            <li><a href="#importing">Importing Modules</a></li>
                             <li><a href="#math-module">Math Module</a></li>
                             <li><a href="#http-module">HTTP Module</a></li>
-                            <li><a href="#core-functions">Core Functions</a></li>
-                            <li><a href="#importing">Importing Modules</a></li>
-                            <li><a href="#examples">Usage Examples</a></li>
+                            <li><a href="#time-module">Time Module</a></li>
                         </ul>
                     </nav>
                 </aside>
@@ -59,6 +58,7 @@
                         <ul>
                             <li><strong>Math Module</strong> - Mathematical operations</li>
                             <li><strong>HTTP Module</strong> - HTTP client functionality for web requests</li>
+                            <li><strong>Time Module</strong> - Time operations, measurements, and duration handling</li>
                             <li><strong>Core Functions</strong> - Built-in functions available without imports</li>
                         </ul>
 
@@ -84,6 +84,34 @@ string empty = "";</code></pre>
                         <div class="info-box">
                             <h4>📦 Module System</h4>
                             <p>Use <code>require "module_name"</code> to import standard library modules.</p>
+                        </div>
+                    </section>
+
+                    <section id="importing" class="docs-section">
+                        <h2>Importing Modules</h2>
+                        <p>Learn how to import and use standard library modules in your Gem programs.</p>
+
+                        <h3>Basic Import Syntax</h3>
+                        <div class="code-block">
+                            <pre><code># Import math module
+require "math";
+
+# Import HTTP module
+require "http";
+
+# Use imported modules
+int sum = Math.add(10, 5);
+hash response = Http.get("https://api.example.com");</code></pre>
+                        </div>
+
+                        <h3>Module Availability</h3>
+                        <div class="info-box">
+                            <h4>📦 Standard Library Modules</h4>
+                            <ul>
+                                <li><code>"math"</code> - Mathematical operations</li>
+                                <li><code>"http"</code> - HTTP client functionality</li>
+                                <li><code>"time"</code> - Time operations and duration handling</li>
+                            </ul>
                         </div>
                     </section>
 
@@ -351,223 +379,78 @@ Http.delete(string url, hash headers) hash          # DELETE with headers
                         </div>
                     </section>
 
-                    <section id="core-functions" class="docs-section">
-                        <h2>Core Functions</h2>
-                        <p>These functions are available without any imports and provide essential I/O operations.</p>
+                    <section id="time-module" class="docs-section">
+                        <h2>Time Module</h2>
+                        <p>The Time module provides basic time-related functionality including current time access, sleep operations, and function timing.</p>
 
-                        <h3>Output Functions</h3>
+                        <h3>Importing the Time Module</h3>
                         <div class="code-block">
-                            <pre><code># Print with newline
-puts "Hello, World!";                # Prints: Hello, World!\n
-puts 42;                             # Prints: 42
-puts true;                           # Prints: true
-puts false;                          # Prints: false</code></pre>
+                            <pre><code>require "time";</code></pre>
                         </div>
 
-                        <h3>Core Functions Reference</h3>
+                        <h3>Current Time</h3>
                         <div class="code-block">
-                            <pre><code># Complete core functions API
-puts(any value) void                 # Print value with newline</code></pre>
-                        </div>
-                    </section>
-
-                    <section id="importing" class="docs-section">
-                        <h2>Importing Modules</h2>
-                        <p>Learn how to import and use standard library modules in your Gem programs.</p>
-
-                        <h3>Basic Import Syntax</h3>
-                        <div class="code-block">
-                            <pre><code># Import math module
-require "math";
-
-# Import HTTP module
-require "http";
-
-# Use imported modules
-int sum = Math.add(10, 5);
-hash response = Http.get("https://api.example.com");</code></pre>
+                            <pre><code># Get current time as floating-point timestamp
+puts "Current timestamp: #{Time.now()}";</code></pre>
                         </div>
 
-                        <h3>Multiple Imports</h3>
+                        <h3>Sleep Operations</h3>
                         <div class="code-block">
-                            <pre><code># Import multiple modules
-require "math";
-require "http";
-
-def fetchAndCalculate() void
-    # Make HTTP request
-    hash response = Http.get("https://api.example.com/numbers");
-    
-    if (response["success"] as bool)
-        # Use math operations on the response
-        int result = Math.multiply(10, 5);
-        puts "Calculation result: " + result;
-    end
-end</code></pre>
+                            <pre><code># Sleep for a specified number of milliseconds
+puts "Starting operation...";
+Time.sleep(2000);  # Sleep for 2 seconds (2000 milliseconds)
+puts "Operation completed after delay";</code></pre>
                         </div>
 
-                        <h3>Module Availability</h3>
-                        <div class="info-box">
-                            <h4>📦 Standard Library Modules</h4>
-                            <ul>
-                                <li><code>"math"</code> - Mathematical operations</li>
-                                <li><code>"http"</code> - HTTP client functionality</li>
-                            </ul>
-                        </div>
-                    </section>
-
-                    <section id="examples" class="docs-section">
-                        <h2>Usage Examples</h2>
-                        <p>Practical examples showing how to use the standard library.</p>
-
-                        <h3>Mathematical Calculation Example</h3>
+                        <h3>Function Timing</h3>
                         <div class="code-block">
-                            <pre><code>require "math";
-
-def calculateStats(int a, int b, int c) void
-    # Basic statistics
-    int sum = Math.add(Math.add(a, b), c);
-    int min = Math.min(Math.min(a, b), c);
-    int max = Math.max(Math.max(a, b), c);
-    
-    # Calculate average (integer division)
-    int average = Math.divide(sum, 3);
-    
-    # Calculate range
-    int range = Math.subtract(max, min);
-    
-    # Display results
-    puts "Sum: " + sum;
-    puts "Average: " + average;
-    puts "Min: " + min;
-    puts "Max: " + max;
-    puts "Range: " + range;
+                            <pre><code># Measure execution time of a function
+def slowOperation() void
+    Time.sleep(1000);  # Sleep for 1 second (1000 milliseconds)
+    puts "Slow operation completed";
 end
 
-# Usage
-calculateStats(10, 20, 30);</code></pre>
+# Measure function execution
+Time.measure(slowOperation);</code></pre>
                         </div>
 
-                        <h3>HTTP API Client Example</h3>
+                        <h3>Timeout Operations</h3>
                         <div class="code-block">
-                            <pre><code>require "http";
-
-def fetchUserData(string userId) void
-    # Prepare headers
-    hash headers = {};
-    headers["Authorization"] = "Bearer your-api-token";
-    headers["Content-Type"] = "application/json";
-    
-    # Make GET request
-    string url = "https://api.example.com/users/" + userId;
-    hash response = Http.get(url, headers);
-    
-    # Handle response
-    bool success = response["success"] as bool;
-    int status = response["status"] as int;
-    
-    if (success)
-        puts "User data retrieved successfully!";
-        puts "Status: " + status;
-        puts "Response: " + (response["body"] as string);
-        puts "Response time: " + (response["response_time"] as int) + " microseconds";
-    else
-        puts "Failed to fetch user data";
-        puts "Status code: " + status;
-    end
+                            <pre><code># Attempt to run function with timeout
+def quickOperation() void
+    puts "Quick operation";
 end
 
-def createUser(string name, string email) void
-    # Prepare user data
-    hash userData = {};
-    userData["name"] = name;
-    userData["email"] = email;
-    userData["active"] = "true";
-    
-    # Prepare headers
-    hash headers = {};
-    headers["Content-Type"] = "application/json";
-    headers["Authorization"] = "Bearer your-api-token";
-    
-    # Make POST request
-    hash response = Http.post("https://api.example.com/users", userData, headers);
-    
-    # Handle response
-    if (response["success"] as bool)
-        puts "User created successfully!";
-        puts "Response: " + (response["body"] as string);
-    else
-        puts "Failed to create user";
-        puts "Status: " + (response["status"] as int);
-    end
+def slowOperation() void
+    Time.sleep(5000);  # Sleep for 5 seconds (5000 milliseconds)
+    puts "This takes too long";
 end
 
-# Usage examples
-fetchUserData("123");
-createUser("Alice Johnson", "alice@example.com");</code></pre>
+Time.timeout(quickOperation, 2);  # 2 second timeout
+Time.timeout(slowOperation, 2);   # 2 second timeout</code></pre>
                         </div>
 
-                        <h3>Combined Math and HTTP Example</h3>
+                        <h3>Practical Time Examples</h3>
                         <div class="code-block">
-                            <pre><code>require "math";
-require "http";
-
-def calculateAndSubmit(int a, int b) void
-    # Perform calculations
-    int sum = Math.add(a, b);
-    int product = Math.multiply(a, b);
-    int power = Math.power(a, 2);
-    
-    puts "Calculations completed:";
-    puts "Sum: " + sum;
-    puts "Product: " + product;
-    puts "A squared: " + power;
-    
-    # Prepare data for submission
-    hash calculationData = {};
-    calculationData["input_a"] = "" + a;
-    calculationData["input_b"] = "" + b;
-    calculationData["sum"] = "" + sum;
-    calculationData["product"] = "" + product;
-    calculationData["power"] = "" + power;
-    
-    # Submit results via HTTP
-    hash headers = {};
-    headers["Content-Type"] = "application/json";
-    
-    hash response = Http.post("https://api.example.com/calculations", calculationData, headers);
-    
-    if (response["success"] as bool)
-        puts "Results submitted successfully!";
-        puts "Server response: " + (response["body"] as string);
-    else
-        puts "Failed to submit results";
-    end
+                            <pre><code># Simple timing and sleep operations
+def timedWork() void
+    puts "Starting work...";
+    Time.sleep(1500);  # 1.5 seconds of work
+    puts "Work completed";
 end
 
-# Usage
-calculateAndSubmit(10, 5);</code></pre>
-                        </div>
+# Measure the work
+puts "Timing work operation:";
+Time.measure(timedWork);
 
-                        <h3>String Processing Example</h3>
-                        <div class="code-block">
-                            <pre><code># Basic string operations using built-in concatenation
-def createGreeting(string name) string
-    return "Hello, #{name}!";
-end
-
-def createBanner(string message) string
-    string border = "===================";
-    string spacedMessage = " #{message} ";
-    return "#{border}#{spacedMessage}#{border}";
-end
-
-# Usage
-string greeting = createGreeting("Alice");
-puts greeting;
-
-string banner = createBanner("WELCOME");
-puts banner;</code></pre>
+# Multiple sleep operations
+puts "Sleep sequence:";
+Time.sleep(500);   # 0.5 seconds
+puts "Step 1 complete";
+Time.sleep(1000);  # 1.0 seconds  
+puts "Step 2 complete";
+Time.sleep(750);   # 0.75 seconds
+puts "All steps complete";</code></pre>
                         </div>
                     </section>
                 </article>
