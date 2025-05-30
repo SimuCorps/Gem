@@ -540,10 +540,10 @@ def borrowExample() void
     
     begin
         # resource is borrowed here
-        resource.process();
+        string some_variable = resource.process()
     end
     
-    # resource.process();  # ❌ Compile error: use after potential drop
+    puts some_variable;  # ❌ Compile error: use after potential drop
 end
 
 # Safe borrowing patterns
