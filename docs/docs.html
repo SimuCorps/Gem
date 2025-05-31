@@ -33,29 +33,57 @@
                 <aside class="docs-sidebar">
                     <nav class="docs-nav">
                         <h3>Documentation</h3>
-                        <ul>
-                            <li><a href="#getting-started">Getting Started</a></li>
-                            <li><a href="#installation">Installation</a></li>
-                            <li><a href="#first-program">Your First Program</a></li>
-                            <li><a href="#repl">Interactive REPL</a></li>
-                            <li><a href="#basic-concepts">Basic Concepts</a></li>
-                            <li><a href="#overview">Language Overview</a></li>
-                            <li><a href="#syntax">Syntax</a></li>
-                            <li><a href="#types">Type System</a></li>
-                            <li><a href="#hashes">Hashes</a></li>
-                            <li><a href="#type-coercion">Type Coercion</a></li>
-                            <li><a href="#variables">Variables</a></li>
-                            <li><a href="#functions">Functions</a></li>
-                            <li><a href="#classes">Classes</a></li>
-                            <li><a href="#control-flow">Control Flow</a></li>
-                            <li><a href="#modules">Modules</a></li>
-                            <li><a href="#memory">Memory Safety</a></li>
-                            <li><a href="#standard-library">Standard Library</a></li>
-                            <li><a href="#importing">Importing Modules</a></li>
-                            <li><a href="#math-module">Math Module</a></li>
-                            <li><a href="#http-module">HTTP Module</a></li>
-                            <li><a href="#time-module">Time Module</a></li>
-                        </ul>
+                        
+                        <!-- Getting Started Section -->
+                        <div class="nav-section">
+                            <button class="nav-section-toggle active" data-section="getting-started" aria-expanded="true" aria-controls="getting-started-content">
+                                <span class="toggle-icon">▼</span>
+                                Getting Started
+                            </button>
+                            <ul class="nav-section-content" id="getting-started-content">
+                                <li><a href="#getting-started">Overview</a></li>
+                                <li><a href="#installation">Installation</a></li>
+                                <li><a href="#first-program">Your First Program</a></li>
+                                <li><a href="#repl">Interactive REPL</a></li>
+                                <li><a href="#basic-concepts">Basic Concepts</a></li>
+                            </ul>
+                        </div>
+
+                        <!-- Language Guide Section -->
+                        <div class="nav-section">
+                            <button class="nav-section-toggle" data-section="language" aria-expanded="false" aria-controls="language-content">
+                                <span class="toggle-icon">▶</span>
+                                Language Guide
+                            </button>
+                            <ul class="nav-section-content collapsed" id="language-content">
+                                <li><a href="#overview">Language Overview</a></li>
+                                <li><a href="#syntax">Syntax</a></li>
+                                <li><a href="#types">Type System</a></li>
+                                <li><a href="#hashes">Hashes</a></li>
+                                <li><a href="#type-coercion">Type Coercion</a></li>
+                                <li><a href="#variables">Variables</a></li>
+                                <li><a href="#functions">Functions</a></li>
+                                <li><a href="#classes">Classes</a></li>
+                                <li><a href="#control-flow">Control Flow</a></li>
+                                <li><a href="#modules">Modules</a></li>
+                                <li><a href="#memory">Memory Safety</a></li>
+                            </ul>
+                        </div>
+
+                        <!-- Standard Library Section -->
+                        <div class="nav-section">
+                            <button class="nav-section-toggle" data-section="stdlib" aria-expanded="false" aria-controls="stdlib-content">
+                                <span class="toggle-icon">▶</span>
+                                Standard Library
+                            </button>
+                            <ul class="nav-section-content collapsed" id="stdlib-content">
+                                <li><a href="#standard-library">Overview</a></li>
+                                <li><a href="#importing">Importing Modules</a></li>
+                                <li><a href="#math-module">Math Module</a></li>
+                                <li><a href="#http-module">HTTP Module</a></li>
+                                <li><a href="#time-module">Time Module</a></li>
+                            </ul>
+                        </div>
                     </nav>
                 </aside>
 
