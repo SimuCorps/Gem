@@ -1,7 +1,41 @@
 // Smooth scrolling for navigation links
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle collapsible sidebar sections
+    const sectionToggles = document.querySelectorAll('.nav-section-toggle');
+    
+    sectionToggles.forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const content = this.nextElementSibling;
+            const icon = this.querySelector('.toggle-icon');
+            const isActive = this.classList.contains('active');
+            
+            if (isActive) {
+                // Collapse this section
+                this.classList.remove('active');
+                this.setAttribute('aria-expanded', 'false');
+                content.classList.add('collapsed');
+                icon.textContent = '▶';
+            } else {
+                // Expand this section and collapse others
+                sectionToggles.forEach(otherToggle => {
+                    if (otherToggle !== this) {
+                        otherToggle.classList.remove('active');
+                        otherToggle.setAttribute('aria-expanded', 'false');
+                        otherToggle.nextElementSibling.classList.add('collapsed');
+                        otherToggle.querySelector('.toggle-icon').textContent = '▶';
+                    }
+                });
+                
+                this.classList.add('active');
+                this.setAttribute('aria-expanded', 'true');
+                content.classList.remove('collapsed');
+                icon.textContent = '▼';
+            }
+        });
+    });
+
     // Handle navigation link clicks
-    const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
+    const navLinks = document.querySelectorAll('.nav-link[href^="#"], .nav-section-content a[href^="#"]');
     
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
@@ -38,7 +72,43 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        navLinks.forEach(link => {
+        // Update active state for sidebar links
+        const sidebarLinks = document.querySelectorAll('.nav-section-content a');
+        sidebarLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === `#${current}`) {
+                link.classList.add('active');
+                
+                // Auto-expand the section containing the active link
+                const parentSection = link.closest('.nav-section');
+                if (parentSection) {
+                    const toggle = parentSection.querySelector('.nav-section-toggle');
+                    const content = parentSection.querySelector('.nav-section-content');
+                    
+                    if (!toggle.classList.contains('active')) {
+                        // Collapse other sections
+                        sectionToggles.forEach(otherToggle => {
+                            if (otherToggle !== toggle) {
+                                otherToggle.classList.remove('active');
+                                otherToggle.setAttribute('aria-expanded', 'false');
+                                otherToggle.nextElementSibling.classList.add('collapsed');
+                                otherToggle.querySelector('.toggle-icon').textContent = '▶';
+                            }
+                        });
+                        
+                        // Expand current section
+                        toggle.classList.add('active');
+                        toggle.setAttribute('aria-expanded', 'true');
+                        content.classList.remove('collapsed');
+                        toggle.querySelector('.toggle-icon').textContent = '▼';
+                    }
+                }
+            }
+        });
+        
+        // Also update main nav links
+        const mainNavLinks = document.querySelectorAll('.nav-link[href^="#"]');
+        mainNavLinks.forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('href') === `#${current}`) {
                 link.classList.add('active');

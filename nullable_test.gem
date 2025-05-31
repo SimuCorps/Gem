@@ -1,0 +1,1 @@
+require "time"; int start = Time.now(); int? elapsed = Time.elapsed(start); puts elapsed;
