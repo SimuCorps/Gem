@@ -1,0 +1,7 @@
+def test(int num) bool
+    int half = num / 2;
+    puts half;  # Force use of the variable
+    return half == 3;
+end
+
+puts test(6); 

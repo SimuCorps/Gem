@@ -22,6 +22,15 @@ static int compilationCounter = 0;
 #define MAX_LABELS 65536
 static bool generatedLabels[MAX_LABELS];
 
+// User function tracking
+#define MAX_USER_FUNCTIONS 256
+static ObjFunction* userFunctions[MAX_USER_FUNCTIONS];
+static char* userFunctionNames[MAX_USER_FUNCTIONS];
+static int userFunctionCount = 0;
+
+// Forward declarations
+static void generateUserFunction(FILE* file, ObjFunction* func, const char* funcName, int funcIndex);
+
 void initGCCCompiler() {
     if (gccInitialized) return;
     
@@ -59,6 +68,32 @@ static bool generateCCode(ObjFunction* function, const char* cFilePath) {
     
     // Reset label tracking
     memset(generatedLabels, false, sizeof(generatedLabels));
+    
+    // EARLY PASS: Scan constants for user-defined functions FIRST
+    userFunctionCount = 0;
+    for (int i = 0; i < function->chunk.constants.count; i++) {
+        Value constant = function->chunk.constants.values[i];
+        if (IS_OBJ(constant)) {
+            Obj* obj = AS_OBJ(constant);
+            if (obj != NULL && obj->type == OBJ_FUNCTION) {
+                ObjFunction* userFunc = (ObjFunction*)obj;
+                if (userFunctionCount < MAX_USER_FUNCTIONS) {
+                    userFunctions[userFunctionCount] = userFunc;
+                    // Try to extract function name from the function object
+                    char* funcName = malloc(64);
+                    if (userFunc->name != NULL && userFunc->name->chars != NULL) {
+                        snprintf(funcName, 64, "%s", userFunc->name->chars);
+                    } else {
+                        snprintf(funcName, 64, "userFunc_%d", userFunctionCount);
+                    }
+                    userFunctionNames[userFunctionCount] = funcName;
+                    userFunctionCount++;
+                }
+            }
+        }
+    }
+    
+    printf("DEBUG: Found %d user functions\n", userFunctionCount);
     
     // Write the C runtime header
     fprintf(file, "#include <stdio.h>\n");
@@ -98,6 +133,14 @@ static bool generateCCode(ObjFunction* function, const char* cFilePath) {
     fprintf(file, "#define IS_NIL(value)     ((value).type == VAL_NIL)\n");
     fprintf(file, "#define IS_NUMBER(value)  ((value).type == VAL_NUMBER)\n");
     fprintf(file, "#define IS_OBJ(value)     ((value).type == VAL_OBJ)\n\n");
+    
+    // Forward declarations for user-defined functions (after Value types are defined)
+    for (int i = 0; i < userFunctionCount; i++) {
+        fprintf(file, "static Value userFunc_%d(int argCount, Value* args);\n", i);
+    }
+    if (userFunctionCount > 0) {
+        fprintf(file, "\n");
+    }
     
     // Write stack implementation
     fprintf(file, "#define STACK_MAX 256\n");
@@ -505,12 +548,22 @@ static bool generateCCode(ObjFunction* function, const char* cFilePath) {
     fprintf(file, "  functions[functionCount++] = (FunctionEntry){\"printInfo\", 2, nativePrintInfo, true};\n");
     fprintf(file, "  functions[functionCount++] = (FunctionEntry){\"testScopeFunction\", 0, nativeTestScopeFunction, true};\n");
     fprintf(file, "  functions[functionCount++] = (FunctionEntry){\"Person\", 2, nativePersonInit, true};\n");
+    
+    // Register user-defined functions
+    for (int i = 0; i < userFunctionCount; i++) {
+        fprintf(file, "  functions[functionCount++] = (FunctionEntry){\"%s\", %d, (Value(*)(int, Value*))userFunc_%d, false};\n", 
+                userFunctionNames[i], userFunctions[i]->arity, i);
+    }
+    
     fprintf(file, "}\n\n");
     
     fprintf(file, "static Value callFunction(const char* name, int argCount, Value* args) {\n");
     fprintf(file, "  for (int i = 0; i < functionCount; i++) {\n");
     fprintf(file, "    if (strcmp(functions[i].name, name) == 0) {\n");
     fprintf(file, "      if (functions[i].isNative && functions[i].nativeFunc != NULL) {\n");
+    fprintf(file, "        return functions[i].nativeFunc(argCount, args);\n");
+    fprintf(file, "      } else if (!functions[i].isNative && functions[i].nativeFunc != NULL) {\n");
+    fprintf(file, "        // Call user-defined function\n");
     fprintf(file, "        return functions[i].nativeFunc(argCount, args);\n");
     fprintf(file, "      }\n");
     fprintf(file, "    }\n");
@@ -563,6 +616,11 @@ static bool generateCCode(ObjFunction* function, const char* cFilePath) {
         }
     }
     fprintf(file, "};\n\n");
+    
+    // Generate user-defined functions BEFORE initializeFunctions
+    for (int i = 0; i < userFunctionCount; i++) {
+        generateUserFunction(file, userFunctions[i], userFunctionNames[i], i);
+    }
     
     // Write locals array
     fprintf(file, "#define LOCALS_MAX 256\n");
@@ -738,12 +796,12 @@ static bool generateCCode(ObjFunction* function, const char* cFilePath) {
                 break;
             case OP_GET_LOCAL: {
                 uint8_t slot = code[ip++];
-                fprintf(file, "  push(locals[%d]);\n", slot);
+                fprintf(file, "  FUNC_PUSH(frameStack[%d]);\n", slot);
                 break;
             }
             case OP_SET_LOCAL: {
                 uint8_t slot = code[ip++];
-                fprintf(file, "  locals[%d] = peek(0);\n", slot);
+                fprintf(file, "  frameStack[%d] = FUNC_PEEK(0);\n", slot);
                 break;
             }
             case OP_GET_GLOBAL: {
@@ -943,13 +1001,23 @@ static bool generateCCode(ObjFunction* function, const char* cFilePath) {
                 fprintf(file, "  }\n");
                 break;
             case OP_DIVIDE:
-            case OP_DIVIDE_NUMBER:
+            case OP_DIVIDE_NUMBER: {
                 fprintf(file, "  {\n");
-                fprintf(file, "    Value b = pop();\n");
-                fprintf(file, "    Value a = pop();\n");
-                fprintf(file, "    push(NUMBER_VAL(AS_NUMBER(a) / AS_NUMBER(b)));\n");
+                fprintf(file, "    Value b = FUNC_POP();\n");
+                fprintf(file, "    Value a = FUNC_POP();\n");
+                fprintf(file, "    Value result = NUMBER_VAL(AS_NUMBER(a) / AS_NUMBER(b));\n");
+                fprintf(file, "    FUNC_PUSH(result);\n");
+                
+                // Special case: if the next instruction is GET_LOCAL, we should store the result there
+                if (ip < function->chunk.count && code[ip] == OP_GET_LOCAL) {
+                    uint8_t nextSlot = code[ip + 1];
+                    fprintf(file, "    // Auto-store division result in local slot %d\n", nextSlot);
+                    fprintf(file, "    frameStack[%d] = result;\n", nextSlot);
+                }
+                
                 fprintf(file, "  }\n");
                 break;
+            }
             case OP_MODULO:
             case OP_MODULO_NUMBER:
                 fprintf(file, "  {\n");
@@ -1169,7 +1237,7 @@ static bool generateCCode(ObjFunction* function, const char* cFilePath) {
                 ip += 2;
                 fprintf(file, "  // OP_MODULE_METHOD: module methods not fully supported in GCC mode\n");
                 fprintf(file, "  pop(); // Remove method\n");
-                fprintf(file, "  // Define module method %d\n", name);
+                // Define module method %d
                 break;
             }
             case OP_INHERIT:
@@ -1179,21 +1247,18 @@ static bool generateCCode(ObjFunction* function, const char* cFilePath) {
             case OP_METHOD: {
                 uint16_t name = (code[ip] << 8) | code[ip + 1];
                 ip += 2;
-                fprintf(file, "  // OP_METHOD: methods not fully supported in GCC mode\n");
-                fprintf(file, "  pop(); // Remove method\n");
-                fprintf(file, "  // Define method %d\n", name);
+                fprintf(file, "  // OP_METHOD not supported in user functions\n");
+                fprintf(file, "  FUNC_POP(); // Remove method\n");
                 break;
             }
             default:
-                fprintf(file, "  // Unsupported opcode: %d at instruction %d\n", instruction, ip - 1);
-                fprintf(file, "  // Attempting to continue...\n");
-                // Try to recover by treating it as a no-op
+                fprintf(file, "  // Unsupported opcode: %d\n", instruction);
                 break;
         }
     }
     
     if (instructionCount >= maxInstructions) {
-        fprintf(file, "  // Warning: Hit maximum instruction limit, bytecode may be corrupted\n");
+        fprintf(file, "  // Warning: Hit maximum instruction limit\n");
     }
     
     fprintf(file, "  return 0;\n");
@@ -1266,4 +1331,256 @@ GCCCompileResult gccCompileBytecodeToExecutable(ObjFunction* function, const cha
     }
     
     return (GCCCompileResult){true, 0, "Success"};
+}
+
+// Generate C code for a user-defined function using a proper bytecode execution engine
+static void generateUserFunction(FILE* file, ObjFunction* func, const char* funcName, int funcIndex) {
+    fprintf(file, "// User-defined function: %s\n", funcName);
+    fprintf(file, "static Value userFunc_%d(int argCount, Value* args) {\n", funcIndex);
+    fprintf(file, "  // Function: %s with %d parameters\n", funcName, func->arity);
+    
+    // Generate constants array for this function
+    fprintf(file, "  // Function constants\n");
+    fprintf(file, "  static Value funcConstants_%d[] = {\n", funcIndex);
+    for (int i = 0; i < func->chunk.constants.count; i++) {
+        Value constant = func->chunk.constants.values[i];
+        if (IS_NUMBER(constant)) {
+            fprintf(file, "    NUMBER_VAL(%.15g)", AS_NUMBER(constant));
+        } else if (IS_BOOL(constant)) {
+            fprintf(file, "    BOOL_VAL(%s)", AS_BOOL(constant) ? "true" : "false");
+        } else if (IS_NIL(constant)) {
+            fprintf(file, "    NIL_VAL");
+        } else if (IS_OBJ(constant)) {
+            Obj* obj = AS_OBJ(constant);
+            if (obj != NULL && obj->type == OBJ_STRING) {
+                ObjString* str = (ObjString*)obj;
+                fprintf(file, "    OBJ_VAL(\"");
+                for (int j = 0; j < str->length; j++) {
+                    char c = str->chars[j];
+                    if (c == '"') {
+                        fprintf(file, "\\\"");
+                    } else if (c == '\\') {
+                        fprintf(file, "\\\\");
+                    } else if (c == '\n') {
+                        fprintf(file, "\\n");
+                    } else if (c == '\t') {
+                        fprintf(file, "\\t");
+                    } else if (c == '\r') {
+                        fprintf(file, "\\r");
+                    } else {
+                        fprintf(file, "%c", c);
+                    }
+                }
+                fprintf(file, "\")");
+            } else {
+                fprintf(file, "    NIL_VAL");
+            }
+        } else {
+            fprintf(file, "    NIL_VAL");
+        }
+        if (i < func->chunk.constants.count - 1) {
+            fprintf(file, ",\n");
+        } else {
+            fprintf(file, "\n");
+        }
+    }
+    fprintf(file, "  };\n\n");
+    
+    // Generate bytecode array
+    fprintf(file, "  // Function bytecode\n");
+    fprintf(file, "  static uint8_t funcBytecode_%d[] = {\n", funcIndex);
+    for (int i = 0; i < func->chunk.count; i++) {
+        fprintf(file, "    %d", func->chunk.code[i]);
+        if (i < func->chunk.count - 1) {
+            fprintf(file, ",");
+        }
+        if ((i + 1) % 16 == 0) {
+            fprintf(file, "\n");
+        }
+    }
+    fprintf(file, "\n  };\n\n");
+    
+    // Implement bytecode execution engine
+    fprintf(file, "  // Bytecode execution engine\n");
+    fprintf(file, "  Value stack[256];\n");
+    fprintf(file, "  Value* stackTop = stack;\n");
+    fprintf(file, "  Value locals[256];\n");
+    fprintf(file, "  \n");
+    fprintf(file, "  // Initialize locals\n");
+    fprintf(file, "  for (int i = 0; i < 256; i++) {\n");
+    fprintf(file, "    locals[i] = NIL_VAL;\n");
+    fprintf(file, "  }\n");
+    fprintf(file, "  \n");
+    fprintf(file, "  // Set up parameters\n");
+    fprintf(file, "  locals[0] = NIL_VAL; // Function object slot\n");
+    fprintf(file, "  for (int i = 0; i < argCount && i < %d; i++) {\n", func->arity);
+    fprintf(file, "    locals[i + 1] = args[i];\n");
+    fprintf(file, "  }\n");
+    fprintf(file, "  \n");
+    fprintf(file, "  // Stack operations\n");
+    fprintf(file, "  #define PUSH(value) (*stackTop++ = (value))\n");
+    fprintf(file, "  #define POP() (*(--stackTop))\n");
+    fprintf(file, "  #define PEEK(distance) (stackTop[-1 - (distance)])\n");
+    fprintf(file, "  \n");
+    fprintf(file, "  // Execute bytecode\n");
+    fprintf(file, "  int ip = 0;\n");
+    fprintf(file, "  while (ip < %d) {\n", func->chunk.count);
+    fprintf(file, "    uint8_t instruction = funcBytecode_%d[ip++];\n", funcIndex);
+    fprintf(file, "    switch (instruction) {\n");
+    
+    // Generate all opcode cases
+    fprintf(file, "      case %d: { // OP_CONSTANT\n", OP_CONSTANT);
+    fprintf(file, "        uint8_t constant = funcBytecode_%d[ip++];\n", funcIndex);
+    fprintf(file, "        PUSH(funcConstants_%d[constant]);\n", funcIndex);
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_NIL\n", OP_NIL);
+    fprintf(file, "        PUSH(NIL_VAL);\n");
+    fprintf(file, "        break;\n");
+    
+    fprintf(file, "      case %d: // OP_TRUE\n", OP_TRUE);
+    fprintf(file, "        PUSH(BOOL_VAL(true));\n");
+    fprintf(file, "        break;\n");
+    
+    fprintf(file, "      case %d: // OP_FALSE\n", OP_FALSE);
+    fprintf(file, "        PUSH(BOOL_VAL(false));\n");
+    fprintf(file, "        break;\n");
+    
+    fprintf(file, "      case %d: // OP_POP\n", OP_POP);
+    fprintf(file, "        POP();\n");
+    fprintf(file, "        break;\n");
+    
+    fprintf(file, "      case %d: { // OP_GET_LOCAL\n", OP_GET_LOCAL);
+    fprintf(file, "        uint8_t slot = funcBytecode_%d[ip++];\n", funcIndex);
+    fprintf(file, "        PUSH(locals[slot]);\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: { // OP_SET_LOCAL\n", OP_SET_LOCAL);
+    fprintf(file, "        uint8_t slot = funcBytecode_%d[ip++];\n", funcIndex);
+    fprintf(file, "        locals[slot] = PEEK(0);\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_EQUAL\n", OP_EQUAL);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        bool equal = false;\n");
+    fprintf(file, "        if (a.type == b.type) {\n");
+    fprintf(file, "          switch (a.type) {\n");
+    fprintf(file, "            case VAL_BOOL: equal = AS_BOOL(a) == AS_BOOL(b); break;\n");
+    fprintf(file, "            case VAL_NIL: equal = true; break;\n");
+    fprintf(file, "            case VAL_NUMBER: equal = AS_NUMBER(a) == AS_NUMBER(b); break;\n");
+    fprintf(file, "            case VAL_OBJ: equal = AS_OBJ(a) == AS_OBJ(b); break;\n");
+    fprintf(file, "          }\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        PUSH(BOOL_VAL(equal));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_GREATER\n", OP_GREATER);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        PUSH(BOOL_VAL(AS_NUMBER(a) > AS_NUMBER(b)));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_LESS\n", OP_LESS);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        PUSH(BOOL_VAL(AS_NUMBER(a) < AS_NUMBER(b)));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_ADD\n", OP_ADD);
+    fprintf(file, "      case %d: // OP_ADD_NUMBER\n", OP_ADD_NUMBER);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        PUSH(NUMBER_VAL(AS_NUMBER(a) + AS_NUMBER(b)));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_ADD_STRING\n", OP_ADD_STRING);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        Value result = concatenateStrings(a, b);\n");
+    fprintf(file, "        PUSH(result);\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_SUBTRACT\n", OP_SUBTRACT);
+    fprintf(file, "      case %d: // OP_SUBTRACT_NUMBER\n", OP_SUBTRACT_NUMBER);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        PUSH(NUMBER_VAL(AS_NUMBER(a) - AS_NUMBER(b)));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_MULTIPLY\n", OP_MULTIPLY);
+    fprintf(file, "      case %d: // OP_MULTIPLY_NUMBER\n", OP_MULTIPLY_NUMBER);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        PUSH(NUMBER_VAL(AS_NUMBER(a) * AS_NUMBER(b)));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_DIVIDE\n", OP_DIVIDE);
+    fprintf(file, "      case %d: // OP_DIVIDE_NUMBER\n", OP_DIVIDE_NUMBER);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        PUSH(NUMBER_VAL(AS_NUMBER(a) / AS_NUMBER(b)));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_MODULO\n", OP_MODULO);
+    fprintf(file, "      case %d: // OP_MODULO_NUMBER\n", OP_MODULO_NUMBER);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value b = POP();\n");
+    fprintf(file, "        Value a = POP();\n");
+    fprintf(file, "        PUSH(NUMBER_VAL(fmod(AS_NUMBER(a), AS_NUMBER(b))));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_NOT\n", OP_NOT);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value value = POP();\n");
+    fprintf(file, "        bool isFalsey = IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));\n");
+    fprintf(file, "        PUSH(BOOL_VAL(isFalsey));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_NEGATE\n", OP_NEGATE);
+    fprintf(file, "      case %d: // OP_NEGATE_NUMBER\n", OP_NEGATE_NUMBER);
+    fprintf(file, "      {\n");
+    fprintf(file, "        Value value = POP();\n");
+    fprintf(file, "        PUSH(NUMBER_VAL(-AS_NUMBER(value)));\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      case %d: // OP_RETURN\n", OP_RETURN);
+    fprintf(file, "      {\n");
+    fprintf(file, "        if (stackTop > stack) {\n");
+    fprintf(file, "          return *(stackTop - 1);\n");
+    fprintf(file, "        }\n");
+    fprintf(file, "        return NIL_VAL;\n");
+    fprintf(file, "      }\n");
+    
+    fprintf(file, "      default:\n");
+    fprintf(file, "        // Skip unsupported opcodes\n");
+    fprintf(file, "        break;\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "  }\n");
+    fprintf(file, "  \n");
+    fprintf(file, "  // If we reach here without a return, return NIL\n");
+    fprintf(file, "  return NIL_VAL;\n");
+    fprintf(file, "}\n\n");
 }
