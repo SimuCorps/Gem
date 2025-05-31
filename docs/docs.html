@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Language Guide - Gem Programming Language</title>
+    <title>Documentation - Gem Programming Language</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="docs.css">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -19,8 +19,7 @@
             </div>
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link">Home</a></li>
-                <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
-                <li><a href="language-guide.html" class="nav-link active">Language Guide</a></li>
+                <li><a href="docs.html" class="nav-link active">Docs</a></li>
                 <li><a href="examples.html" class="nav-link">Examples</a></li>
                 <li><a href="changeblog.html" class="nav-link">Changeblog</a></li>
                 <li><a href="https://github.com/SimuCorps/Gem" class="nav-link" target="_blank">GitHub</a></li>
@@ -33,28 +32,244 @@
             <div class="docs-layout">
                 <aside class="docs-sidebar">
                     <nav class="docs-nav">
-                        <h3>Language Guide</h3>
-                        <ul>
-                            <li><a href="#overview">Overview</a></li>
-                            <li><a href="#syntax">Syntax</a></li>
-                            <li><a href="#types">Type System</a></li>
-                            <li><a href="#hashes">Hashes</a></li>
-                            <li><a href="#type-coercion">Type Coercion</a></li>
-                            <li><a href="#variables">Variables</a></li>
-                            <li><a href="#functions">Functions</a></li>
-                            <li><a href="#classes">Classes</a></li>
-                            <li><a href="#control-flow">Control Flow</a></li>
-                            <li><a href="#modules">Modules</a></li>
-                            <li><a href="#memory">Memory Safety</a></li>
-                        </ul>
+                        <h3>Documentation</h3>
+                        
+                        <!-- Getting Started Section -->
+                        <div class="nav-section">
+                            <button class="nav-section-toggle active" data-section="getting-started" aria-expanded="true" aria-controls="getting-started-content">
+                                <span class="toggle-icon">▼</span>
+                                Getting Started
+                            </button>
+                            <ul class="nav-section-content" id="getting-started-content">
+                                <li><a href="#getting-started">Overview</a></li>
+                                <li><a href="#installation">Installation</a></li>
+                                <li><a href="#first-program">Your First Program</a></li>
+                                <li><a href="#repl">Interactive REPL</a></li>
+                                <li><a href="#basic-concepts">Basic Concepts</a></li>
+                            </ul>
+                        </div>
+
+                        <!-- Language Guide Section -->
+                        <div class="nav-section">
+                            <button class="nav-section-toggle" data-section="language" aria-expanded="false" aria-controls="language-content">
+                                <span class="toggle-icon">▶</span>
+                                Language Guide
+                            </button>
+                            <ul class="nav-section-content collapsed" id="language-content">
+                                <li><a href="#overview">Language Overview</a></li>
+                                <li><a href="#syntax">Syntax</a></li>
+                                <li><a href="#types">Type System</a></li>
+                                <li><a href="#hashes">Hashes</a></li>
+                                <li><a href="#type-coercion">Type Coercion</a></li>
+                                <li><a href="#variables">Variables</a></li>
+                                <li><a href="#functions">Functions</a></li>
+                                <li><a href="#classes">Classes</a></li>
+                                <li><a href="#control-flow">Control Flow</a></li>
+                                <li><a href="#modules">Modules</a></li>
+                                <li><a href="#memory">Memory Safety</a></li>
+                            </ul>
+                        </div>
+
+                        <!-- Standard Library Section -->
+                        <div class="nav-section">
+                            <button class="nav-section-toggle" data-section="stdlib" aria-expanded="false" aria-controls="stdlib-content">
+                                <span class="toggle-icon">▶</span>
+                                Standard Library
+                            </button>
+                            <ul class="nav-section-content collapsed" id="stdlib-content">
+                                <li><a href="#standard-library">Overview</a></li>
+                                <li><a href="#importing">Importing Modules</a></li>
+                                <li><a href="#math-module">Math Module</a></li>
+                                <li><a href="#http-module">HTTP Module</a></li>
+                                <li><a href="#time-module">Time Module</a></li>
+                            </ul>
+                        </div>
                     </nav>
                 </aside>
 
                 <article class="docs-content">
                     <header class="docs-header">
-                        <h1>Gem Language Guide</h1>
-                        <p class="docs-subtitle">Complete reference for Gem's syntax, features, and programming concepts</p>
+                        <h1>Gem Documentation</h1>
+                        <p class="docs-subtitle">Complete guide to the Gem programming language</p>
                     </header>
+
+                    <section id="getting-started" class="docs-section">
+                        <h2>Getting Started</h2>
+                        <p>Learn how to install Gem and write your first program. Gem is a statically-typed programming language designed for safety, performance, and developer productivity.</p>
+                    </section>
+
+                    <section id="installation" class="docs-section">
+                        <h2>Installation</h2>
+                        <p>Gem is distributed as source code that you compile locally. This ensures optimal performance for your system and gives you access to the latest features.</p>
+
+                        <h3>Prerequisites</h3>
+                        <ul>
+                            <li>A C compiler (GCC, Clang, or MSVC)</li>
+                            <li>Make (on Unix-like systems)</li>
+                            <li>Git (to clone the repository)</li>
+                        </ul>
+
+                        <h3>Building from Source</h3>
+                        <div class="code-block">
+                            <pre><code># Clone the repository
+git clone https://github.com/SimuCorps/Gem.git
+cd Gem
+
+# Build Gem with standard library (recommended)
+make
+
+# Or build without standard library for minimal installation
+make no-stl
+
+# Install system-wide (optional)
+sudo make install</code></pre>
+                        </div>
+
+                        <p>This will create a <code>gemc</code> executable in the project directory. If you installed system-wide, you can run <code>gemc</code> from anywhere.</p>
+
+                        <div class="info-box">
+                            <h4>💡 Build Options</h4>
+                            <ul>
+                                <li><code>make</code> or <code>make gemc</code> - Full build with standard library</li>
+                                <li><code>make no-stl</code> or <code>make gemch</code> - Minimal build without STL</li>
+                                <li><code>make clean</code> - Remove build artifacts</li>
+                                <li><code>make test</code> - Run the test suite</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <section id="first-program" class="docs-section">
+                        <h2>Your First Program</h2>
+                        <p>Let's write a simple "Hello, World!" program to verify your installation works correctly.</p>
+
+                        <h3>Create a File</h3>
+                        <p>Create a new file called <code>hello.gem</code>:</p>
+
+                        <div class="code-block">
+                            <pre><code># hello.gem - Your first Gem program
+puts "Hello, World!"
+
+# Variables with type safety
+string name = "Gem"
+int version = 1
+
+puts "Welcome to #{name} v#{version}!"
+
+# Functions
+def greet(string person) string
+    return "Hello, #{person}!"
+end
+
+puts greet("Developer")</code></pre>
+                        </div>
+
+                        <h3>Run the Program</h3>
+                        <div class="code-block">
+                            <pre><code># Run your program
+./gemc hello.gem</code></pre>
+                        </div>
+
+                        <p>You should see output like:</p>
+                        <div class="output-block">
+                            <pre>Hello, World!
+Welcome to Gem v1!
+Hello, Developer!</pre>
+                        </div>
+                    </section>
+
+                    <section id="repl" class="docs-section">
+                        <h2>Interactive REPL</h2>
+                        <p>Gem includes an interactive Read-Eval-Print Loop (REPL) that's perfect for experimenting with the language and testing small code snippets.</p>
+
+                        <h3>Starting the REPL</h3>
+                        <div class="code-block">
+                            <pre><code># Start the interactive shell
+./gemc</code></pre>
+                        </div>
+
+                        <p>You'll see a prompt where you can type Gem code:</p>
+                        <div class="output-block">
+                            <pre>> puts "Hello from REPL!"
+Hello from REPL!
+> int x = 42
+> puts x
+42
+> string! message = "Mutable string"
+> message = "Changed!"
+> puts message
+Changed!
+> </pre>
+                        </div>
+
+                        <div class="info-box">
+                            <h4>🎯 REPL Tips</h4>
+                            <ul>
+                                <li>Press <kbd>Ctrl+C</kbd> or <kbd>Ctrl+D</kbd> to exit</li>
+                                <li>Variables persist between statements</li>
+                                <li>Type checking works in real-time</li>
+                                <li>Great for learning and experimentation</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <section id="basic-concepts" class="docs-section">
+                        <h2>Basic Concepts</h2>
+                        <p>Here are the fundamental concepts you need to understand to start programming in Gem:</p>
+
+                        <h3>Type Safety</h3>
+                        <p>Gem is statically typed, meaning all variables must have explicit types:</p>
+                        <div class="code-block">
+                            <pre><code># Basic types
+int age = 25
+string name = "Alice"
+bool isActive = true
+
+# Type errors are caught at compile time
+# age = "not a number"  # ❌ Error!</code></pre>
+                        </div>
+
+                        <h3>Mutability Control</h3>
+                        <p>Variables are immutable by default. Use <code>mut</code> to make them mutable (or <code>!</code> as syntactic sugar):</p>
+                        <div class="code-block">
+                            <pre><code># Immutable by default
+string message = "Hello"
+
+# Mutable with 'mut' keyword (recommended)
+mut string mutableMessage = "Hello"
+mutableMessage = "Changed!"
+
+# Mutable with '!' suffix (alternative)
+string! altMutableMessage = "Hello"
+altMutableMessage = "Changed!"</code></pre>
+                        </div>
+
+                        <h3>Nullability Safety</h3>
+                        <p>Use <code>?</code> to allow variables to be <code>nil</code>:</p>
+                        <div class="code-block">
+                            <pre><code># Nullable variable
+string? optionalName = nil
+optionalName = "Alice"
+
+# Must check before use
+if (optionalName != nil)
+    puts "Hello, #{optionalName}!"
+end</code></pre>
+                        </div>
+
+                        <h3>Functions</h3>
+                        <p>Functions have explicit parameter and return types:</p>
+                        <div class="code-block">
+                            <pre><code># Function with parameters and return type
+def add(int a, int b) int
+    return a + b
+end
+
+# Function with no return value
+def greet(string name) void
+    puts "Hello, #{name}!"
+end</code></pre>
+                        </div>
+                    </section>
 
                     <section id="overview" class="docs-section">
                         <h2>Language Overview</h2>
@@ -729,6 +944,394 @@ end
                             </ul>
                         </div>
                     </section>
+
+                    <section id="standard-library" class="docs-section">
+                        <h2>Standard Library</h2>
+                        <p>Gem comes with a standard library that provides essential functionality for common programming tasks. The standard library is designed to be lightweight, efficient, and type-safe.</p>
+
+                        <h3>Available Modules</h3>
+                        <ul>
+                            <li><strong>Math Module</strong> - Mathematical operations</li>
+                            <li><strong>HTTP Module</strong> - HTTP client functionality for web requests</li>
+                            <li><strong>Time Module</strong> - Time operations, measurements, and duration handling</li>
+                        </ul>
+
+                        <h3>Built-in String Operations</h3>
+                        <p>String operations are handled through built-in operators:</p>
+                        <div class="code-block">
+                            <pre><code># String concatenation (built-in)
+string combined = "Hello" + " World";  # Returns "Hello World"
+
+# String literals
+string greeting = "Hello, Gem!";
+string empty = "";</code></pre>
+                        </div>
+
+                        <h3>Design Principles</h3>
+                        <ul>
+                            <li><strong>Type Safety</strong> - All functions are fully typed with compile-time checking</li>
+                            <li><strong>Immutability</strong> - Functions don't modify their inputs unless explicitly designed to</li>
+                            <li><strong>Null Safety</strong> - Functions handle nullable types safely</li>
+                            <li><strong>Consistency</strong> - Uniform naming and behavior across modules</li>
+                        </ul>
+
+                        <div class="info-box">
+                            <h4>📦 Module System</h4>
+                            <p>Use <code>require "module_name"</code> to import standard library modules.</p>
+                        </div>
+                    </section>
+
+                    <section id="importing" class="docs-section">
+                        <h2>Importing Modules</h2>
+                        <p>Learn how to import and use standard library modules in your Gem programs.</p>
+
+                        <h3>Basic Import Syntax</h3>
+                        <div class="code-block">
+                            <pre><code># Import math module
+require "math";
+
+# Import HTTP module
+require "http";
+
+# Use imported modules
+int sum = Math.add(10, 5);
+hash response = Http.get("https://api.example.com");</code></pre>
+                        </div>
+
+                        <h3>Module Availability</h3>
+                        <div class="info-box">
+                            <h4>📦 Standard Library Modules</h4>
+                            <ul>
+                                <li><code>"math"</code> - Mathematical operations</li>
+                                <li><code>"http"</code> - HTTP client functionality</li>
+                                <li><code>"time"</code> - Time operations and duration handling</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <section id="math-module" class="docs-section">
+                        <h2>Math Module</h2>
+                        <p>The Math module provides mathematical operations and utility functions.</p>
+
+                        <h3>Importing the Math Module</h3>
+                        <div class="code-block">
+                            <pre><code>require "math";</code></pre>
+                        </div>
+
+                        <h3>Basic Arithmetic</h3>
+                        <div class="code-block">
+                            <pre><code># Basic operations
+int sum = Math.add(10, 5);           # Returns 15
+int difference = Math.subtract(10, 5); # Returns 5
+int product = Math.multiply(10, 5);   # Returns 50
+int quotient = Math.divide(10, 5);    # Returns 2
+int remainder = Math.modulo(10, 3);   # Returns 1</code></pre>
+                        </div>
+
+                        <h3>Power Operations</h3>
+                        <div class="code-block">
+                            <pre><code># Exponentiation
+int squared = Math.power(5, 2);      # Returns 25
+int cubed = Math.power(3, 3);        # Returns 27
+int power = Math.power(2, 8);        # Returns 256</code></pre>
+                        </div>
+
+                        <h3>Comparison and Selection</h3>
+                        <div class="code-block">
+                            <pre><code># Min/Max operations
+int minimum = Math.min(10, 5);       # Returns 5
+int maximum = Math.max(10, 5);       # Returns 10</code></pre>
+                        </div>
+
+                        <h3>Absolute Value</h3>
+                        <div class="code-block">
+                            <pre><code># Absolute value
+int abs1 = Math.abs(-5);             # Returns 5
+int abs2 = Math.abs(5);              # Returns 5
+int abs3 = Math.abs(0);              # Returns 0</code></pre>
+                        </div>
+
+                        <h3>Math Module Function Reference</h3>
+                        <div class="code-block">
+                            <pre><code># Complete Math module API
+Math.add(int a, int b) int              # Addition
+Math.subtract(int a, int b) int         # Subtraction
+Math.multiply(int a, int b) int         # Multiplication
+Math.divide(int a, int b) int           # Division
+Math.modulo(int a, int b) int           # Modulo operation
+Math.power(int base, int exp) int       # Exponentiation
+Math.abs(int x) int                     # Absolute value
+Math.min(int a, int b) int              # Minimum of two values
+Math.max(int a, int b) int              # Maximum of two values</code></pre>
+                        </div>
+                    </section>
+
+                    <section id="http-module" class="docs-section">
+                        <h2>HTTP Module</h2>
+                        <p>The HTTP module provides a comprehensive HTTP client for making web requests. It supports all major HTTP methods, custom headers, request data, and detailed response handling.</p>
+
+                        <h3>Importing the HTTP Module</h3>
+                        <div class="code-block">
+                            <pre><code>require "http";</code></pre>
+                        </div>
+
+                        <h3>Basic GET Request</h3>
+                        <div class="code-block">
+                            <pre><code># Simple GET request
+hash response = Http.get("https://api.example.com/data");
+
+# Check if request was successful
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+string body = response["body"] as string;
+
+if (success)
+    puts "Request successful!";
+    puts "Status: " + status;
+    puts "Response: " + body;
+else
+    puts "Request failed with status: " + status;
+end</code></pre>
+                        </div>
+
+                        <h3>GET Request with Custom Headers</h3>
+                        <div class="code-block">
+                            <pre><code># GET request with custom headers
+hash headers = {};
+headers["Authorization"] = "Bearer your-token-here";
+headers["Content-Type"] = "application/json";
+headers["User-Agent"] = "MyApp/1.0";
+
+hash response = Http.get("https://api.example.com/protected", headers);
+
+# Access response details
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+string body = response["body"] as string;
+int responseTime = response["response_time"] as int;</code></pre>
+                        </div>
+
+                        <h3>POST Request with Data</h3>
+                        <div class="code-block">
+                            <pre><code># POST request with form data
+hash data = {};
+data["name"] = "John Doe";
+data["email"] = "john@example.com";
+data["age"] = "30";
+
+hash response = Http.post("https://api.example.com/users", data);
+
+if (response["success"] as bool)
+    puts "User created successfully!";
+    puts "Response: " + (response["body"] as string);
+end</code></pre>
+                        </div>
+
+                        <h3>POST Request with JSON and Headers</h3>
+                        <div class="code-block">
+                            <pre><code># POST request with JSON data and custom headers
+hash headers = {};
+headers["Content-Type"] = "application/json";
+headers["Authorization"] = "Bearer token123";
+
+hash jsonData = {};
+jsonData["title"] = "New Post";
+jsonData["content"] = "This is the post content";
+jsonData["published"] = "true";
+
+hash response = Http.post("https://api.example.com/posts", jsonData, headers);
+
+# Check response
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+
+if (success)
+    puts "Post created! Status: " + status;
+else
+    puts "Failed to create post. Status: " + status;
+end</code></pre>
+                        </div>
+
+                        <h3>PUT Request for Updates</h3>
+                        <div class="code-block">
+                            <pre><code># PUT request to update a resource
+hash updateData = {};
+updateData["name"] = "Jane Doe";
+updateData["email"] = "jane@example.com";
+
+hash headers = {};
+headers["Content-Type"] = "application/json";
+
+hash response = Http.put("https://api.example.com/users/123", updateData, headers);
+
+if (response["success"] as bool)
+    puts "User updated successfully!";
+    puts "Response time: " + (response["response_time"] as int) + "ms";
+end</code></pre>
+                        </div>
+
+                        <h3>DELETE Request</h3>
+                        <div class="code-block">
+                            <pre><code># DELETE request with authorization
+hash headers = {};
+headers["Authorization"] = "Bearer admin-token";
+
+hash response = Http.delete("https://api.example.com/users/123", headers);
+
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+
+if (success)
+    puts "Resource deleted successfully!";
+else
+    puts "Failed to delete resource. Status: " + status;
+end</code></pre>
+                        </div>
+
+                        <h3>Error Handling</h3>
+                        <div class="code-block">
+                            <pre><code># Comprehensive error handling
+hash response = Http.get("https://invalid-url-example.com");
+
+bool success = response["success"] as bool;
+int status = response["status"] as int;
+
+if (!success)
+    if (status == 0)
+        puts "Network error or invalid URL";
+    elsif (status == 404)
+        puts "Resource not found";
+    elsif (status == 500)
+        puts "Server error";
+    else
+        puts "Request failed with status: " + status;
+    end
+else
+    puts "Request successful!";
+    string body = response["body"] as string;
+    puts "Response: " + body;
+end</code></pre>
+                        </div>
+
+                        <h3>HTTP Module Function Reference</h3>
+                        <div class="code-block">
+                            <pre><code># Complete HTTP module API
+
+# GET requests
+Http.get(string url) hash                           # Simple GET
+Http.get(string url, hash headers) hash             # GET with headers
+
+# POST requests  
+Http.post(string url, hash data) hash               # POST with data
+Http.post(string url, hash data, hash headers) hash # POST with data and headers
+
+# PUT requests
+Http.put(string url, hash data) hash                # PUT with data
+Http.put(string url, hash data, hash headers) hash  # PUT with data and headers
+
+# DELETE requests
+Http.delete(string url) hash                        # Simple DELETE
+Http.delete(string url, hash headers) hash          # DELETE with headers
+
+# Response hash structure:
+# {
+#   "success": bool,        # Whether request succeeded
+#   "status": int,          # HTTP status code (0 for network errors)
+#   "body": string,         # Response body content
+#   "response_time": int    # Response time in microseconds
+# }</code></pre>
+                        </div>
+
+                        <h3>Common HTTP Status Codes</h3>
+                        <div class="info-box">
+                            <h4>📡 HTTP Status Codes</h4>
+                            <ul>
+                                <li><code>200</code> - OK (Success)</li>
+                                <li><code>201</code> - Created</li>
+                                <li><code>400</code> - Bad Request</li>
+                                <li><code>401</code> - Unauthorized</li>
+                                <li><code>403</code> - Forbidden</li>
+                                <li><code>404</code> - Not Found</li>
+                                <li><code>500</code> - Internal Server Error</li>
+                                <li><code>0</code> - Network Error/Invalid URL</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <section id="time-module" class="docs-section">
+                        <h2>Time Module</h2>
+                        <p>The Time module provides basic time-related functionality including current time access, sleep operations, and function timing.</p>
+
+                        <h3>Importing the Time Module</h3>
+                        <div class="code-block">
+                            <pre><code>require "time";</code></pre>
+                        </div>
+
+                        <h3>Current Time</h3>
+                        <div class="code-block">
+                            <pre><code># Get current time as floating-point timestamp
+puts "Current timestamp: #{Time.now()}";</code></pre>
+                        </div>
+
+                        <h3>Sleep Operations</h3>
+                        <div class="code-block">
+                            <pre><code># Sleep for a specified number of milliseconds
+puts "Starting operation...";
+Time.sleep(2000);  # Sleep for 2 seconds (2000 milliseconds)
+puts "Operation completed after delay";</code></pre>
+                        </div>
+
+                        <h3>Function Timing</h3>
+                        <div class="code-block">
+                            <pre><code># Measure execution time of a function
+def slowOperation() void
+    Time.sleep(1000);  # Sleep for 1 second (1000 milliseconds)
+    puts "Slow operation completed";
+end
+
+# Measure function execution
+Time.measure(slowOperation);</code></pre>
+                        </div>
+
+                        <h3>Timeout Operations</h3>
+                        <div class="code-block">
+                            <pre><code># Attempt to run function with timeout
+def quickOperation() void
+    puts "Quick operation";
+end
+
+def slowOperation() void
+    Time.sleep(5000);  # Sleep for 5 seconds (5000 milliseconds)
+    puts "This takes too long";
+end
+
+Time.timeout(quickOperation, 2);  # 2 second timeout
+Time.timeout(slowOperation, 2);   # 2 second timeout</code></pre>
+                        </div>
+
+                        <h3>Practical Time Examples</h3>
+                        <div class="code-block">
+                            <pre><code># Simple timing and sleep operations
+def timedWork() void
+    puts "Starting work...";
+    Time.sleep(1500);  # 1.5 seconds of work
+    puts "Work completed";
+end
+
+# Measure the work
+puts "Timing work operation:";
+Time.measure(timedWork);
+
+# Multiple sleep operations
+puts "Sleep sequence:";
+Time.sleep(500);   # 0.5 seconds
+puts "Step 1 complete";
+Time.sleep(1000);  # 1.0 seconds  
+puts "Step 2 complete";
+Time.sleep(750);   # 0.75 seconds
+puts "All steps complete";</code></pre>
+                        </div>
+                    </section>
                 </article>
             </div>
         </div>
@@ -743,8 +1346,8 @@ end
                 </div>
                 <div class="footer-links">
                     <a href="https://github.com/SimuCorps/Gem" target="_blank">GitHub</a>
-                    <a href="getting-started.html">Documentation</a>
-                    <a href="examples.html">Examples</a>
+                    <a href="docs.html">Documentation</a>
+                    <a href="changeblog.html">Changeblog</a>
                 </div>
             </div>
             <div class="footer-bottom">
