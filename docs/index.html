@@ -6,6 +6,8 @@
     <title>Gem Programming Language</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 </head>
 <body>
     <nav class="navbar">
@@ -53,51 +55,90 @@
                         <a href="https://github.com/SimuCorps/Gem" class="btn btn-secondary" target="_blank">View on GitHub</a>
                     </div>
                 </div>
-                <div class="hero-code">
-                    <div class="code-window">
-                        <div class="code-header">
-                            <div class="code-dots">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <span class="code-title">hello.gem</span>
-                        </div>
-                        <pre class="code-content"><code># Type-safe variables with mutability control
-string name = "Alice"        # Immutable
-# name = "Bob"  # ❌ Error: Cannot modify immutable
+                <div class="hero-interactive">
+                    <div class="interactive-demo">
+                        <div class="demo-file">
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <span class="dot red"></span>
+                                        <span class="dot yellow"></span>
+                                        <span class="dot green"></span>
+                                    </div>
+                                    <span class="code-title">hello.gem</span>
+                                    <button class="run-button" onclick="runGemCode()">▶ Run</button>
+                                </div>
+                                <div class="code-editor">
+                                    <div class="editor-container">
+                                        <div class="line-numbers" id="line-numbers"></div>
+                                        <div class="editor-wrapper">
+                                            <pre class="syntax-highlight"><code class="language-ruby" id="syntax-highlight"></code></pre>
+                                            <textarea id="gem-editor" spellcheck="false">
+# Type Safety - Variables are immutable by default
+string message = "Hello, World!"
+string name = "Gem Developer"
 
-# Use 'mut' keyword for mutable variables (recommended)
-mut int counter = 0          # Mutable with mut
-counter = counter + 1        # ✅ Valid: counter is mutable
+# Mutable variables with explicit declaration
+mut int counter = 0
 
-# Alternative syntax with '!' suffix
-int! altCounter = 0          # Mutable with ! (alternative)
-altCounter = altCounter + 1   # ✅ Valid: altCounter is mutable
-string? nickname = nil       # Nullable
-
-# Functions with type safety
-def greet(string name, int age) string
-    return "Hello #{name}, age #{age}"
-end
-
-# Classes with inheritance
-class Person
-    def init(string name) void
-        this.name = name
-    end
-    
-    def introduce() string
-        return "I'm #{this.name}"
-    end
-end
-
-# Memory-safe scoping
+# Memory Safety - Automatic scope-based cleanup
 begin
-    obj person = Person("Bob")
-    puts person.introduce()
-    # person automatically cleaned up here
-end</code></pre>
+    string betelgeusian = "Zaphod Beeblebrox"
+    # betelgeusian automatically cleaned up here
+end
+
+# Functions with explicit return types (Type Safety)
+def greet(string person) string
+    return "Welcome to Gem, #{name}!"
+end
+
+# Recursive Fibonacci (Performance + Safety)
+def fibonacci(int n) int
+    counter = counter + 1  # Track function calls
+    if (n <= 1)
+        return n
+    end
+    return fibonacci(n - 1) + fibonacci(n - 2)
+end
+
+puts message
+puts greet(name)
+puts "Fibonacci of 30: #{fibonacci(30)}"
+puts "Function calls made: #{counter}"
+puts "Gem makes programming safe and beautiful!"
+# Uncomment this line to see memory safety in action
+# puts "Betelgeusian: #{betelgeusian}"
+</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="demo-terminal">
+                            <div class="terminal-window">
+                                <div class="terminal-header">
+                                    <div class="terminal-dots">
+                                        <span class="dot red"></span>
+                                        <span class="dot yellow"></span>
+                                        <span class="dot green"></span>
+                                    </div>
+                                    <span class="terminal-title">Terminal</span>
+                                    <button class="clear-button" onclick="clearTerminal()">Clear</button>
+                                </div>
+                                <div class="terminal-content" id="terminal-output">
+                                    <div class="terminal-line">
+                                        <span class="terminal-prompt">$ </span>
+                                        <span class="terminal-command">gemc hello.gem</span>
+                                    </div>
+                                    <div class="terminal-output-text">
+                                        Loading Gem interpreter...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="demo-description">
+                        <p>✨ <strong>Try it yourself!</strong> Edit the code above and click "Run" to see Gem in action. This is a real Gem interpreter running in your browser - experience the language's safety and elegance firsthand.</p>
                     </div>
                 </div>
             </div>
@@ -275,6 +316,12 @@ end</code></pre>
         </div>
     </footer>
 
+    <!-- Scripts -->
+    <script src="gem.js"></script>
     <script src="script.js"></script>
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
 </body>
 </html> 

@@ -148,10 +148,31 @@ $(BIN_DIR)/gemch: $(SRC_FILES) $(VERSION_HEADER)
 	$(CC) $(SRC_FILES) -o $(BIN_DIR)/gemch $(CFLAGS) $(LDFLAGS)
 	@echo "Built: $(BIN_DIR)/gemch (without standard library) - version $(VERSION_STRING)"
 
+# WASM build targets
+EMCC = emcc
+WASM_CFLAGS = -O3 -s WASM=1 -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1 -s EXPORT_NAME="GemModule" -s ENVIRONMENT=web -s EXPORTED_FUNCTIONS='["_gem_init","_gem_cleanup","_gem_clear_output","_gem_get_output","_gem_add_to_output","_gem_interpret","_gem_get_version","_gem_is_initialized"]'
+WASM_SRC_FILES = $(filter-out $(SRC_DIR)/main.c, $(SRC_FILES))
+
+# Build WASM version with standard library
+$(DOCS_DIR)/gem.js: $(WASM_SRC_FILES) $(EMBEDDED_STL_HEADER) $(VERSION_HEADER)
+	@echo "Building Gem interpreter for WebAssembly with standard library..."
+	$(EMCC) $(WASM_SRC_FILES) -o $(DOCS_DIR)/gem.js $(WASM_CFLAGS) -DWITH_STL -DSTL_PATH='"$(STL_DIR)"'
+	@echo "Built: $(DOCS_DIR)/gem.js and $(DOCS_DIR)/gem.wasm (with standard library) - version $(VERSION_STRING)"
+
+# Build WASM version without standard library
+$(DOCS_DIR)/gem-no-stl.js: $(WASM_SRC_FILES) $(VERSION_HEADER)
+	@echo "Building Gem interpreter for WebAssembly without standard library..."
+	$(EMCC) $(WASM_SRC_FILES) -o $(DOCS_DIR)/gem-no-stl.js $(WASM_CFLAGS)
+	@echo "Built: $(DOCS_DIR)/gem-no-stl.js and $(DOCS_DIR)/gem-no-stl.wasm (without standard library) - version $(VERSION_STRING)"
+
 # Convenience targets
 gemc: $(BIN_DIR)/gemc
 
 gemch: $(BIN_DIR)/gemch
+
+wasm: $(DOCS_DIR)/gem.js
+
+wasm-no-stl: $(DOCS_DIR)/gem-no-stl.js
 
 # Alternative target for --no-stl flag
 no-stl: $(BIN_DIR)/gemch
@@ -170,6 +191,8 @@ clean:
 	rm -rf $(BIN_DIR)
 	rm -f $(EMBEDDED_STL_HEADER)
 	rm -f $(VERSION_HEADER)
+	rm -f $(DOCS_DIR)/gem.js $(DOCS_DIR)/gem.wasm
+	rm -f $(DOCS_DIR)/gem-no-stl.js $(DOCS_DIR)/gem-no-stl.wasm
 
 # Install to system (optional)
 install: $(BIN_DIR)/gemc
@@ -202,6 +225,8 @@ help:
 	@echo "  all           - Build gemc with standard library (default)"
 	@echo "  gemc          - Build gemc with standard library"
 	@echo "  gemch         - Build gemch without standard library"
+	@echo "  wasm          - Build WebAssembly version with standard library"
+	@echo "  wasm-no-stl   - Build WebAssembly version without standard library"
 	@echo "  no-stl        - Alias for gemch (without standard library)"
 	@echo "  version       - Show current version information"
 	@echo "  version-update- Update version and rebuild everything"
@@ -214,6 +239,7 @@ help:
 	@echo ""
 	@echo "Build output:"
 	@echo "  Binaries are built in the $(BIN_DIR)/ directory"
+	@echo "  WASM files are built in the $(DOCS_DIR)/ directory"
 	@echo ""
 	@echo "Version management:"
 	@echo "  Edit $(VERSION_CONF) to change version"
@@ -221,8 +247,9 @@ help:
 	@echo ""
 	@echo "Examples:"
 	@echo "  make               # Build with standard library ($(BIN_DIR)/gemc)"
+	@echo "  make wasm          # Build WebAssembly version ($(DOCS_DIR)/gem.js)"
 	@echo "  make version       # Show current version"
 	@echo "  make version-update# Update version and rebuild"
 	@echo "  make clean         # Clean build artifacts"
 
-.PHONY: gemc gemch clean install uninstall test help no-stl version version-update update-docs 
+.PHONY: gemc gemch clean install uninstall test help no-stl version version-update update-docs wasm wasm-no-stl 
