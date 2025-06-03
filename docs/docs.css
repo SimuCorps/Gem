@@ -246,7 +246,7 @@
 
 /* Code blocks */
 .code-block {
-    background: #1e293b;
+    background: #0f2a15;
     border-radius: var(--border-radius);
     overflow: hidden;
     margin: 1.5rem 0;
@@ -264,7 +264,7 @@
 }
 
 .output-block {
-    background: #0f172a;
+    background: #0f2a13;
     border-radius: var(--border-radius);
     overflow: hidden;
     margin: 1.5rem 0;
@@ -312,8 +312,8 @@ kbd {
 
 /* Info boxes */
 .info-box {
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, #effff0 0%, #dcfedb 100%);
+    border: 1px solid #bffec2;
     border-radius: var(--border-radius);
     padding: 1.5rem;
     margin: 1.5rem 0;
@@ -328,7 +328,7 @@ kbd {
 
 .info-box p,
 .info-box ul {
-    color: #1e40af;
+    color: var(--primary-color);
     margin-bottom: 0.5rem;
 }
 
