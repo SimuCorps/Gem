@@ -1,4 +1,13 @@
 /* Reset and base styles */
+/* 
+    #A8D8A8 - medium light sage
+    #4CAF50 - medium emerald (secondary)
+    #388E3C - deep emerald (primary)
+    #1B5E20 - very dark forest (primary dark)
+    #81C784 - medium-light green
+    #66BB6A - medium green
+    #2E7D32 - dark forest (accent)
+*/
 * {
     margin: 0;
     padding: 0;
@@ -6,11 +15,11 @@
 }
 
 :root {
-    --primary-color: #6366f1;
-    --primary-dark: #4f46e5;
-    --secondary-color: #8b5cf6;
-    --accent-color: #06b6d4;
-    --text-primary: #1f2937;
+    --primary-color: #388E3C;
+    --primary-dark: #1B5E20;
+    --secondary-color: #4CAF50;
+    --accent-color: #2E7D32;
+    --text-primary: #1f3722;
     --text-secondary: #6b7280;
     --text-light: #9ca3af;
     --bg-primary: #ffffff;
@@ -74,10 +83,6 @@ body {
     font-size: 1.25rem;
     color: var(--primary-color);
     text-decoration: none;
-}
-
-.gem-icon {
-    font-size: 1.5rem;
 }
 
 .version {
@@ -266,7 +271,7 @@ body {
 }
 
 .line-numbers {
-    background: #2d2d2d;
+    background: #0f2a13;
     color: #858585;
     padding: 0.75rem 0.25rem 0.75rem 0.75rem;
     font-family: var(--font-mono);
@@ -283,6 +288,7 @@ body {
     flex: 1;
     position: relative;
     overflow: hidden;
+    background: #0f2a13;
 }
 
 .syntax-highlight {
@@ -384,14 +390,14 @@ body {
 }
 
 .terminal-window {
-    background: #0f172a;
+    background: #0f2a15;
     border-radius: var(--border-radius);
     overflow: hidden;
     box-shadow: var(--shadow-lg);
 }
 
 .terminal-header {
-    background: #1e293b;
+    background: #0f2a15;
     padding: 0.75rem 1rem;
     display: flex;
     align-items: center;
@@ -428,7 +434,7 @@ body {
 }
 
 .terminal-content {
-    background: #0f172a;
+    background: #0f2a13;
     color: #e2e8f0;
     font-family: var(--font-mono);
     font-size: 0.8rem;
@@ -514,18 +520,19 @@ code[class*=language-] {
 
 /* Code Window */
 .code-window {
-    background: #1e293b;
+    background: #0f2a15;
     border-radius: var(--border-radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow-xl);
 }
 
 .code-header {
-    background: #334155;
+    background: #0f2a13;
     padding: 0.75rem 1rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    border-bottom: 1px solid #404040;
 }
 
 .code-dots {
@@ -700,7 +707,7 @@ pre, code, .code-content, .code-block, .terminal-content {
 }
 
 .philosophy-box {
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    background: linear-gradient(135deg, #effff1 0%, #dbfedb 100%);
     border: 2px solid var(--primary-color);
     border-radius: var(--border-radius-lg);
     padding: 2rem;
@@ -715,7 +722,7 @@ pre, code, .code-content, .code-block, .terminal-content {
 }
 
 .philosophy-box p {
-    color: #1e40af;
+    color: var(--primary-color);
     line-height: 1.7;
     margin-bottom: 1rem;
 }
@@ -800,12 +807,13 @@ pre, code, .code-content, .code-block, .terminal-content {
 .example-card pre {
     margin: 0;
     padding: 1.5rem;
-    background: #1e293b;
+    background: #0f2a15;
     color: #e2e8f0;
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
     overflow-x: auto;
+    height: 100%;
 }
 
 /* Footer */
