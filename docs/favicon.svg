@@ -1,10 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <defs>
-    <linearGradient id="gemGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <polygon points="16,2 26,10 22,26 10,26 6,10" fill="url(#gemGradient)" stroke="#4f46e5" stroke-width="1"/>
-  <polygon points="16,2 6,10 16,14 26,10" fill="#ffffff" fill-opacity="0.3"/>
-</svg> 
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg width="256px" height="256px" viewBox="0 0 128.00 128.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--noto" preserveAspectRatio="xMidYMid meet" fill="#000000" transform="rotate(0)" stroke="#000000" stroke-width="0.00128">
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="SVGRepo_iconCarrier">
+<path fill="#A8D8A8" d="M4.01 47.94l17.48-26.51L35.03 36.9z"/>
+<path fill="#4CAF50" d="M44.11 68.26L4.01 47.94L35.03 36.9z"/>
+<path fill="#388E3C" d="M63.94 43.06L35.03 36.9l9.08 31.36z"/>
+<path fill="#1B5E20" d="M123.87 47.94l-17.48-26.51L92.85 36.9z"/>
+<path fill="#4CAF50" d="M83.77 68.26l40.1-20.32L92.85 36.9z"/>
+<path fill="#A8D8A8" d="M63.94 43.06l28.91-6.16l-9.08 31.36z"/>
+<path fill="#81C784" d="M83.77 68.26l-19.83-25.2l-19.83 25.2z"/>
+<path fill="#66BB6A" d="M43 10.06h41.88l21.51 11.37L92.85 36.9l-28.91 6.16l-28.91-6.16l-13.54-15.47z"/>
+<path fill="#2E7D32" d="M63.94 117.27L4.01 47.94l40.1 20.32z"/>
+<path fill="#66BB6A" d="M63.94 117.27l59.93-69.33l-40.1 20.32z"/>
+<path fill="#A8D8A8" d="M83.77 68.26l-19.83 49.01l-19.83-49.01z"/>
+</g>
+</svg>
