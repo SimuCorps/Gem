@@ -1,4 +1,4 @@
-# Gem Programming Language
+# Gem Programming Language!
 
 [![CI](https://github.com/SimuCorps/Gem/actions/workflows/ci.yml/badge.svg)](https://github.com/SimuCorps/Gem/actions/workflows/ci.yml)
 
