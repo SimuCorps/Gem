@@ -3,7 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Release notes and design notes for every version of the Gem programming language.">
+    <meta name="theme-color" content="#06070a">
+    <meta name="color-scheme" content="dark">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Changeblog — Gem Programming Language">
+    <meta property="og:description" content="Release notes and design notes for every version of the Gem programming language.">
+    <meta property="og:image" content="favicon.svg">
+    <meta name="twitter:card" content="summary_large_image">
     <title>Changeblog - Gem Programming Language</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="docs.css">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -64,7 +77,7 @@
                         <p>The new Time standard library module provides essential time-related functionality for modern applications:</p>
 
                         <div class="code-block">
-                            <pre><code>require "time";
+                            <pre><code class="language-ruby">require "time";
 
 # Get current timestamp
 puts "Current time: #{Time.now()}";
@@ -102,7 +115,7 @@ Time.timeout(slowTask, 2);   # May timeout</code></pre>
                         <p>We've resolved several important scoping issues that were causing variable resolution problems:</p>
 
                         <div class="code-block">
-                            <pre><code># Variable scoping now works correctly in all contexts
+                            <pre><code class="language-ruby"># Variable scoping now works correctly in all contexts
 def outerFunction() void
     string message = "Hello from outer";
     
@@ -189,7 +202,7 @@ end</code></pre>
                         <p>The new HTTP module brings production-ready web request capabilities to Gem. No more external dependencies or complex setup - just clean, type-safe HTTP operations:</p>
 
                         <div class="code-block">
-                            <pre><code>require "http";
+                            <pre><code class="language-ruby">require "http";
 
 # Simple GET request with full response handling
 hash response = Http.get("https://api.example.com/users");
@@ -213,7 +226,7 @@ hash result = Http.post("https://api.example.com/users", userData, headers);</co
                         <p>Hashes (key-value maps) are now a first-class data type in Gem, enabling natural data manipulation and API response handling:</p>
 
                         <div class="code-block">
-                            <pre><code># Create and manipulate hashes
+                            <pre><code class="language-ruby"># Create and manipulate hashes
 hash user = {};
 user["name"] = "Bob";
 user["age"] = "30";
@@ -229,7 +242,7 @@ bool isActive = user["active"] as bool;</code></pre>
                         <p>Developers can now choose between `mut` and `!` for mutable variables, providing flexibility while maintaining clarity:</p>
 
                         <div class="code-block">
-                            <pre><code># Both syntaxes work - choose your preference
+                            <pre><code class="language-ruby"># Both syntaxes work - choose your preference
 mut string name1 = "Alice";
 string! name2 = "Bob";
 
@@ -242,7 +255,7 @@ name2 = "Bob Updated";</code></pre>
                         <p>Intelligent type coercion makes working with different data types more natural while preserving safety:</p>
 
                         <div class="code-block">
-                            <pre><code># Automatic string conversion
+                            <pre><code class="language-ruby"># Automatic string conversion
 string numberStr = 42 as string;        # "42"
 string boolStr = true as string;        # "true"
 
@@ -308,7 +321,7 @@ bool isNil = nil as bool;               # false</code></pre>
                         <p>Gem now supports <strong>optional semicolons</strong>. You can write code in whatever style feels natural:</p>
 
                         <div class="code-block">
-                            <pre><code># Modern style - clean and minimal
+                            <pre><code class="language-ruby"># Modern style - clean and minimal
 string name = "Alice"
 int age = 30
 puts "Hello, " + name
@@ -361,7 +374,7 @@ puts "Hello, " + name</code></pre>
                         <p>From day one, Gem is being built around these core principles:</p>
                         
                         <div class="code-block">
-                            <pre><code># Safety First - prevent common errors
+                            <pre><code class="language-ruby"># Safety First - prevent common errors
 string? name = getName()  # Explicit nullability
 if (name != nil) {
     puts "Hello, " + name  # Safe to use
@@ -406,5 +419,10 @@ string greeting = "Hello"
             </div>
         </div>
     </footer>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html> 

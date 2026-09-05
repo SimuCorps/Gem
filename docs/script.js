@@ -173,11 +173,12 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(el);
     });
 
-    // Initialize WASM Gem interpreter
-    initializeGemInterpreter();
-    
-    // Initialize code editor
-    initializeCodeEditor();
+    // The playground only exists on the home page; the docs and changeblog pages
+    // share this script but load neither gem.js nor the editor markup.
+    if (document.getElementById('gem-editor')) {
+        initializeGemInterpreter();
+        initializeCodeEditor();
+    }
 });
 
 // WASM Gem Interpreter Integration

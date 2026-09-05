@@ -3,11 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A modern, statically typed language with compile-time nullability, mutability and borrow checking. Try it in your browser.">
+    <meta name="theme-color" content="#06070a">
+    <meta name="color-scheme" content="dark">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Gem Programming Language">
+    <meta property="og:description" content="A modern, statically typed language with compile-time nullability, mutability and borrow checking. Try it in your browser.">
+    <meta property="og:image" content="favicon.svg">
+    <meta name="twitter:card" content="summary_large_image">
     <title>Gem Programming Language</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Prism.js for syntax highlighting -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
     <nav class="navbar">
@@ -200,8 +211,8 @@ puts "Gem makes programming safe and beautiful!"
                         </p>
                         <p>
                             So we stripped back the language and rebuilt it, creating <strong>Gem</strong> - 
-                            a language with elegant syntax and strong safety guarantees. Gem is designed to be an <em>awesome fucking language</em> that you'll 
-                            actually enjoy using.
+                            a language with elegant syntax and strong safety guarantees — one designed to be genuinely
+                            <em>enjoyable</em> to write, without asking you to give up correctness for it.
                         </p>
                     </div>
                     <div class="history-timeline">
@@ -248,7 +259,7 @@ puts "Gem makes programming safe and beautiful!"
                 <div class="examples-grid">
                     <div class="example-card">
                         <h3>Type Safety</h3>
-                        <pre><code># Variables are immutable by default
+                        <pre><code class="language-ruby"># Variables are immutable by default
 string name = "Alice"
 # name = "Bob"  # ❌ Error: Cannot modify immutable
 
@@ -262,7 +273,7 @@ altCounter = altCounter + 1 # ✅ Valid: altCounter is mutable</code></pre>
                     </div>
                     <div class="example-card">
                         <h3>Memory Safety</h3>
-                        <pre><code># Automatic scope-based cleanup
+                        <pre><code class="language-ruby"># Automatic scope-based cleanup
 begin
     obj resource = FileHandle("data.txt")
     resource.process()
@@ -275,7 +286,7 @@ end
                     </div>
                     <div class="example-card">
                         <h3>Functions & Classes</h3>
-                        <pre><code># First-class functions with type safety
+                        <pre><code class="language-ruby"># First-class functions with type safety
 def calculate(int x, int y, func operation) int
     return operation(x, y)
 end
@@ -311,7 +322,7 @@ end</code></pre>
                 </div>
             </div>
             <div class="footer-bottom">
-              <p>&copy; 2025 SimuCorps LLC</p>
+              <p>&copy; 2025-2026 SimuCorps</p>
             </div>
         </div>
     </footer>
@@ -322,6 +333,7 @@ end</code></pre>
     <!-- Prism.js for syntax highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
 </body>
 </html> 
